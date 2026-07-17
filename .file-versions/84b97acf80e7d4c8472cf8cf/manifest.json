@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "fileName": "generated-plugin/examples/collaboration-landing.html",
+  "entries": [
+    {
+      "id": "12663411-3257-48f3-b28f-99c63592dd0e",
+      "fileName": "generated-plugin/examples/collaboration-landing.html",
+      "version": 1,
+      "label": "Version 1",
+      "createdAt": 1784209972722,
+      "source": "ai",
+      "prompt": "Continue the remaining unfinished tasks from the previous run. Do not redo completed work. Focus only on these unfinished todos:\n\n1. [in_progress] Read reference scenario SKILL.md and understand plugin structure\n2. [pending] Read project artifact files to derive manifest values\n3. [pending] Check gh auth status for plugin.repo owner\n4. [pending] Create generated-plugin/ folder with SKILL.md, open-design.json, examples/\n5. [pending] Run od plugin validate, od plugin pack, od plugin install, and summarize\n\nBefore making changes, inspect the current project files as needed. Update TodoWrite as you complete each remaining task.",
+      "size": 91609,
+      "mime": "text/html; charset=utf-8",
+      "kind": "html",
+      "contentPath": "0001-12663411-3257-48f3-b28f-99c63592dd0e.html",
+      "promptSource": "message"
+    }
+  ]
+}

@@ -1,0 +1,2580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>connectEd — Projects that find their people</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f5f5f5;
+      --fg: #000000;
+      --muted: #8c8c8c;
+      --border: #dbdbdb;
+      --accent: #0066cc;
+      --accent-secondary: #2997ff;
+      --font: "SF Pro HK", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      --mono: "SF Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      --radius: 8px;
+      --space: 8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-secondary) 45%, transparent); }
+      50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-secondary) 0%, transparent); }
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% center; }
+      100% { background-position: -200% center; }
+    }
+    @keyframes glow-breathe {
+      0%, 100% { opacity: 0.45; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.05); }
+    }
+    @keyframes bar-fill {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+    @keyframes float-soft {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    @keyframes status-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+
+    .reveal {
+      opacity: 0;
+      animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .reveal-d1 { animation-delay: 0.08s; }
+    .reveal-d2 { animation-delay: 0.16s; }
+    .reveal-d3 { animation-delay: 0.24s; }
+    .reveal-d4 { animation-delay: 0.32s; }
+    .reveal-d5 { animation-delay: 0.4s; }
+
+    .hl {
+      color: var(--accent);
+      background: linear-gradient(
+        90deg,
+        var(--accent) 0%,
+        var(--accent-secondary) 45%,
+        var(--accent) 90%
+      );
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: shimmer 4.5s linear infinite;
+    }
+
+    .hl-mark {
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+      border-radius: 4px;
+      padding: 0 0.2em;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+    img { display: block; max-width: 100%; }
+
+    /* ——— Grid canvas (Vercel-like) ——— */
+    .grid-bg {
+      position: relative;
+      isolation: isolate;
+    }
+    .grid-bg::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background-image:
+        linear-gradient(to right, color-mix(in srgb, var(--border) 70%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--border) 70%, transparent) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+      pointer-events: none;
+    }
+    .grid-bg::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 8%;
+      z-index: -1;
+      width: min(640px, 90vw);
+      height: 280px;
+      transform: translateX(-50%);
+      background:
+        radial-gradient(ellipse at 30% 40%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 55%),
+        radial-gradient(ellipse at 70% 50%, color-mix(in srgb, var(--accent-secondary) 28%, transparent), transparent 50%);
+      filter: blur(28px);
+      animation: glow-breathe 6s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    /* ——— Nav ——— */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: calc(var(--space) * 2);
+      height: 64px;
+      padding: 0 calc(var(--space) * 3);
+      background: color-mix(in srgb, var(--bg) 72%, transparent);
+      backdrop-filter: saturate(180%) blur(16px);
+      -webkit-backdrop-filter: saturate(180%) blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.03em;
+    }
+    .nav-brand .brand-ed {
+      color: var(--accent);
+    }
+
+    .nav-mark {
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      transition: transform 0.25s ease;
+    }
+    .nav-brand:hover .nav-mark { transform: rotate(-8deg) scale(1.06); }
+    .nav-mark svg { width: 18px; height: 18px; fill: var(--accent); }
+
+    .nav-links {
+      display: none;
+      align-items: center;
+      gap: calc(var(--space) * 3);
+      font-size: 14px;
+      color: var(--muted);
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .nav-links a {
+      position: relative;
+      transition: color 0.15s ease;
+    }
+    .nav-links a::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -4px;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.2s ease;
+    }
+    .nav-links a:hover { color: var(--fg); }
+    .nav-links a:hover::after { transform: scaleX(1); }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ——— Buttons (Vercel: black primary, bordered secondary, 8px) ——— */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+      white-space: nowrap;
+      border: 1px solid transparent;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn:active { transform: translateY(0.5px); }
+
+    .btn-ghost {
+      color: var(--muted);
+      background: transparent;
+    }
+    .btn-ghost:hover { color: var(--fg); }
+
+    .btn-secondary {
+      color: var(--fg);
+      background: var(--bg);
+      border-color: var(--border);
+      box-shadow: 0 1px 2px color-mix(in srgb, var(--fg) 4%, transparent);
+    }
+    .btn-secondary:hover {
+      background: var(--surface);
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+      color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+
+    .btn-primary {
+      color: var(--bg);
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow:
+        0 1px 2px color-mix(in srgb, var(--accent) 25%, transparent),
+        0 6px 18px color-mix(in srgb, var(--accent) 28%, transparent);
+    }
+    .btn-primary::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        105deg,
+        transparent 35%,
+        color-mix(in srgb, var(--accent-secondary) 55%, transparent) 50%,
+        transparent 65%
+      );
+      transform: translateX(-120%);
+      transition: transform 0.5s ease;
+    }
+    .btn-primary:hover {
+      background: color-mix(in srgb, var(--accent) 88%, var(--fg));
+      border-color: color-mix(in srgb, var(--accent) 88%, var(--fg));
+      box-shadow:
+        0 2px 4px color-mix(in srgb, var(--accent) 30%, transparent),
+        0 10px 28px color-mix(in srgb, var(--accent-secondary) 35%, transparent);
+    }
+    .btn-primary:hover::after { transform: translateX(120%); }
+
+    .btn-lg {
+      min-height: 48px;
+      padding: 0 18px;
+      font-size: 15px;
+    }
+
+    .btn-sm {
+      min-height: 32px;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
+    /* ——— Layout ——— */
+    .wrap {
+      width: min(1080px, calc(100% - 40px));
+      margin-inline: auto;
+    }
+
+    .section {
+      padding: calc(var(--space) * 12) 0;
+    }
+
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      justify-content: space-between;
+      gap: calc(var(--space) * 2);
+      margin-bottom: calc(var(--space) * 5);
+      max-width: 720px;
+    }
+
+    .section-head.full {
+      max-width: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+      margin-bottom: calc(var(--space) * 2);
+      letter-spacing: -0.01em;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-secondary);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    h1, h2, h3 {
+      letter-spacing: -0.045em;
+      line-height: 1.05;
+      font-weight: 600;
+    }
+
+    h1 {
+      font-size: clamp(36px, 6.5vw, 64px);
+      max-width: 16ch;
+      margin-inline: auto;
+    }
+
+    h2 {
+      font-size: clamp(28px, 4.5vw, 40px);
+      max-width: 18ch;
+    }
+
+    h3 {
+      font-size: 16px;
+      letter-spacing: -0.02em;
+      font-weight: 600;
+    }
+
+    .lede {
+      font-size: clamp(16px, 2vw, 18px);
+      color: var(--muted);
+      max-width: 40ch;
+      line-height: 1.55;
+      letter-spacing: -0.01em;
+    }
+
+    .muted { color: var(--muted); }
+
+    .mono {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ——— Hero ——— */
+    .hero {
+      padding: calc(var(--space) * 10) 0 calc(var(--space) * 3);
+      text-align: center;
+    }
+
+    .hero-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: calc(var(--space) * 3);
+    }
+
+    .hero .lede {
+      max-width: 44ch;
+      margin-inline: auto;
+    }
+
+    .hero-ctas {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .hero-note {
+      font-size: 13px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+    .hero-note strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* ——— Dashboard product frame ——— */
+    .dashboard-section {
+      padding: calc(var(--space) * 4) 0 calc(var(--space) * 10);
+    }
+
+    .product-frame {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 4px);
+      background: var(--bg);
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--fg) 2%, transparent),
+        0 2px 4px color-mix(in srgb, var(--fg) 3%, transparent),
+        0 24px 48px color-mix(in srgb, var(--fg) 6%, transparent),
+        0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
+      overflow: hidden;
+      transition: box-shadow 0.35s ease, border-color 0.35s ease;
+      animation: fade-up 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+    }
+    .product-frame:hover {
+      border-color: color-mix(in srgb, var(--accent-secondary) 35%, var(--border));
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent),
+        0 2px 4px color-mix(in srgb, var(--fg) 3%, transparent),
+        0 28px 56px color-mix(in srgb, var(--fg) 8%, transparent),
+        0 0 40px color-mix(in srgb, var(--accent-secondary) 12%, transparent);
+    }
+
+    .product-frame::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--border) 100%, transparent),
+        color-mix(in srgb, var(--border) 40%, transparent)
+      );
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .dash-chrome {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 44px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .dash-dots {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .dash-dots i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+      display: block;
+    }
+
+    .dash-url {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      max-width: 360px;
+      margin-inline: auto;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dash-body {
+      display: grid;
+      grid-template-columns: 1fr;
+      min-height: 480px;
+    }
+
+    .dash-sidebar {
+      display: none;
+      border-right: 1px solid var(--border);
+      background: var(--bg);
+      padding: 16px 12px;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .side-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 8px 10px 6px;
+    }
+
+    .side-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 36px;
+      padding: 0 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      text-align: left;
+      width: 100%;
+    }
+    .side-item:hover { background: var(--surface); color: var(--fg); }
+    .side-item.is-active {
+      background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+      color: var(--accent);
+      font-weight: 500;
+      box-shadow: inset 2px 0 0 var(--accent);
+    }
+    .side-item svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    .dash-main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: var(--bg);
+    }
+
+    .dash-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px 20px 0;
+    }
+
+    .dash-header h2 {
+      font-size: 20px;
+      max-width: none;
+      letter-spacing: -0.03em;
+    }
+
+    .dash-header p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .dash-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      margin: 16px 20px 0;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .metric {
+      background: var(--bg);
+      padding: 14px 16px;
+    }
+    .metric-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .metric-value {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+      color: var(--fg);
+      transition: color 0.2s ease;
+    }
+    .metric:hover .metric-value { color: var(--accent); }
+    .metric-delta {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--accent-secondary);
+    }
+
+    .dash-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 20px;
+    }
+
+    .search {
+      flex: 1 1 200px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .search:focus-within {
+      border-color: var(--fg);
+      box-shadow: 0 0 0 1px var(--fg);
+    }
+    .search input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font: inherit;
+      color: var(--fg);
+      min-width: 0;
+    }
+    .search input::placeholder { color: var(--muted); }
+    .search kbd {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      background: var(--surface);
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      min-height: 32px;
+      padding: 0 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      font-size: 13px;
+      color: var(--muted);
+      transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    }
+    .chip:hover { color: var(--fg); }
+    .chip.is-active {
+      color: var(--bg);
+      border-color: var(--accent);
+      background: var(--accent);
+      font-weight: 500;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+    }
+
+    .project-list {
+      display: flex;
+      flex-direction: column;
+      border-top: 1px solid var(--border);
+    }
+
+    .project-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.18s ease, box-shadow 0.18s ease;
+      text-align: left;
+      background: var(--bg);
+    }
+    .project-row:hover {
+      background: color-mix(in srgb, var(--accent) 4%, var(--bg));
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
+    .project-row:last-child { border-bottom: none; }
+    .project-row.is-entering {
+      animation: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .project-row-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .project-name {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    .project-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      max-width: 52ch;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .status::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .status.open::before {
+      background: var(--accent);
+      animation: pulse-dot 2.2s ease-in-out infinite;
+    }
+    .status.filling::before {
+      background: var(--accent-secondary);
+      animation: status-blink 1.4s ease-in-out infinite;
+    }
+
+    .project-row-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 16px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      font-size: 12px;
+      color: var(--fg);
+    }
+
+    .project-row-foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .seats {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 140px;
+    }
+    .seats-bar {
+      flex: 1;
+      height: 4px;
+      border-radius: 980px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      min-width: 72px;
+    }
+    .seats-bar > span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
+      border-radius: inherit;
+      transform-origin: left center;
+      animation: bar-fill 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .seats b {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    .avatars {
+      display: flex;
+      align-items: center;
+    }
+    .avatars span {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1.5px solid var(--bg);
+      margin-left: -6px;
+      display: grid;
+      place-items: center;
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--fg);
+      background: var(--surface);
+    }
+    .avatars span:first-child { margin-left: 0; }
+    .avatars .more {
+      background: var(--fg);
+      color: var(--bg);
+    }
+
+    .project-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .dash-empty {
+      display: none;
+      padding: 48px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ——— Bento / roles ——— */
+    .bento {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 2px);
+      overflow: hidden;
+    }
+
+    .bento-card {
+      background: var(--bg);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 220px;
+      transition: background 0.2s ease, transform 0.25s ease;
+    }
+    .bento-card:hover {
+      background: color-mix(in srgb, var(--accent) 4%, var(--bg));
+      transform: translateY(-2px);
+    }
+
+    .bento-card .icon {
+      width: 36px;
+      height: 36px;
+      border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .bento-card:hover .icon {
+      transform: scale(1.06);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-secondary) 15%, transparent);
+    }
+    .bento-card .icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--accent);
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bento-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.55;
+      flex: 1;
+      max-width: 36ch;
+    }
+
+    .bento-card .link {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .bento-card .link { color: var(--accent); }
+    .bento-card .link:hover { color: var(--accent-secondary); }
+    .bento-card .link svg { transition: transform 0.2s ease; }
+    .bento-card .link:hover svg { transform: translateX(3px); }
+
+    /* ——— Steps strip ——— */
+    .steps {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 2px);
+      overflow: hidden;
+      counter-reset: step;
+    }
+
+    .step {
+      background: var(--bg);
+      padding: 28px 24px;
+      counter-increment: step;
+      transition: background 0.2s ease;
+    }
+    .step:hover {
+      background: color-mix(in srgb, var(--accent-secondary) 6%, var(--bg));
+    }
+
+    .step-num {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+    .step-num::before {
+      content: "0" counter(step);
+    }
+
+    .step p {
+      margin-top: 10px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.55;
+      max-width: 32ch;
+    }
+
+    /* ——— CTA ——— */
+    .cta-band {
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 2px);
+      padding: 48px 28px;
+      text-align: center;
+      background:
+        linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-band::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, #000 10%, transparent 70%);
+      -webkit-mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, #000 10%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-band > * { position: relative; }
+    .cta-band h2 {
+      max-width: 14ch;
+      margin-inline: auto;
+    }
+    .cta-band .lede {
+      margin: 14px auto 0;
+    }
+    .cta-band .hero-ctas {
+      margin-top: 24px;
+    }
+    .cta-band::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 280px;
+      height: 280px;
+      margin: -140px 0 0 -140px;
+      border-radius: 50%;
+      background: radial-gradient(circle, color-mix(in srgb, var(--accent-secondary) 22%, transparent), transparent 70%);
+      animation: glow-breathe 5s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    /* ——— Footer ——— */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0 48px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .footer-links a { transition: color 0.15s ease; }
+    .footer-links a:hover { color: var(--accent); }
+
+    /* ——— Pricing / subscription ——— */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .price-card {
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 2px);
+      background: var(--bg);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .price-card:hover {
+      border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+      box-shadow: 0 12px 32px color-mix(in srgb, var(--fg) 6%, transparent);
+      transform: translateY(-2px);
+    }
+    .price-card.is-featured {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent),
+        0 16px 40px color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+    .price-badge {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--bg);
+      background: var(--accent);
+      border-radius: 980px;
+      padding: 4px 10px;
+    }
+    .price-name {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .price-amount {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      letter-spacing: -0.04em;
+    }
+    .price-amount .num {
+      font-size: 40px;
+      font-weight: 600;
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+    }
+    .price-amount .period {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .price-desc {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .price-features {
+      list-style: none;
+      display: grid;
+      gap: 10px;
+      font-size: 14px;
+      flex: 1;
+      margin: 4px 0 8px;
+    }
+    .price-features li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .price-features li::before {
+      content: "";
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      border-radius: 50%;
+      background:
+        linear-gradient(var(--bg), var(--bg)) padding-box,
+        linear-gradient(135deg, var(--accent), var(--accent-secondary)) border-box;
+      border: 1.5px solid transparent;
+      box-shadow: inset 0 0 0 3px var(--bg);
+      background-color: var(--accent);
+    }
+    .price-card .btn { width: 100%; }
+    .price-card.is-current {
+      outline: 2px solid var(--accent);
+      outline-offset: 0;
+    }
+    .price-card.is-current .btn {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .billing-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .billing-toggle button {
+      min-height: 32px;
+      padding: 0 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .billing-toggle button.is-active {
+      background: var(--bg);
+      color: var(--fg);
+      box-shadow: 0 1px 2px color-mix(in srgb, var(--fg) 8%, transparent);
+    }
+    .billing-save {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .plan-chip {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 980px;
+      border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+      background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .plan-chip.is-visible { display: inline-flex; }
+    .plan-chip .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-secondary);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    /* ——— Modal / toast ——— */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: color-mix(in srgb, var(--fg) 40%, transparent);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+    .overlay.is-open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      width: min(440px, 100%);
+      max-height: min(90vh, 720px);
+      overflow: auto;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 4px);
+      box-shadow:
+        0 24px 64px color-mix(in srgb, var(--fg) 18%, transparent),
+        0 0 0 1px color-mix(in srgb, var(--fg) 4%, transparent);
+      transform: translateY(12px) scale(0.98);
+      transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .overlay.is-open .modal { transform: translateY(0) scale(1); }
+    .modal-lg { width: min(520px, 100%); }
+
+    .modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px 20px 0;
+    }
+    .modal-head h3 {
+      font-size: 18px;
+      letter-spacing: -0.03em;
+    }
+    .modal-head p {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      flex-shrink: 0;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .modal-close:hover {
+      background: var(--surface);
+      color: var(--fg);
+    }
+
+    .modal-body {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+    .modal-foot {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 0 20px 20px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+    .field label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      font: inherit;
+      font-size: 14px;
+      color: var(--fg);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .field textarea {
+      min-height: 96px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+    }
+    .field-hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .field-error {
+      font-size: 12px;
+      color: var(--accent);
+      display: none;
+    }
+    .field.has-error input,
+    .field.has-error textarea,
+    .field.has-error select {
+      border-color: var(--accent);
+    }
+    .field.has-error .field-error { display: block; }
+
+    .auth-switch {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .auth-switch button {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .detail-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .detail-block {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      background: var(--surface);
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .detail-block strong {
+      display: block;
+      color: var(--fg);
+      font-size: 12px;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .checkout-summary {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      background: var(--surface);
+      display: grid;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .checkout-summary .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .checkout-summary .row.total {
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      font-weight: 600;
+    }
+    .checkout-summary .row.total span:last-child {
+      color: var(--accent);
+      font-family: var(--mono);
+    }
+
+    .toast-stack {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 200;
+      display: grid;
+      gap: 8px;
+      width: min(360px, calc(100% - 32px));
+      pointer-events: none;
+    }
+    .toast {
+      pointer-events: auto;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      box-shadow: 0 12px 32px color-mix(in srgb, var(--fg) 12%, transparent);
+      font-size: 13px;
+      line-height: 1.4;
+      animation: fade-up 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .toast.success {
+      border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+      box-shadow:
+        0 12px 32px color-mix(in srgb, var(--fg) 10%, transparent),
+        0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+    }
+    .toast .toast-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+    .toast .toast-body { flex: 1; min-width: 0; }
+    .toast .toast-title {
+      font-weight: 600;
+      margin-bottom: 2px;
+      letter-spacing: -0.01em;
+    }
+    .toast .toast-msg { color: var(--muted); }
+    .toast button {
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+    .toast button:hover { color: var(--fg); }
+
+    .btn.is-joined {
+      background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+      box-shadow: none;
+    }
+    .btn.is-joined::after { display: none; }
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    body.modal-open { overflow: hidden; }
+
+    /* ——— Responsive ——— */
+    @media (min-width: 720px) {
+      .nav-links { display: flex; }
+      .dash-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .pricing-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .project-row {
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+        align-items: center;
+      }
+      .project-row-meta { grid-column: 1; }
+      .project-row-foot {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        justify-content: flex-end;
+        flex-direction: column;
+        align-items: flex-end;
+      }
+    }
+
+    @media (min-width: 960px) {
+      .nav { padding: 0 24px; }
+      .wrap { width: min(1120px, calc(100% - 64px)); }
+      .dash-body { grid-template-columns: 220px 1fr; }
+      .dash-sidebar { display: flex; }
+      .hero { padding-top: calc(var(--space) * 12); }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav" data-od-id="nav">
+    <a href="#" class="nav-brand" data-od-id="nav-brand">
+      <span class="nav-mark" aria-hidden="true">
+        <svg viewBox="0 0 18 18"><path d="M9 1.5 16.5 15H1.5L9 1.5Z"/></svg>
+      </span>
+      connect<span class="brand-ed">Ed</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#dashboard">Projects</a>
+      <a href="#roles">Roles</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#how">How it works</a>
+    </nav>
+    <div class="nav-actions">
+      <span class="plan-chip" id="plan-chip" data-od-id="plan-chip" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="plan-chip-label">Free</span>
+      </span>
+      <button class="btn btn-ghost" type="button" data-action="open-auth" data-mode="login" data-od-id="nav-sign-in">Log In</button>
+      <button class="btn btn-primary" type="button" data-action="open-auth" data-mode="signup" data-od-id="nav-start-project">Sign Up</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero grid-bg" data-od-id="hero">
+      <div class="wrap hero-inner">
+        <p class="eyebrow reveal">Project collaboration platform</p>
+        <h1 class="reveal reveal-d1" data-od-id="hero-title">
+          <span class="hl">connectEd</span> links initiators with people ready to build.
+        </h1>
+        <p class="lede reveal reveal-d2" data-od-id="hero-lede">
+          A live project dashboard on the landing page — post open roles, browse seats, and join teams without cold outreach.
+        </p>
+        <div class="hero-ctas reveal reveal-d3">
+          <a class="btn btn-primary btn-lg" href="#dashboard" data-od-id="cta-browse">
+            Browse projects
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 7h8M7.5 3.5 11 7l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <button class="btn btn-secondary btn-lg" type="button" data-action="open-project" data-od-id="cta-start">Start a project</button>
+        </div>
+        <p class="hero-note mono reveal reveal-d4">
+          <strong>128</strong> open · <strong>2.4k</strong> participators · <strong>91%</strong> fill rate
+        </p>
+      </div>
+    </section>
+
+    <section class="dashboard-section" id="dashboard" data-od-id="dashboard-section">
+      <div class="wrap">
+        <div class="product-frame" data-od-id="project-dashboard">
+          <div class="dash-chrome" aria-hidden="true">
+            <div class="dash-dots"><i></i><i></i><i></i></div>
+            <div class="dash-url">connected.app/dashboard</div>
+            <div style="width: 42px;"></div>
+          </div>
+
+          <div class="dash-body">
+            <aside class="dash-sidebar" aria-label="Dashboard navigation">
+              <div class="side-label">Workspace</div>
+              <button type="button" class="side-item is-active" data-action="side-nav" data-side="projects">
+                <svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+                Projects
+              </button>
+              <button type="button" class="side-item" data-action="side-nav" data-side="people">
+                <svg viewBox="0 0 16 16"><circle cx="6" cy="5.5" r="2.5"/><path d="M2.5 13c0-2 1.6-3.5 3.5-3.5s3.5 1.5 3.5 3.5"/><circle cx="11.5" cy="6" r="2"/><path d="M10 13c.2-1.2 1.1-2.2 2.5-2.4"/></svg>
+                People
+              </button>
+              <button type="button" class="side-item" data-action="side-nav" data-side="activity">
+                <svg viewBox="0 0 16 16"><path d="M3 4h10M3 8h10M3 12h6"/></svg>
+                Activity
+              </button>
+              <div class="side-label" style="margin-top:12px;">Filters</div>
+              <button type="button" class="side-item" data-action="side-filter" data-filter="open">
+                <svg viewBox="0 0 16 16"><path d="M2.5 3.5h11l-4 5v4l-3-1.5v-2.5l-4-5Z"/></svg>
+                Open seats
+              </button>
+              <button type="button" class="side-item" data-action="side-filter" data-filter="all">
+                <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.5l2 1.5"/></svg>
+                Recent
+              </button>
+            </aside>
+
+            <div class="dash-main">
+              <div class="dash-header">
+                <div>
+                  <h2 data-od-id="dashboard-title">Projects</h2>
+                  <p>Live board connecting initiators and participators</p>
+                </div>
+                <button class="btn btn-primary btn-sm" type="button" data-action="open-project" data-od-id="dashboard-new-project">New Project</button>
+              </div>
+
+              <div class="dash-metrics" data-od-id="dashboard-metrics">
+                <div class="metric">
+                  <div class="metric-label">Active projects</div>
+                  <div class="metric-value">24</div>
+                  <div class="metric-delta">+6 this week</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Open seats</div>
+                  <div class="metric-value">67</div>
+                  <div class="metric-delta">Across 18 teams</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Joined today</div>
+                  <div class="metric-value">41</div>
+                  <div class="metric-delta">Participators</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Avg. fill time</div>
+                  <div class="metric-value">3.2d</div>
+                  <div class="metric-delta">Faster than last month</div>
+                </div>
+              </div>
+
+              <div class="dash-toolbar">
+                <label class="search" data-od-id="dashboard-search">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                    <circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.4"/>
+                    <path d="M9 9.5 12 12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  </svg>
+                  <input type="search" placeholder="Search projects…" id="project-search" />
+                  <kbd>⌘K</kbd>
+                </label>
+                <div class="filters" role="group" aria-label="Filter projects" data-od-id="dashboard-filters">
+                  <button type="button" class="chip is-active" data-filter="all">All</button>
+                  <button type="button" class="chip" data-filter="open">Open</button>
+                  <button type="button" class="chip" data-filter="design">Design</button>
+                  <button type="button" class="chip" data-filter="eng">Eng</button>
+                  <button type="button" class="chip" data-filter="research">Research</button>
+                </div>
+              </div>
+
+              <div class="project-list" id="project-grid" data-od-id="project-grid">
+                <article class="project-row" data-tags="open eng" data-od-id="project-card-civic-map">
+                  <div>
+                    <div class="project-row-top">
+                      <div>
+                        <div class="project-name">Civic Map — neighborhood data layer</div>
+                        <p class="project-desc">Public map for local initiatives and open volunteer slots. Need frontend and data.</p>
+                      </div>
+                      <span class="status open">Open seats</span>
+                    </div>
+                    <div class="project-row-meta">
+                      <span class="tag">Frontend</span>
+                      <span class="tag">Data</span>
+                      <span>Initiator · Maya Chen</span>
+                    </div>
+                  </div>
+                  <div class="project-row-foot">
+                    <div class="seats" aria-label="2 of 5 seats filled">
+                      <div class="seats-bar"><span style="width:40%"></span></div>
+                      <b>2/5</b>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                      <div class="avatars" aria-label="3 members"><span>MC</span><span>JR</span><span>AL</span></div>
+                      <div class="project-actions">
+                        <button type="button" class="btn btn-secondary btn-sm">Details</button>
+                        <button type="button" class="btn btn-primary btn-sm">Join</button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="project-row" data-tags="filling design" data-od-id="project-card-study-circle">
+                  <div>
+                    <div class="project-row-top">
+                      <div>
+                        <div class="project-name">Study Circle — peer learning pods</div>
+                        <p class="project-desc">Weekly study pods with matching, goals, and accountability check-ins.</p>
+                      </div>
+                      <span class="status filling">Filling fast</span>
+                    </div>
+                    <div class="project-row-meta">
+                      <span class="tag">Product design</span>
+                      <span class="tag">UX research</span>
+                      <span>Initiator · Noah Park</span>
+                    </div>
+                  </div>
+                  <div class="project-row-foot">
+                    <div class="seats" aria-label="4 of 5 seats filled">
+                      <div class="seats-bar"><span style="width:80%"></span></div>
+                      <b>4/5</b>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                      <div class="avatars" aria-label="4 members"><span>NP</span><span>SK</span><span>TW</span><span>EL</span></div>
+                      <div class="project-actions">
+                        <button type="button" class="btn btn-secondary btn-sm">Details</button>
+                        <button type="button" class="btn btn-primary btn-sm">Join</button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="project-row" data-tags="open research" data-od-id="project-card-climate-brief">
+                  <div>
+                    <div class="project-row-top">
+                      <div>
+                        <div class="project-name">Climate Brief — weekly research digest</div>
+                        <p class="project-desc">Public research digest for climate policy teams. Writers and fact-checkers needed.</p>
+                      </div>
+                      <span class="status open">Open seats</span>
+                    </div>
+                    <div class="project-row-meta">
+                      <span class="tag">Research</span>
+                      <span class="tag">Writing</span>
+                      <span>Initiator · Aisha Rahman</span>
+                    </div>
+                  </div>
+                  <div class="project-row-foot">
+                    <div class="seats" aria-label="1 of 4 seats filled">
+                      <div class="seats-bar"><span style="width:25%"></span></div>
+                      <b>1/4</b>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                      <div class="avatars" aria-label="1 member"><span>AR</span></div>
+                      <div class="project-actions">
+                        <button type="button" class="btn btn-secondary btn-sm">Details</button>
+                        <button type="button" class="btn btn-primary btn-sm">Join</button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="project-row" data-tags="open eng design" data-od-id="project-card-local-trade">
+                  <div>
+                    <div class="project-row-top">
+                      <div>
+                        <div class="project-name">Local Trade — campus skill exchange</div>
+                        <p class="project-desc">Match students trading skills. Mobile-first MVP for design ↔ tutoring swaps.</p>
+                      </div>
+                      <span class="status open">Open seats</span>
+                    </div>
+                    <div class="project-row-meta">
+                      <span class="tag">iOS</span>
+                      <span class="tag">Visual design</span>
+                      <span>Initiator · Leo Santos</span>
+                    </div>
+                  </div>
+                  <div class="project-row-foot">
+                    <div class="seats" aria-label="3 of 6 seats filled">
+                      <div class="seats-bar"><span style="width:50%"></span></div>
+                      <b>3/6</b>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                      <div class="avatars" aria-label="3 members"><span>LS</span><span>HK</span><span>DM</span></div>
+                      <div class="project-actions">
+                        <button type="button" class="btn btn-secondary btn-sm">Details</button>
+                        <button type="button" class="btn btn-primary btn-sm">Join</button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="project-row" data-tags="filling eng" data-od-id="project-card-open-lab">
+                  <div>
+                    <div class="project-row-top">
+                      <div>
+                        <div class="project-name">Open Lab — hardware for makers</div>
+                        <p class="project-desc">Shared lab time, tool inventory, and safety checklists for makerspace networks.</p>
+                      </div>
+                      <span class="status filling">Filling fast</span>
+                    </div>
+                    <div class="project-row-meta">
+                      <span class="tag">Backend</span>
+                      <span class="tag">Ops</span>
+                      <span>Initiator · Priya Nair</span>
+                    </div>
+                  </div>
+                  <div class="project-row-foot">
+                    <div class="seats" aria-label="5 of 6 seats filled">
+                      <div class="seats-bar"><span style="width:83%"></span></div>
+                      <b>5/6</b>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                      <div class="avatars" aria-label="5 members"><span>PN</span><span>CW</span><span>RG</span><span class="more">+2</span></div>
+                      <div class="project-actions">
+                        <button type="button" class="btn btn-secondary btn-sm">Details</button>
+                        <button type="button" class="btn btn-primary btn-sm">Join</button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="project-row" data-tags="open design research" data-od-id="project-card-care-kit">
+                  <div>
+                    <div class="project-row-top">
+                      <div>
+                        <div class="project-name">Care Kit — first-week onboarding packs</div>
+                        <p class="project-desc">Printable and digital onboarding kits for new community volunteers.</p>
+                      </div>
+                      <span class="status open">Open seats</span>
+                    </div>
+                    <div class="project-row-meta">
+                      <span class="tag">Research</span>
+                      <span class="tag">Illustration</span>
+                      <span>Initiator · Jordan Lee</span>
+                    </div>
+                  </div>
+                  <div class="project-row-foot">
+                    <div class="seats" aria-label="0 of 3 seats filled">
+                      <div class="seats-bar"><span style="width:0%"></span></div>
+                      <b>0/3</b>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                      <div class="avatars" aria-label="1 member"><span>JL</span></div>
+                      <div class="project-actions">
+                        <button type="button" class="btn btn-secondary btn-sm">Details</button>
+                        <button type="button" class="btn btn-primary btn-sm">Join</button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+
+              <div class="dash-empty" id="dash-empty" data-od-id="dashboard-empty">
+                No projects match. Clear search or try another filter.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section wrap" id="roles" data-od-id="roles-section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Two sides, one board</p>
+          <h2 data-od-id="roles-title">Built for initiators and participators</h2>
+        </div>
+      </div>
+      <div class="bento">
+        <article class="bento-card" data-od-id="role-initiator">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+          <h3>Project initiators</h3>
+          <p>Publish a project, define open roles and seat counts, then watch the dashboard fill with the right people.</p>
+          <button type="button" class="link" data-od-id="role-initiator-cta">
+            Create a project
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6h8M6.5 2.5 10 6 6.5 9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </article>
+        <article class="bento-card" data-od-id="role-participator">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M4 18c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5"/><path d="M14 18c.3-1.8 1.8-3.2 4-3.5"/></svg>
+          </div>
+          <h3>Participators</h3>
+          <p>Browse live projects first, filter by skill, and join teams that need exactly what you offer — no cold DMs.</p>
+          <a href="#dashboard" class="link" data-od-id="role-participator-cta">
+            Find a project
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6h8M6.5 2.5 10 6 6.5 9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </article>
+      </div>
+    </section>
+
+    <section class="section wrap" id="how" data-od-id="how-section" style="padding-top:0;">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">How it works</p>
+          <h2 data-od-id="how-title">From idea to full team</h2>
+        </div>
+      </div>
+      <div class="steps">
+        <article class="step" data-od-id="step-1">
+          <div class="step-num"></div>
+          <h3>Initiator posts a project</h3>
+          <p>Describe the mission, list open roles, and set how many seats you need filled.</p>
+        </article>
+        <article class="step" data-od-id="step-2">
+          <div class="step-num"></div>
+          <h3>It lands on the dashboard</h3>
+          <p>Every visitor sees live projects first — searchable, filterable, with seat progress.</p>
+        </article>
+        <article class="step" data-od-id="step-3">
+          <div class="step-num"></div>
+          <h3>Participators join</h3>
+          <p>People claim seats that match their skills. Teams form in days, not weeks of outreach.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section wrap" id="pricing" data-od-id="pricing-section">
+      <div class="section-head full" style="text-align:center; flex-direction:column; align-items:center;">
+        <p class="eyebrow">Pricing</p>
+        <h2 data-od-id="pricing-title">Pick a plan that grows with your team</h2>
+        <p class="lede" style="margin-inline:auto;">Use connectEd free or upgrade for more projects, seats, and priority placement.</p>
+      </div>
+      <div class="billing-toggle-wrap" style="text-align:center;">
+        <div class="billing-toggle" role="group" aria-label="Billing period">
+          <button type="button" class="is-active" data-od-id="bill-monthly" data-period="monthly">Monthly</button>
+          <button type="button" data-od-id="bill-yearly" data-period="yearly">Yearly</button>
+          <span class="billing-save" id="billing-save" style="display:none;">Save 20%</span>
+        </div>
+      </div>
+      <div class="pricing-grid" style="margin-top:20px;" data-od-id="pricing-grid">
+        <div class="price-card" data-plan="free" data-od-id="plan-free">
+          <div class="price-name">Free</div>
+          <div class="price-amount">
+            <span class="num" data-monthly="0" data-yearly="0">$0</span>
+            <span class="period">/month</span>
+          </div>
+          <p class="price-desc">For individuals exploring their first project.</p>
+          <ul class="price-features">
+            <li>Up to 2 open projects</li>
+            <li>3 seats per project</li>
+            <li>Community support</li>
+            <li>Basic dashboard analytics</li>
+          </ul>
+          <button class="btn btn-secondary" type="button" data-action="subscribe" data-plan="free" data-od-id="subscribe-free">Get started</button>
+        </div>
+        <div class="price-card is-featured" data-plan="pro" data-od-id="plan-pro">
+          <div class="price-badge">Most popular</div>
+          <div class="price-name">Pro</div>
+          <div class="price-amount">
+            <span class="num" data-monthly="12" data-yearly="9">$12</span>
+            <span class="period">/month</span>
+          </div>
+          <p class="price-desc">For active builders who run multiple projects.</p>
+          <ul class="price-features">
+            <li>Unlimited projects</li>
+            <li>10 seats per project</li>
+            <li>Priority placement on dashboard</li>
+            <li>Advanced metrics &amp; exports</li>
+            <li>Priority email support</li>
+          </ul>
+          <button class="btn btn-primary" type="button" data-action="subscribe" data-plan="pro" data-od-id="subscribe-pro">Subscribe to Pro</button>
+        </div>
+        <div class="price-card" data-plan="team" data-od-id="plan-team">
+          <div class="price-name">Team</div>
+          <div class="price-amount">
+            <span class="num" data-monthly="29" data-yearly="23">$29</span>
+            <span class="period">/month</span>
+          </div>
+          <p class="price-desc">For orgs, classrooms, and maker communities.</p>
+          <ul class="price-features">
+            <li>Unlimited projects</li>
+            <li>50 seats per project</li>
+            <li>Dedicated workspace &amp; roles</li>
+            <li>SSO &amp; admin console</li>
+            <li>Dedicated success manager</li>
+          </ul>
+          <button class="btn btn-primary" type="button" data-action="subscribe" data-plan="team" data-od-id="subscribe-team">Subscribe to Team</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section wrap" data-od-id="cta-section">
+      <div class="cta-band">
+        <h2 data-od-id="cta-title">Ready to build with <span class="hl">connectEd</span>?</h2>
+        <p class="lede">Start a project or join one already on the board.</p>
+        <div class="hero-ctas">
+          <button type="button" class="btn btn-primary btn-lg" data-action="open-project" data-od-id="cta-final-start">Start a project</button>
+          <a href="#dashboard" class="btn btn-secondary btn-lg" data-od-id="cta-final-browse">Browse dashboard</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer wrap" data-od-id="footer">
+    <div>© 2026 connectEd</div>
+    <div class="footer-links">
+      <a href="#dashboard">Projects</a>
+      <a href="#roles">Roles</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#how">How it works</a>
+    </div>
+    <form id="newsletter-form" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;" novalidate>
+      <input type="email" id="newsletter-email" placeholder="Subscribe for updates…" style="min-height:36px; padding:0 12px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg); font:inherit; font-size:13px; color:var(--fg); min-width:200px; outline:none;" required />
+      <button class="btn btn-primary btn-sm" type="submit">Subscribe</button>
+    </form>
+  </footer>
+
+  <div class="toast-stack" id="toast-stack" data-od-id="toast-stack" aria-live="polite"></div>
+
+  <!-- Auth modal -->
+  <div class="overlay" id="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="modal" data-od-id="auth-modal">
+      <div class="modal-head">
+        <div>
+          <h3 id="auth-modal-title">Welcome to connectEd</h3>
+          <p id="auth-modal-subtitle">Sign in to your account or create a new one.</p>
+        </div>
+        <button class="modal-close" type="button" data-action="close-modal" aria-label="Close" data-od-id="auth-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="auth-form" novalidate>
+          <div class="field" id="auth-name-field" style="display:none;">
+            <label for="auth-name">Full name</label>
+            <input type="text" id="auth-name" placeholder="Your name" autocomplete="name" />
+            <span class="field-error" id="auth-name-error">Please enter your name.</span>
+          </div>
+          <div class="field">
+            <label for="auth-email">Email</label>
+            <input type="email" id="auth-email" placeholder="you@example.com" autocomplete="email" required />
+            <span class="field-error" id="auth-email-error">Please enter a valid email.</span>
+          </div>
+          <div class="field">
+            <label for="auth-password">Password</label>
+            <input type="password" id="auth-password" placeholder="At least 8 characters" autocomplete="new-password" required />
+            <span class="field-error" id="auth-password-error">Password must be at least 8 characters.</span>
+          </div>
+          <button class="btn btn-primary" type="submit" style="width:100%;" id="auth-submit-btn" data-od-id="auth-submit">Sign in</button>
+        </form>
+        <div class="auth-switch">
+          <span id="auth-switch-text">Don't have an account?</span>
+          <button type="button" data-action="toggle-auth-mode" id="auth-toggle-btn" data-od-id="auth-toggle">Create one</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Project modal -->
+  <div class="overlay" id="project-overlay" role="dialog" aria-modal="true" aria-labelledby="project-modal-title">
+    <div class="modal" data-od-id="project-modal">
+      <div class="modal-head">
+        <div>
+          <h3 id="project-modal-title">Start a new project</h3>
+          <p>Describe what you're building and the roles you need filled.</p>
+        </div>
+        <button class="modal-close" type="button" data-action="close-modal" aria-label="Close" data-od-id="project-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="project-form" novalidate>
+          <div class="field">
+            <label for="project-name">Project name</label>
+            <input type="text" id="project-name" placeholder="e.g. Open Lab — hardware for makers" required />
+            <span class="field-error" id="project-name-error">Please enter a project name.</span>
+          </div>
+          <div class="field">
+            <label for="project-desc-input">Description</label>
+            <textarea id="project-desc-input" placeholder="What's the mission, and what kind of people do you need?" required></textarea>
+            <span class="field-error" id="project-desc-error">Please add a brief description.</span>
+          </div>
+          <div class="field">
+            <label for="project-seats">Open seats</label>
+            <input type="number" id="project-seats" value="4" min="1" max="50" />
+          </div>
+          <div class="field">
+            <label for="project-tags-input">Tags (comma-separated)</label>
+            <input type="text" id="project-tags-input" placeholder="e.g. Design, Frontend, Research" />
+          </div>
+          <button class="btn btn-primary" type="submit" style="width:100%;" data-od-id="project-submit">Publish project</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project Details modal -->
+  <div class="overlay" id="detail-overlay" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title">
+    <div class="modal modal-lg" data-od-id="detail-modal">
+      <div class="modal-head">
+        <div>
+          <h3 id="detail-modal-title">Project details</h3>
+          <p id="detail-modal-subtitle"></p>
+        </div>
+        <button class="modal-close" type="button" data-action="close-modal" aria-label="Close" data-od-id="detail-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="detail-content"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-secondary" type="button" data-action="close-modal" id="detail-close-inline">Close</button>
+          <button class="btn btn-primary" type="button" data-action="join-detail" id="detail-join-btn">Join this project</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscribe / Checkout modal -->
+  <div class="overlay" id="subscribe-overlay" role="dialog" aria-modal="true" aria-labelledby="subscribe-modal-title">
+    <div class="modal modal-lg" data-od-id="subscribe-modal">
+      <div class="modal-head">
+        <div>
+          <h3 id="subscribe-modal-title">Subscribe to <span id="subscribe-plan-name">Pro</span></h3>
+          <p id="subscribe-modal-subtitle">You're subscribing to the Pro plan — monthly billing.</p>
+        </div>
+        <button class="modal-close" type="button" data-action="close-modal" aria-label="Close" data-od-id="subscribe-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="checkout-summary" data-od-id="checkout-summary">
+          <div class="row">
+            <span>Plan</span>
+            <span id="checkout-plan">Pro</span>
+          </div>
+          <div class="row">
+            <span>Period</span>
+            <span id="checkout-period">Monthly</span>
+          </div>
+          <div class="row">
+            <span>Billing</span>
+            <span id="checkout-billing">$12 / month</span>
+          </div>
+          <div class="row total">
+            <span>Due today</span>
+            <span id="checkout-total">$12</span>
+          </div>
+        </div>
+        <form id="subscribe-form" novalidate>
+          <div class="field">
+            <label for="subscribe-email">Email for receipt</label>
+            <input type="email" id="subscribe-email" placeholder="you@example.com" required />
+            <span class="field-error" id="subscribe-email-error">Please enter a valid email.</span>
+          </div>
+          <div class="field">
+            <label for="subscribe-card">Card number</label>
+            <input type="text" id="subscribe-card" placeholder="•••• •••• •••• ••••" maxlength="19" required />
+            <span class="field-error" id="subscribe-card-error">Please enter a valid card number.</span>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="field">
+              <label for="subscribe-exp">Expiry</label>
+              <input type="text" id="subscribe-exp" placeholder="MM/YY" maxlength="5" required />
+              <span class="field-error" id="subscribe-exp-error">Invalid date.</span>
+            </div>
+            <div class="field">
+              <label for="subscribe-cvc">CVC</label>
+              <input type="text" id="subscribe-cvc" placeholder="123" maxlength="4" required />
+              <span class="field-error" id="subscribe-cvc-error">Invalid CVC.</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" type="submit" style="width:100%;" data-od-id="subscribe-confirm">Confirm subscription</button>
+        </form>
+        <p style="font-size:12px; color:var(--muted); text-align:center; margin-top:10px;">Demo only — no real charge will be made.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* ===== State ===== */
+      var userPlan = localStorage.getItem('connected_plan') || 'free';
+      var authMode = 'login';
+      var activeFilter = 'all';
+      var billingPeriod = 'monthly';
+      var activeDetailCard = null;
+      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      var planLabels = {
+        free: 'Free',
+        pro: 'Pro',
+        team: 'Team'
+      };
+
+      var planPrices = {
+        free:  { monthly: 0,  yearly: 0  },
+        pro:   { monthly: 12, yearly: 9  },
+        team:  { monthly: 29, yearly: 23 }
+      };
+
+      /* ===== Helpers ===== */
+      function $(sel, ctx) { return (ctx || document).querySelector(sel); }
+      function $$(sel, ctx) { return Array.prototype.slice.call((ctx || document).querySelectorAll(sel)); }
+
+      function showToast(title, msg) {
+        var stack = $('#toast-stack');
+        var t = document.createElement('div');
+        t.className = 'toast success';
+        t.setAttribute('data-od-id', 'toast-' + Date.now());
+        t.innerHTML =
+          '<span class="toast-dot" aria-hidden="true"></span>' +
+          '<div class="toast-body">' +
+            '<div class="toast-title">' + title + '</div>' +
+            '<div class="toast-msg">' + msg + '</div>' +
+          '</div>' +
+          '<button type="button" aria-label="Dismiss">&times;</button>';
+        stack.appendChild(t);
+        t.querySelector('button').addEventListener('click', function () { t.remove(); });
+        setTimeout(function () { if (t.parentNode) t.remove(); }, 4000);
+      }
+
+      function openOverlay(id) {
+        var el = $('#' + id);
+        if (!el) return;
+        el.classList.add('is-open');
+        document.body.classList.add('modal-open');
+        var first = $('input, button', el);
+        if (first) setTimeout(function () { first.focus(); }, 80);
+      }
+
+      function closeOverlay(id) {
+        var el = $('#' + id);
+        if (!el) return;
+        el.classList.remove('is-open');
+        document.body.classList.remove('modal-open');
+      }
+
+      function closeAllOverlays() {
+        $$('.overlay').forEach(function (o) {
+          o.classList.remove('is-open');
+        });
+        document.body.classList.remove('modal-open');
+      }
+
+      function setFieldError(inputId, errorId, show) {
+        var field = inputId ? $(inputId).closest('.field') : null;
+        var errEl = errorId ? $('#' + errorId) : null;
+        if (!field || !errEl) return;
+        if (show) field.classList.add('has-error');
+        else field.classList.remove('has-error');
+      }
+
+      /* ===== Plan chip in nav ===== */
+      function updatePlanChip() {
+        var chip = $('#plan-chip');
+        var label = $('#plan-chip-label');
+        if (!chip || !label) return;
+        label.textContent = planLabels[userPlan] || 'Free';
+        if (userPlan !== 'free') chip.classList.add('is-visible');
+        else chip.classList.remove('is-visible');
+      }
+      updatePlanChip();
+
+      /* ===== Auth modal ===== */
+      var authModeState = { mode: 'login' };
+      function openAuth(mode) {
+        authModeState.mode = mode || 'login';
+        var nameField = $('#auth-name-field');
+        var nameInput = $('#auth-name');
+        var subtitle = $('#auth-modal-subtitle');
+        var submitBtn = $('#auth-submit-btn');
+        var toggleBtn = $('#auth-toggle-btn');
+        var switchText = $('#auth-switch-text');
+        if (!nameField || !subtitle || !submitBtn || !toggleBtn) return;
+
+        if (authModeState.mode === 'signup') {
+          nameField.style.display = '';
+          subtitle.textContent = 'Create your account to get started.';
+          submitBtn.textContent = 'Create account';
+          toggleBtn.textContent = 'Already have an account? Sign in';
+          switchText.textContent = 'Already have an account?';
+        } else {
+          nameField.style.display = 'none';
+          nameInput.value = '';
+          subtitle.textContent = 'Sign in to your account or create a new one.';
+          submitBtn.textContent = 'Sign in';
+          toggleBtn.textContent = 'Create one';
+          switchText.textContent = "Don't have an account?";
+        }
+
+        $$('#auth-form .field').forEach(function (f) { f.classList.remove('has-error'); });
+        $('#auth-form').reset();
+        openOverlay('auth-overlay');
+      }
+
+      $('#auth-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var valid = true;
+        var email = $('#auth-email').value.trim();
+        var pw = $('#auth-password').value.trim();
+        var name = $('#auth-name').value.trim();
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFieldError('#auth-email', 'auth-email-error', true); valid = false; }
+        else { setFieldError('#auth-email', 'auth-email-error', false); }
+
+        if (pw.length < 8) { setFieldError('#auth-password', 'auth-password-error', true); valid = false; }
+        else { setFieldError('#auth-password', 'auth-password-error', false); }
+
+        if (authModeState.mode === 'signup' && !name) { setFieldError('#auth-name', 'auth-name-error', true); valid = false; }
+        if (authModeState.mode === 'signup' && name) { setFieldError('#auth-name', 'auth-name-error', false); }
+
+        if (!valid) return;
+        showToast('Welcome!', authModeState.mode === 'signup' ? 'Account created for ' + name + '.' : 'Signed in successfully.');
+        closeOverlay('auth-overlay');
+      });
+
+      /* ===== New Project modal ===== */
+      function openNewProject() {
+        $('#project-form').reset();
+        $$('#project-form .field').forEach(function (f) { f.classList.remove('has-error'); });
+        openOverlay('project-overlay');
+      }
+
+      $('#project-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var name = $('#project-name').value.trim();
+        var desc = $('#project-desc-input').value.trim();
+        var valid = true;
+        if (!name) { setFieldError('#project-name', 'project-name-error', true); valid = false; }
+        else { setFieldError('#project-name', 'project-name-error', false); }
+        if (!desc) { setFieldError('#project-desc-input', 'project-desc-error', true); valid = false; }
+        else { setFieldError('#project-desc-input', 'project-desc-error', false); }
+        if (!valid) return;
+        showToast('Project published', '"' + name + '" is now live on the dashboard (demo).');
+        closeOverlay('project-overlay');
+        $('#dashboard').scrollIntoView({ behavior: 'smooth' });
+      });
+
+      /* ===== Project Details modal ===== */
+      function openDetail(card) {
+        activeDetailCard = card;
+        var name = $('.project-name', card).textContent.trim();
+        var desc = $('.project-desc', card).textContent.trim();
+        var status = $('.status', card).textContent.trim();
+        var seatsText = $('.seats b', card).textContent.trim();
+        var tags = $$('.tag', card).map ? $$('.tag', card).map(function (t) { return t.textContent.trim(); }).join(', ') : '';
+        var meta = $('.project-row-meta span:last-child', card).textContent.trim();
+
+        $('#detail-modal-title').textContent = name;
+        $('#detail-modal-subtitle').textContent = status + ' · ' + meta;
+        var content = $('#detail-content');
+        content.innerHTML =
+          '<div class="detail-meta">' +
+            '<div class="detail-block"><strong>Description</strong>' + desc + '</div>' +
+            '<div class="detail-block"><strong>Seats</strong>' + seatsText + '</div>' +
+            '<div class="detail-block"><strong>Tags</strong>' + tags + '</div>' +
+          '</div>';
+        openOverlay('detail-overlay');
+      }
+
+      $('#detail-join-btn').addEventListener('click', function () {
+        if (!activeDetailCard) return;
+        var joinBtn = $('.btn.btn-primary.btn-sm', activeDetailCard);
+        if (joinBtn && !joinBtn.classList.contains('is-joined')) {
+          joinBtn.textContent = 'Joined';
+          joinBtn.classList.add('is-joined');
+          var name = $('.project-name', activeDetailCard).textContent.trim();
+          showToast('Seat claimed', 'You joined "' + name + '" (demo).');
+        }
+        closeOverlay('detail-overlay');
+      });
+
+      /* ===== Subscribe / Checkout modal ===== */
+      var selectedPlan = 'pro';
+      function openSubscribe(plan) {
+        selectedPlan = plan || selectedPlan;
+        var price = planPrices[selectedPlan];
+        var period = billingPeriod === 'monthly' ? 'Monthly' : 'Yearly';
+        var amount = billingPeriod === 'monthly' ? price.monthly : price.yearly;
+        var label = '$' + amount + (amount > 0 ? ' / month' : '');
+        $('#subscribe-plan-name').textContent = planLabels[selectedPlan];
+        $('#subscribe-modal-subtitle').textContent = 'You\'re subscribing to the ' + planLabels[selectedPlan] + ' plan — ' + period.toLowerCase() + ' billing.';
+        $('#checkout-plan').textContent = planLabels[selectedPlan];
+        $('#checkout-period').textContent = period;
+        $('#checkout-billing').textContent = label;
+        $('#checkout-total').textContent = label;
+        $('#subscribe-form').reset();
+        $$('#subscribe-form .field').forEach(function (f) { f.classList.remove('has-error'); });
+        openOverlay('subscribe-overlay');
+      }
+
+      $('#subscribe-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var email = $('#subscribe-email').value.trim();
+        var card = $('#subscribe-card').value.replace(/\s/g, '');
+        var exp = $('#subscribe-exp').value.trim();
+        var cvc = $('#subscribe-cvc').value.trim();
+        var valid = true;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFieldError('#subscribe-email', 'subscribe-email-error', true); valid = false; }
+        else { setFieldError('#subscribe-email', 'subscribe-email-error', false); }
+        if (!/^\d{13,19}$/.test(card)) { setFieldError('#subscribe-card', 'subscribe-card-error', true); valid = false; }
+        else { setFieldError('#subscribe-card', 'subscribe-card-error', false); }
+        if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(exp)) { setFieldError('#subscribe-exp', 'subscribe-exp-error', true); valid = false; }
+        else { setFieldError('#subscribe-exp', 'subscribe-exp-error', false); }
+        if (!/^\d{3,4}$/.test(cvc)) { setFieldError('#subscribe-cvc', 'subscribe-cvc-error', true); valid = false; }
+        else { setFieldError('#subscribe-cvc', 'subscribe-cvc-error', false); }
+        if (!valid) return;
+        userPlan = selectedPlan;
+        localStorage.setItem('connected_plan', userPlan);
+        updatePlanChip();
+        showToast('Subscription active', 'You are now on the ' + planLabels[userPlan] + ' plan.');
+        closeOverlay('subscribe-overlay');
+      });
+
+      /* ===== Newsletter subscription ===== */
+      var newsletterForm = $('#newsletter-form');
+      if (newsletterForm) {
+        newsletterForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var input = $('#newsletter-email');
+          var email = input.value.trim();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            input.style.borderColor = 'var(--accent)';
+            input.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent)';
+            return;
+          }
+          input.style.borderColor = '';
+          input.style.boxShadow = '';
+          input.value = '';
+          showToast('You\'re subscribed', 'We\'ll send updates to ' + email + '.');
+        });
+      }
+
+      /* ===== Billing toggle ===== */
+      $$('[data-period]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          $$('[data-period]').forEach(function (b) { b.classList.remove('is-active'); });
+          btn.classList.add('is-active');
+          billingPeriod = btn.getAttribute('data-period') || 'monthly';
+          var saveEl = $('#billing-save');
+          if (saveEl) saveEl.style.display = billingPeriod === 'yearly' ? '' : 'none';
+          $$('.price-card').forEach(function (card) {
+            var plan = card.getAttribute('data-plan');
+            var numEl = $('.num', card);
+            if (!plan || !numEl || !planPrices[plan]) return;
+            var price = planPrices[plan][billingPeriod];
+            numEl.textContent = '$' + price;
+            var periodEl = $('.period', card);
+            if (periodEl) periodEl.textContent = billingPeriod === 'yearly' ? '/month, billed yearly' : '/month';
+          });
+        });
+      });
+
+      /* ===== Modal close handlers ===== */
+      $$('[data-action="close-modal"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var overlay = btn.closest('.overlay');
+          if (overlay) closeOverlay(overlay.id);
+        });
+      });
+      $$('.overlay').forEach(function (overlay) {
+        overlay.addEventListener('click', function (e) {
+          if (e.target === overlay) closeOverlay(overlay.id);
+        });
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeAllOverlays();
+      });
+
+      /* ===== Global action routing ===== */
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        var action = btn.getAttribute('data-action');
+
+        if (action === 'open-auth') {
+          var mode = btn.getAttribute('data-mode') || 'login';
+          openAuth(mode);
+          return;
+        }
+        if (action === 'open-project') {
+          openNewProject();
+          return;
+        }
+        if (action === 'toggle-auth-mode') {
+          var newMode = authModeState.mode === 'login' ? 'signup' : 'login';
+          authModeState.mode = newMode;
+          var nameField2 = $('#auth-name-field');
+          var nameInput2 = $('#auth-name');
+          var subtitle2 = $('#auth-modal-subtitle');
+          var submitBtn2 = $('#auth-submit-btn');
+          var toggleBtn2 = $('#auth-toggle-btn');
+          var switchText2 = $('#auth-switch-text');
+          if (!nameField2) return;
+          if (newMode === 'signup') {
+            nameField2.style.display = '';
+            subtitle2.textContent = 'Create your account to get started.';
+            submitBtn2.textContent = 'Create account';
+            toggleBtn2.textContent = 'Already have an account? Sign in';
+            switchText2.textContent = 'Already have an account?';
+          } else {
+            nameField2.style.display = 'none';
+            nameInput2.value = '';
+            subtitle2.textContent = 'Sign in to your account or create a new one.';
+            submitBtn2.textContent = 'Sign in';
+            toggleBtn2.textContent = 'Create one';
+            switchText2.textContent = "Don't have an account?";
+          }
+          $$('#auth-form .field').forEach(function (f) { f.classList.remove('has-error'); });
+          return;
+        }
+        if (action === 'subscribe') {
+          var plan = btn.getAttribute('data-plan') || 'pro';
+          openSubscribe(plan);
+          return;
+        }
+        if (action === 'join-detail') {
+          $('#detail-join-btn').click();
+          return;
+        }
+      });
+
+      /* ===== Join / Details buttons on project cards ===== */
+      $$('.project-row').forEach(function (card) {
+        var joinBtn = $('.btn-primary.btn-sm', card);
+        var detailBtn = $('.btn-secondary.btn-sm', card);
+        var statusEl = $('.status', card);
+
+        if (detailBtn) {
+          detailBtn.addEventListener('click', function () {
+            openDetail(card);
+          });
+        }
+        if (joinBtn) {
+          joinBtn.addEventListener('click', function () {
+            if (joinBtn.classList.contains('is-joined')) {
+              joinBtn.classList.remove('is-joined');
+              joinBtn.textContent = 'Join';
+              if (statusEl) { statusEl.classList.remove('filling'); statusEl.classList.add('open'); }
+              var name = $('.project-name', card).textContent.trim();
+              showToast('Seat released', 'You left "' + name + '" (demo).');
+            } else {
+              joinBtn.textContent = 'Joined';
+              joinBtn.classList.add('is-joined');
+              if (statusEl && statusEl.classList.contains('open')) statusEl.classList.add('filling');
+              var pname = $('.project-name', card).textContent.trim();
+              showToast('Seat claimed', 'You joined "' + pname + '" (demo).');
+            }
+          });
+        }
+      });
+
+      /* ===== Dashboard filters & search ===== */
+      var cards = document.querySelectorAll('.project-row');
+      var search = document.getElementById('project-search');
+      var empty = document.getElementById('dash-empty');
+
+      function matchesFixed(card, filter, q) {
+        var tags = (card.getAttribute('data-tags') || '').toLowerCase();
+        var text = card.textContent.toLowerCase();
+        var filterOk = filter === 'all' || (tags.indexOf(filter) !== -1);
+        var searchOk = !q || text.indexOf(q) !== -1;
+        return filterOk && searchOk;
+      }
+
+      function applyFilter(animate) {
+        var q = (search && search.value || "").trim().toLowerCase();
+        var visible = 0;
+        var delay = 0;
+        cards.forEach(function (card) {
+          var show = matchesFixed(card, activeFilter, q);
+          card.style.display = show ? "" : "none";
+          if (show) {
+            visible += 1;
+            if (animate && !reduceMotion) {
+              card.classList.remove("is-entering");
+              void card.offsetWidth;
+              card.style.animationDelay = (delay * 0.04) + "s";
+              card.classList.add("is-entering");
+              delay += 1;
+            }
+          }
+        });
+        if (empty) empty.style.display = visible ? "none" : "block";
+      }
+
+      $$("[data-filter]").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          $$("[data-filter]").forEach(function (c) { c.classList.remove("is-active"); });
+          chip.classList.add("is-active");
+          activeFilter = chip.getAttribute("data-filter") || "all";
+          applyFilter(true);
+        });
+      });
+
+      if (search) search.addEventListener("input", function () { applyFilter(true); });
+
+      if (!reduceMotion) {
+        cards.forEach(function (card, i) {
+          card.style.animationDelay = (0.05 * i) + "s";
+          card.classList.add("is-entering");
+        });
+      }
+
+      /* ===== Smooth scroll for anchor nav links ===== */
+      $$('a[href^="#"]').forEach(function (a) {
+        a.addEventListener("click", function (e) {
+          var target = document.querySelector(a.getAttribute("href"));
+          if (target) {
+            e.preventDefault();
+            target.scrollIntoView({ behavior: "smooth" });
+          }
+        });
+      });
+
+      /* ===== Card entrance animation on scroll (IntersectionObserver) ===== */
+      if (!reduceMotion && 'IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('reveal');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+        $$('.bento-card, .step, .price-card').forEach(function (el) {
+          el.style.opacity = '0';
+          el.style.animation = 'none';
+          observer.observe(el);
+        });
+      }
+
+      updatePlanChip();
+    })();
+</script>
+</body>
+</html>

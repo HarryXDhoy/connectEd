@@ -1,0 +1,167 @@
+{
+  "name": "Apple",
+  "tagline": "Apple",
+  "description": "Discover the innovative world of Apple and shop everything iPhone, iPad, Apple Watch, Mac, and Apple TV, plus explore accessories, entertainment, and expert device support.",
+  "sourceUrl": "https://apple.com/",
+  "logo": {
+    "primary": "logos/header-img-1.jpg",
+    "alternates": [
+      "logos/header-img-2.png",
+      "logos/header-img-3.png",
+      "logos/header-img-4.png",
+      "logos/header-img-5.png",
+      "logos/og-image-0.png"
+    ],
+    "notes": ""
+  },
+  "colors": [
+    {
+      "role": "background",
+      "hex": "#ffffff",
+      "oklch": "",
+      "name": "Background",
+      "usage": "page canvas"
+    },
+    {
+      "role": "surface",
+      "hex": "#f5f5f5",
+      "oklch": "",
+      "name": "Surface",
+      "usage": "cards / raised surfaces"
+    },
+    {
+      "role": "foreground",
+      "hex": "#000000",
+      "oklch": "",
+      "name": "Foreground",
+      "usage": "body text"
+    },
+    {
+      "role": "muted",
+      "hex": "#8c8c8c",
+      "oklch": "",
+      "name": "Muted",
+      "usage": "secondary text"
+    },
+    {
+      "role": "border",
+      "hex": "#dbdbdb",
+      "oklch": "",
+      "name": "Border",
+      "usage": "hairlines / dividers"
+    },
+    {
+      "role": "accent",
+      "hex": "#0066cc",
+      "oklch": "",
+      "name": "Accent",
+      "usage": "primary brand color"
+    },
+    {
+      "role": "accent-secondary",
+      "hex": "#2997ff",
+      "oklch": "",
+      "name": "Accent secondary",
+      "usage": "secondary brand color / links"
+    }
+  ],
+  "typography": {
+    "display": {
+      "family": "SF Pro HK",
+      "fallbacks": [
+        "system-ui",
+        "-apple-system",
+        "Segoe UI",
+        "Helvetica Neue",
+        "Arial",
+        "sans-serif"
+      ],
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "body": {
+      "family": "SF Pro HK",
+      "fallbacks": [
+        "system-ui",
+        "-apple-system",
+        "Segoe UI",
+        "Helvetica Neue",
+        "Arial",
+        "sans-serif"
+      ],
+      "weights": [
+        400,
+        700
+      ]
+    }
+  },
+  "voice": {
+    "adjectives": [],
+    "tone": "",
+    "messagingPillars": [
+      "Apple",
+      "iPhone",
+      "MacBook Air"
+    ],
+    "vocabulary": {
+      "use": [],
+      "avoid": []
+    }
+  },
+  "imagery": {
+    "style": "",
+    "subjects": [],
+    "treatment": "",
+    "avoid": [],
+    "samples": [
+      {
+        "file": "imagery/cover-0.png",
+        "kind": "cover",
+        "caption": "Social cover image"
+      },
+      {
+        "file": "imagery/hero-1.jpg",
+        "kind": "hero",
+        "caption": "Hero image"
+      },
+      {
+        "file": "imagery/hero-2.jpg",
+        "kind": "hero",
+        "caption": "Hero image 2"
+      },
+      {
+        "file": "imagery/hero-3.jpg",
+        "kind": "hero",
+        "caption": "Hero image 3"
+      },
+      {
+        "file": "imagery/hero-4.jpg",
+        "kind": "hero",
+        "caption": "Hero image 4"
+      },
+      {
+        "file": "imagery/hero-5.jpg",
+        "kind": "hero",
+        "caption": "Hero image 5"
+      },
+      {
+        "file": "imagery/hero-6.jpg",
+        "kind": "hero",
+        "caption": "Hero image 6"
+      },
+      {
+        "file": "imagery/hero-7.jpg",
+        "kind": "hero",
+        "caption": "Hero image 7"
+      }
+    ]
+  },
+  "layout": {
+    "radius": "8px",
+    "borderWeight": "1px",
+    "spacing": "8px baseline grid",
+    "postureRules": []
+  }
+}
