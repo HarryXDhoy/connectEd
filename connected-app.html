@@ -1627,8 +1627,8 @@
               <span class="network-step">Build</span>
             </div>
             <div class="network-focus" id="network-focus" aria-hidden="true">
-              Global project network
-              <span>Move across a city to inspect a collaboration route.</span>
+              Loading project network
+              <span>Connecting the Earth view to the live project board.</span>
             </div>
           </div>
         </div>
@@ -2485,6 +2485,14 @@
       const motionToggle = $('#network-motion-toggle');
       if (!stage || !canvas) return;
 
+      const networkProjects = projects
+        .filter(project => project.status !== 'closed')
+        .slice(0, 24);
+      const defaultFocusMarkup = networkProjects.length
+        ? `Live project network<span>Hover a node to inspect ${networkProjects.length} open ${networkProjects.length === 1 ? 'project' : 'projects'} from the board.</span>`
+        : 'Live project network<span>No open projects are currently available. Share the first idea to place a node.</span>';
+      focus.innerHTML = defaultFocusMarkup;
+
       try {
         const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js');
         const styles = getComputedStyle(document.documentElement);
@@ -2603,24 +2611,29 @@
           transparent: true,
           opacity: .34
         });
-        const locations = [
-          { name: 'Seoul', meta: 'Education · Open now', detail: 'A learning-tools project is matching product designers with mobile engineers.', latitude: 37.57, longitude: 126.98, active: true },
-          { name: 'San Francisco', meta: 'AI tools · Building', detail: 'An independent team needs two collaborators for an explainable AI workspace.', latitude: 37.77, longitude: -122.42 },
-          { name: 'London', meta: 'Climate research · Interviewing', detail: 'Researchers are reviewing contributors for a neighborhood heat-mapping study.', latitude: 51.51, longitude: -.13 },
-          { name: 'Singapore', meta: 'Accessible fintech · New', detail: 'A financial-literacy prototype is looking for research and content partners.', latitude: 1.35, longitude: 103.82 },
-          { name: 'Tokyo', meta: 'Robotics learning · Prototype', detail: 'A classroom robotics kit needs interaction design and curriculum feedback.', latitude: 35.68, longitude: 139.69 },
-          { name: 'Berlin', meta: 'Civic tech · Design review', detail: 'An open-source public-services tool is preparing its next usability round.', latitude: 52.52, longitude: 13.41 },
-          { name: 'Nairobi', meta: 'Community health · Research', detail: 'A field team is recruiting a qualitative researcher for its care network.', latitude: -1.29, longitude: 36.82 },
-          { name: 'Lagos', meta: 'Creative commerce · Launching', detail: 'A maker marketplace is assembling its first growth and operations cohort.', latitude: 6.52, longitude: 3.38 },
-          { name: 'Toronto', meta: 'Accessibility · Contributor needed', detail: 'A browser-audit project is pairing front-end developers with accessibility testers.', latitude: 43.65, longitude: -79.38 },
-          { name: 'São Paulo', meta: 'Circular economy · Field pilot', detail: 'A reuse logistics team is mapping repair partners for a neighborhood pilot.', latitude: -23.55, longitude: -46.63 },
-          { name: 'Sydney', meta: 'Ocean data · Remote team', detail: 'A coastal data story needs visualization and marine-science collaborators.', latitude: -33.87, longitude: 151.21 },
-          { name: 'Bengaluru', meta: 'Learning platform · Engineering', detail: 'An offline-first study platform is recruiting web performance contributors.', latitude: 12.97, longitude: 77.59 },
-          { name: 'Dubai', meta: 'Future mobility · Strategy', detail: 'A shared-mobility concept is gathering policy, service, and systems perspectives.', latitude: 25.2, longitude: 55.27 },
-          { name: 'Mexico City', meta: 'Urban culture · Researchers', detail: 'A collaborative city archive is seeking oral-history and mapping partners.', latitude: 19.43, longitude: -99.13 },
-          { name: 'Paris', meta: 'Independent publishing · Visual systems', detail: 'A small editorial network needs a designer for its multilingual reading experience.', latitude: 48.86, longitude: 2.35 },
-          { name: 'Jakarta', meta: 'Disaster response · Community ops', detail: 'A preparedness toolkit is connecting local organizers with product builders.', latitude: -6.21, longitude: 106.85 }
+        const nodePositions = [
+          [32, 88], [-12, 112], [57, 142], [-42, 68],
+          [8, 174], [44, 48], [-28, 156], [2, 126],
+          [68, 102], [-58, 134], [22, 62], [-5, 194],
+          [37, -122], [51, 0], [1, -78], [-24, -47],
+          [35, -98], [-34, -15], [13, -145], [53, -73],
+          [-7, -110], [26, -32], [-46, -91], [63, -158]
         ];
+        const locations = networkProjects.map((project, index) => {
+          const tags = projectTags(project);
+          const [latitude, longitude] = nodePositions[index];
+          const seatCount = Number(project.seats_total) || 0;
+          const tagLabel = tags.slice(0, 2).join(' + ') || 'Open collaboration';
+          return {
+            projectId: String(project.id),
+            name: project.title,
+            meta: `${tagLabel} · ${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}`,
+            detail: `${project.summary || project.description} Shared by ${project.owner}.`,
+            latitude,
+            longitude,
+            active: index === 0
+          };
+        });
 
         function addRoute(from, to) {
           const start = latLonToVector(from.latitude, from.longitude, globeRadius + .07);
@@ -2632,11 +2645,14 @@
             routeMaterial
           ));
         }
-        [
-          [0, 1], [0, 2], [0, 3], [0, 4],
-          [2, 5], [3, 11], [6, 7], [8, 13],
-          [9, 13], [10, 15], [12, 3]
-        ].forEach(([from, to]) => addRoute(locations[from], locations[to]));
+        const routePairs = [];
+        for (let index = 1; index < Math.min(locations.length, 7); index += 1) {
+          routePairs.push([0, index]);
+        }
+        for (let index = 7; index < locations.length; index += 2) {
+          routePairs.push([index - 1, index]);
+        }
+        routePairs.forEach(([from, to]) => addRoute(locations[from], locations[to]));
 
         const markerGeometry = new THREE.SphereGeometry(.052, 24, 18);
         const markerHitGeometry = new THREE.SphereGeometry(.13, 16, 12);
@@ -2764,7 +2780,7 @@
             focus.innerHTML = `<small>${escapeHtml(location.meta)}</small>${escapeHtml(location.name)}<span>${escapeHtml(location.detail)}</span>`;
           } else {
             canvas.style.cursor = 'grab';
-            focus.innerHTML = 'Global project network<span>Move across a city to inspect a collaboration route.</span>';
+            focus.innerHTML = defaultFocusMarkup;
           }
           if (reducedMotion) render(performance.now());
         }
@@ -2774,12 +2790,21 @@
           pointer.set(4, 4);
           pointerTilt.set(0, 0);
           canvas.style.cursor = 'grab';
-          focus.innerHTML = 'Global project network<span>Move across a city to inspect a collaboration route.</span>';
+          focus.innerHTML = defaultFocusMarkup;
           markers.forEach(marker => {
             marker.scale.setScalar(1);
             marker.children[1].material.opacity = marker.userData.active ? .38 : .18;
           });
           if (reducedMotion) render(performance.now());
+        });
+        canvas.addEventListener('click', event => {
+          const rect = canvas.getBoundingClientRect();
+          pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+          pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+          raycaster.setFromCamera(pointer, camera);
+          const hit = raycaster.intersectObjects(markerTargets, false)[0];
+          const projectId = hit?.object?.userData?.location?.projectId;
+          if (projectId) showProject(projectId);
         });
         canvas.addEventListener('webglcontextlost', event => {
           event.preventDefault();
@@ -2814,12 +2839,11 @@
       }
     }
 
-    initProjectNetwork();
-
     if (supabase) {
       supabase.auth.onAuthStateChange(() => refreshAccount());
     }
     await Promise.all([refreshAccount(), loadProjects()]);
+    initProjectNetwork();
   </script>
 </body>
 </html>
