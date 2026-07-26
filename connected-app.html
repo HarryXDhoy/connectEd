@@ -854,6 +854,31 @@
       padding: var(--space-2) var(--space-3);
       color: var(--accent);
     }
+    .network-motion-toggle {
+      position: absolute;
+      top: var(--space-4);
+      right: var(--space-4);
+      min-height: 36px;
+      pointer-events: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      padding: 0 var(--space-3);
+      background: color-mix(in oklab, var(--bg), transparent 8%);
+      color: var(--fg-2);
+      font: var(--text-xs)/1 var(--font-mono);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      transition:
+        transform var(--motion-fast) var(--ease-standard),
+        border-color var(--motion-fast) var(--ease-standard),
+        color var(--motion-fast) var(--ease-standard);
+    }
+    .network-motion-toggle:hover {
+      border-color: color-mix(in oklab, var(--fg), transparent 68%);
+      color: var(--fg);
+      transform: translateY(-1px);
+    }
+    .network-motion-toggle:active { transform: translateY(1px); }
     .network-focus {
       right: var(--space-4);
       bottom: var(--space-4);
@@ -1020,6 +1045,91 @@
       animation: skeleton-shift 1.2s var(--ease-standard) infinite;
     }
     @keyframes skeleton-shift { to { background-position-x: -220%; } }
+
+    /* Motion language: quick state feedback, restrained one-shot reveals. */
+    @view-transition { navigation: auto; }
+    ::view-transition-old(root) {
+      animation: page-out 160ms var(--ease-standard) both;
+    }
+    ::view-transition-new(root) {
+      animation: page-in 220ms var(--ease-standard) both;
+    }
+    .hero-copy > * {
+      animation: hero-enter 420ms var(--ease-standard) both;
+    }
+    .hero-copy > :nth-child(2) { animation-delay: 45ms; }
+    .hero-copy > :nth-child(3) { animation-delay: 90ms; }
+    .hero-copy > :nth-child(4) { animation-delay: 135ms; }
+    .motion-capable section:not(.hero) > .container,
+    .motion-capable footer > .container {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    .motion-capable section.section-visible > .container,
+    .motion-capable footer.section-visible > .container {
+      opacity: 1;
+      transform: translateY(0);
+      transition:
+        opacity 420ms var(--ease-standard),
+        transform 420ms var(--ease-standard);
+    }
+    .chip {
+      transition:
+        transform var(--motion-fast) var(--ease-standard),
+        background var(--motion-fast) var(--ease-standard),
+        color var(--motion-fast) var(--ease-standard),
+        border-color var(--motion-fast) var(--ease-standard);
+    }
+    .chip:hover { transform: translateY(-1px); }
+    .chip:active { transform: translateY(1px); }
+    .modal-backdrop.open {
+      animation: backdrop-in 180ms var(--ease-standard) both;
+    }
+    .modal-backdrop.open .modal {
+      animation: modal-in 220ms var(--ease-standard) both;
+    }
+    .modal-backdrop.closing {
+      display: grid;
+      animation: backdrop-out 160ms var(--ease-standard) both;
+    }
+    .modal-backdrop.closing .modal {
+      animation: modal-out 160ms var(--ease-standard) both;
+    }
+    .toast {
+      opacity: 0;
+      transition:
+        opacity 180ms var(--ease-standard),
+        transform 180ms var(--ease-standard);
+    }
+    .toast.show { opacity: 1; }
+    @keyframes hero-enter {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(12px) scale(.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes modal-out {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to { opacity: 0; transform: translateY(8px) scale(.99); }
+    }
+    @keyframes backdrop-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes backdrop-out {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    @keyframes page-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes page-out {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-4px); }
+    }
     @media (max-width: 900px) {
       body { padding: 0; }
       .topbar { top: 0; width: 100%; }
@@ -1056,6 +1166,17 @@
       .skeleton { animation: none !important; }
       .project-network-canvas,
       .network-fallback { transition: none !important; }
+      .network-motion-toggle { display: none; }
+      .hero-copy > *,
+      .motion-capable section:not(.hero) > .container,
+      .motion-capable footer > .container {
+        opacity: 1 !important;
+        transform: none !important;
+        animation: none !important;
+        transition: none !important;
+      }
+      ::view-transition-old(root),
+      ::view-transition-new(root) { animation: none !important; }
     }
   </style>
 </head>
@@ -1082,7 +1203,7 @@
   <main>
     <section class="hero" data-od-id="landing-hero">
       <div class="container hero-grid">
-        <div>
+        <div class="hero-copy">
           <p class="eyebrow">Ideas become teams here</p>
           <h1 data-od-id="hero-heading">Find work worth joining.</h1>
           <p class="lede">
@@ -1103,6 +1224,9 @@
           </div>
           <div class="stage-hud">
             <span class="network-kicker">Project graph / live</span>
+            <button class="network-motion-toggle" id="network-motion-toggle" type="button" aria-pressed="false" aria-controls="project-network-canvas" hidden>
+              Pause motion
+            </button>
             <div class="network-steps" aria-hidden="true">
               <span class="network-step">01 Idea</span>
               <span class="network-step">02 Team</span>
@@ -1129,10 +1253,10 @@
         </div>
         <div class="board-tools">
           <div class="filter-row" aria-label="Project filters">
-            <button class="chip active" data-filter="all">All ideas</button>
-            <button class="chip" data-filter="design">Design</button>
-            <button class="chip" data-filter="engineering">Engineering</button>
-            <button class="chip" data-filter="research">Research</button>
+            <button class="chip active" data-filter="all" aria-pressed="true">All ideas</button>
+            <button class="chip" data-filter="design" aria-pressed="false">Design</button>
+            <button class="chip" data-filter="engineering" aria-pressed="false">Engineering</button>
+            <button class="chip" data-filter="research" aria-pressed="false">Research</button>
           </div>
           <a class="btn btn-small" href="project-hub.html">Open full board</a>
         </div>
@@ -1337,6 +1461,8 @@
 
     function openModal(name) {
       const modal = $(`#modal-${name}`);
+      window.clearTimeout(modal.closeTimer);
+      modal.classList.remove('closing');
       modalReturnFocus = document.activeElement;
       activeModal = modal;
       modal.classList.add('open');
@@ -1350,12 +1476,22 @@
 
     function closeModal(name) {
       const modal = $(`#modal-${name}`);
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('modal-open');
-      activeModal = null;
-      if (modalReturnFocus && document.contains(modalReturnFocus)) modalReturnFocus.focus();
-      modalReturnFocus = null;
+      if (!modal.classList.contains('open')) return;
+      const returnTarget = modalReturnFocus;
+      const finish = () => {
+        modal.classList.remove('open', 'closing');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        if (activeModal === modal) activeModal = null;
+        if (returnTarget && document.contains(returnTarget)) returnTarget.focus();
+        modalReturnFocus = null;
+      };
+      if (reducedMotion) {
+        finish();
+        return;
+      }
+      modal.classList.add('closing');
+      modal.closeTimer = window.setTimeout(finish, 170);
     }
 
     document.addEventListener('keydown', event => {
@@ -1475,6 +1611,25 @@
 
       $$('[data-project]').forEach(button => {
         button.onclick = () => showProject(button.dataset.project);
+      });
+      animateProjectCards();
+    }
+
+    function animateProjectCards() {
+      if (reducedMotion) return;
+      $$('#project-pins .pin').slice(0, 6).forEach((card, index) => {
+        card.animate(
+          [
+            { opacity: .35, transform: 'translateY(8px)' },
+            { opacity: 1, transform: 'translateY(0)' }
+          ],
+          {
+            duration: 180,
+            delay: index * 24,
+            easing: 'cubic-bezier(0.2, 0, 0, 1)',
+            fill: 'both'
+          }
+        );
       });
     }
 
@@ -1669,7 +1824,11 @@
     $$('[data-filter]').forEach(button => {
       button.onclick = () => {
         activeFilter = button.dataset.filter;
-        $$('[data-filter]').forEach(item => item.classList.toggle('active', item === button));
+        $$('[data-filter]').forEach(item => {
+          const selected = item === button;
+          item.classList.toggle('active', selected);
+          item.setAttribute('aria-pressed', String(selected));
+        });
         renderProjects();
       };
     });
@@ -1687,10 +1846,27 @@
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    function initMotionSystem() {
+      if (reducedMotion) return;
+      document.documentElement.classList.add('motion-capable');
+      const targets = [...$$('main > section:not(.hero)'), $('footer')].filter(Boolean);
+      const revealObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('section-visible');
+          revealObserver.unobserve(entry.target);
+        });
+      }, { threshold: .12, rootMargin: '0px 0px -8% 0px' });
+      targets.forEach(target => revealObserver.observe(target));
+    }
+
+    initMotionSystem();
+
     async function initProjectNetwork() {
       const stage = $('#stage');
       const canvas = $('#project-network-canvas');
       const focus = $('#network-focus');
+      const motionToggle = $('#network-motion-toggle');
       if (!stage || !canvas) return;
 
       try {
@@ -1789,6 +1965,7 @@
         const pointer = new THREE.Vector2(4, 4);
         const cameraTarget = new THREE.Vector2();
         let visible = true;
+        let userPaused = false;
         let frame = 0;
 
         function resize() {
@@ -1801,7 +1978,7 @@
         }
 
         function render(time) {
-          if (!reducedMotion) {
+          if (!reducedMotion && !userPaused) {
             const seconds = time * .001;
             graph.rotation.y += (cameraTarget.x * .12 - graph.rotation.y) * .045;
             graph.rotation.x += (-cameraTarget.y * .08 - graph.rotation.x) * .045;
@@ -1812,9 +1989,16 @@
         }
 
         function animate(time) {
-          if (!visible || reducedMotion) return;
+          if (!visible || reducedMotion || userPaused) return;
           render(time);
           frame = window.requestAnimationFrame(animate);
+        }
+
+        function startAnimation() {
+          window.cancelAnimationFrame(frame);
+          if (visible && !reducedMotion && !userPaused) {
+            frame = window.requestAnimationFrame(animate);
+          }
         }
 
         function inspect(event) {
@@ -1855,14 +2039,23 @@
         observer.observe(stage);
         const visibilityObserver = new IntersectionObserver(entries => {
           visible = entries[0]?.isIntersecting ?? true;
-          window.cancelAnimationFrame(frame);
-          if (visible && !reducedMotion) frame = window.requestAnimationFrame(animate);
+          startAnimation();
         }, { threshold: .05 });
         visibilityObserver.observe(stage);
 
         resize();
         stage.classList.add('webgl-ready');
-        if (!reducedMotion) frame = window.requestAnimationFrame(animate);
+        if (motionToggle && !reducedMotion) {
+          motionToggle.hidden = false;
+          motionToggle.onclick = () => {
+            userPaused = !userPaused;
+            motionToggle.setAttribute('aria-pressed', String(userPaused));
+            motionToggle.textContent = userPaused ? 'Resume motion' : 'Pause motion';
+            if (userPaused) render(performance.now());
+            startAnimation();
+          };
+        }
+        startAnimation();
       } catch (error) {
         stage.classList.remove('webgl-ready');
         console.warn('Project network fallback active.', error);
