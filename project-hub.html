@@ -514,6 +514,88 @@
     .account-photo[hidden] { display: none; }
     .profile-identity strong { display: block; color: var(--fg); font-size: var(--text-lg); font-weight: 500; }
     .profile-identity span { display: block; overflow: hidden; color: var(--muted); font-size: var(--text-sm); text-overflow: ellipsis; }
+    .reputation-summary {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+    }
+    .reputation-score {
+      color: var(--fg);
+      font: 400 var(--text-3xl)/1 var(--font-display);
+      letter-spacing: -.02em;
+    }
+    .reputation-stars { color: var(--accent); letter-spacing: .08em; }
+    .review-list { display: grid; gap: var(--space-3); }
+    .review-entry {
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-soft);
+    }
+    .review-entry p { margin: var(--space-2) 0 0; color: var(--fg-2); font-size: var(--text-sm); }
+    .review-entry-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); color: var(--muted); font-size: var(--text-xs); }
+    .review-people { display: grid; gap: var(--space-2); }
+    .review-person {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: var(--space-3);
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      text-align: left;
+      cursor: pointer;
+    }
+    .review-person:hover { border-color: color-mix(in oklab, var(--fg), transparent 68%); }
+    .star-rating {
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: flex-end;
+      gap: var(--space-1);
+    }
+    .form fieldset { min-width: 0; border: 0; }
+    .form legend { margin-bottom: var(--space-2); color: var(--fg); font-size: var(--text-sm); font-weight: 500; }
+    .star-rating input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+    }
+    .star-rating label {
+      display: grid;
+      width: 44px;
+      height: 44px;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--meta);
+      font-size: var(--text-xl);
+      cursor: pointer;
+    }
+    .star-rating label::before { content: "★"; }
+    .star-rating input:checked ~ label,
+    .star-rating label:hover,
+    .star-rating label:hover ~ label { border-color: var(--accent); color: var(--accent); }
+    .star-rating input:focus-visible + label { box-shadow: var(--focus-ring); }
+    .intake-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: var(--text-xs);
+    }
+    .intake-state::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      content: "";
+    }
+    .intake-state.paused::before { background: var(--muted); }
     .account-control {
       min-height: 40px;
       display: inline-flex;
@@ -1590,6 +1672,14 @@
             <h3 id="membership-title">Free member</h3>
             <p class="muted" id="membership-copy">Applications and project sharing are free.</p>
             <button class="btn btn-primary" id="membership-action">Get connectEd Plus</button>
+            <div class="review-list" style="margin-top: var(--space-8);">
+              <p class="eyebrow">Participant reputation</p>
+              <div class="reputation-summary">
+                <strong class="reputation-score" id="reputation-score">—</strong>
+                <span><span class="reputation-stars" id="reputation-stars"></span><br><span class="muted" id="reputation-meta">No reviews yet</span></span>
+              </div>
+              <div id="profile-review-list"></div>
+            </div>
           </aside>
         </div>
       </section>
@@ -1638,6 +1728,7 @@
       </div>
       <p id="detail-description" class="muted"></p>
       <div id="detail-tags" class="tags"></div>
+      <div class="empty" id="application-paused-message" hidden>This project is visible, but the initiator has paused new applications.</div>
       <form id="application-form" class="form">
         <label>What would you contribute?<textarea class="field" name="message" minlength="20" maxlength="3000" required></textarea></label>
         <div id="application-questions"></div>
@@ -1674,6 +1765,39 @@
     </div>
   </div>
 
+  <div id="modal-review" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="review-title" tabindex="-1">
+    <div class="modal glass">
+      <div class="modal-head">
+        <div><p class="eyebrow">Verified project participant</p><h2 id="review-title">Review a collaborator</h2></div>
+        <button class="close" data-close="review" aria-label="Close">×</button>
+      </div>
+      <div id="review-person-picker">
+        <p class="muted">Choose someone who participated in this project. Only verified project teammates are listed.</p>
+        <div class="review-people" id="review-people"></div>
+      </div>
+      <form id="review-form" class="form" hidden>
+        <input type="hidden" name="project_id">
+        <input type="hidden" name="reviewee_id">
+        <p class="muted" id="review-context"></p>
+        <fieldset>
+          <legend>Star rating</legend>
+          <div class="star-rating">
+            <input id="rating-5" name="rating" type="radio" value="5" required><label for="rating-5" aria-label="5 stars"></label>
+            <input id="rating-4" name="rating" type="radio" value="4"><label for="rating-4" aria-label="4 stars"></label>
+            <input id="rating-3" name="rating" type="radio" value="3"><label for="rating-3" aria-label="3 stars"></label>
+            <input id="rating-2" name="rating" type="radio" value="2"><label for="rating-2" aria-label="2 stars"></label>
+            <input id="rating-1" name="rating" type="radio" value="1"><label for="rating-1" aria-label="1 star"></label>
+          </div>
+        </fieldset>
+        <label>Review note<textarea class="field" name="comment" maxlength="1200" placeholder="Describe what this person contributed and how they worked with the team."></textarea></label>
+        <div class="form-actions">
+          <button class="btn" type="button" id="review-back">Back</button>
+          <button class="btn btn-primary" type="submit">Publish review</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="app-config.js"></script>
@@ -1700,8 +1824,15 @@
       .filter(Boolean)
       .slice(0, 8);
     const PROJECT_IMAGE_PREFIX = '__image__:';
+    const APPLICATIONS_PAUSED_TAG = '__applications_paused__';
     const projectTags = project => (project?.tags || [])
-      .filter(tag => !String(tag).startsWith(PROJECT_IMAGE_PREFIX));
+      .filter(tag =>
+        !String(tag).startsWith(PROJECT_IMAGE_PREFIX) &&
+        String(tag) !== APPLICATIONS_PAUSED_TAG
+      );
+    const isAcceptingApplications = project =>
+      project?.status === 'open' &&
+      !(project?.tags || []).includes(APPLICATIONS_PAUSED_TAG);
     const projectImageData = project => {
       const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_IMAGE_PREFIX));
       return marker ? String(marker).slice(PROJECT_IMAGE_PREFIX.length) : '';
@@ -1763,6 +1894,8 @@
     let ownedProjects = [];
     let applications = [];
     let sentApplications = [];
+    let projectReviews = [];
+    let reviewsAvailable = false;
     let activeProject = null;
     let activeFilter = 'all';
     let editingProjectId = null;
@@ -1802,6 +1935,19 @@
       if (!value) return '';
       return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
         .format(new Date(value));
+    }
+
+    function reviewSummary(profileId) {
+      const received = projectReviews.filter(review => String(review.reviewee_id) === String(profileId));
+      const average = received.length
+        ? received.reduce((sum, review) => sum + Number(review.rating || 0), 0) / received.length
+        : 0;
+      return { received, average };
+    }
+
+    function starText(rating) {
+      const rounded = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+      return '★'.repeat(rounded) + '☆'.repeat(5 - rounded);
     }
 
     function googleAvatarUrl() {
@@ -1965,6 +2111,8 @@
         ownedProjects = [];
         applications = [];
         sentApplications = [];
+        projectReviews = [];
+        reviewsAvailable = false;
         $('#preview-note').hidden = false;
         renderAll();
         discoveryBoard.setAttribute('aria-busy', 'false');
@@ -1982,6 +2130,8 @@
         ownedProjects = [];
         applications = [];
         sentApplications = [];
+        projectReviews = [];
+        reviewsAvailable = false;
         loadError = projectResult.error.message || 'The project board could not be loaded.';
         renderAll();
         discoveryBoard.setAttribute('aria-busy', 'false');
@@ -2029,12 +2179,21 @@
           .eq('applicant_id', user.id)
           .order('created_at', { ascending: false });
         sentApplications = sentApplicationResult.error ? [] : sentApplicationResult.data || [];
+
+        const reviewResult = await supabase
+          .from('project_reviews')
+          .select('id,project_id,reviewer_id,reviewee_id,rating,comment,created_at,updated_at,reviewer:reviewer_id(display_name),projects:project_id(title)')
+          .order('created_at', { ascending: false });
+        reviewsAvailable = !reviewResult.error;
+        projectReviews = reviewResult.error ? [] : reviewResult.data || [];
         await updateAccount();
         subscribeToRequestUpdates();
       } else {
         profile = null;
         applications = [];
         sentApplications = [];
+        projectReviews = [];
+        reviewsAvailable = false;
         subscribeToRequestUpdates();
       }
       renderAll();
@@ -2144,6 +2303,7 @@
 
     function pinMarkup(project, index, owned = false) {
       const boosted = project.boost_until && new Date(project.boost_until) > new Date();
+      const acceptingApplications = isAcceptingApplications(project);
       return `
         <article class="pin glass" data-od-id="${owned ? 'owned' : 'discover'}-project-${escapeHtml(project.id)}">
           <div class="pin-cover">
@@ -2151,7 +2311,7 @@
               onerror="this.onerror=null;this.src='${projectCover(project)}'">
           </div>
           <div class="pin-body">
-            <span class="badge">${boosted ? 'Boosted idea' : project.status === 'invite_only' ? 'Invite only' : 'Open project'}</span>
+            <span class="badge">${boosted ? 'Boosted idea' : !acceptingApplications && project.status === 'open' ? 'Applications paused' : project.status === 'invite_only' ? 'Invite only' : 'Open project'}</span>
             <h3 class="pin-title">${escapeHtml(project.title)}</h3>
             <p>${escapeHtml(project.summary)}</p>
             <div class="tags">${projectTags(project).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
@@ -2165,6 +2325,7 @@
             ${owned ? `
               <div class="project-actions">
                 <button class="btn btn-small" data-edit="${escapeHtml(project.id)}">Edit</button>
+                ${project.status === 'open' ? `<button class="btn btn-small" data-toggle-intake="${escapeHtml(project.id)}" aria-pressed="${!acceptingApplications}">${acceptingApplications ? 'Pause applications' : 'Resume applications'}</button>` : ''}
                 <button class="btn btn-small" data-boost="${escapeHtml(project.id)}">${profile?.priority_match_active ? 'Use Plus boost' : 'Get Plus'}</button>
               </div>
             ` : ''}
@@ -2199,6 +2360,7 @@
         ownedProjects.find(project => String(project.id) === button.dataset.edit)
       ));
       $$('[data-boost]').forEach(button => button.onclick = () => activateBoost(button.dataset.boost));
+      $$('[data-toggle-intake]').forEach(button => button.onclick = () => toggleProjectIntake(button.dataset.toggleIntake));
     }
 
     function renderDiscovery() {
@@ -2276,13 +2438,19 @@
                       : ''}
                   </div>
                 </div>
-                <span class="request-status" data-status="${escapeHtml(application.status)}">${escapeHtml(statusLabel(application.status))}</span>
+                <div class="applicant-actions">
+                  <span class="request-status" data-status="${escapeHtml(application.status)}">${escapeHtml(statusLabel(application.status))}</span>
+                  ${['accepted', 'interview'].includes(application.status) && reviewsAvailable
+                    ? `<button class="btn btn-small" data-review-project="${escapeHtml(application.project_id)}">Review project team</button>`
+                    : ''}
+                </div>
               </article>
             `;
           }).join('')
         : '<div class="empty"><p>You have not sent a join request yet.</p><button class="btn btn-primary" type="button" data-find-projects>Find a project</button></div>';
       const findProjects = $('[data-find-projects]');
       if (findProjects) findProjects.onclick = () => switchPanel('discover');
+      bindReviewButtons();
     }
 
     function renderNotifications() {
@@ -2341,6 +2509,7 @@
 
       const applicantMarkup = application => {
         const person = application.profiles || {};
+        const reputation = reviewSummary(person.id);
         const answers = Object.values(application.answers || {}).filter(Boolean);
         const avatar = person.avatar_url
           ? `<span class="avatar"><img src="${escapeHtml(person.avatar_url)}" alt=""></span>`
@@ -2363,6 +2532,7 @@
                 ${person.priority_match_active ? '<span class="badge priority">Priority</span>' : ''}
               </h3>
               <p>${escapeHtml(person.headline || 'No profile headline yet')}</p>
+              ${reputation.received.length ? `<p><span class="reputation-stars">${starText(reputation.average)}</span> ${reputation.average.toFixed(1)} from ${reputation.received.length} verified ${reputation.received.length === 1 ? 'review' : 'reviews'}</p>` : ''}
               <div class="tags">${(person.skills || []).map(skill => `<span class="tag">${escapeHtml(skill)}</span>`).join('')}</div>
               <p>${escapeHtml(application.message)}</p>
               ${answers.length ? `<div class="answer-list">${answers.map(answer => `<span>— ${escapeHtml(answer)}</span>`).join('')}</div>` : ''}
@@ -2389,6 +2559,9 @@
                   <div class="applicant-group-counts" aria-label="Request counts">
                     <span class="applicant-group-count">${group.applications.length} ${group.applications.length === 1 ? 'request' : 'requests'}</span>
                     ${pending ? `<span class="applicant-group-count pending">${pending} pending</span>` : ''}
+                    ${reviewsAvailable && group.applications.some(application => ['accepted', 'interview'].includes(application.status))
+                      ? `<button class="btn btn-small" data-review-project="${escapeHtml(group.project.id)}">Review participants</button>`
+                      : ''}
                   </div>
                 </div>
                 <div class="applicant-group-list">
@@ -2405,6 +2578,7 @@
       $$('[data-interview]').forEach(button => {
         button.onclick = () => openInterview(button.dataset.interview);
       });
+      bindReviewButtons();
     }
 
     function renderProfile() {
@@ -2434,12 +2608,135 @@
         ? 'Priority applications are active. Choose one project in My projects to boost.'
         : 'Applications and project sharing are free. Plus adds visibility in both roles.';
       $('#membership-action').textContent = profile?.priority_match_active ? 'Choose project to boost' : 'Get connectEd Plus';
+      const reputation = reviewSummary(user.id);
+      $('#reputation-score').textContent = reputation.received.length ? reputation.average.toFixed(1) : '—';
+      $('#reputation-stars').textContent = reputation.received.length ? starText(reputation.average) : '';
+      $('#reputation-meta').textContent = reputation.received.length
+        ? `${reputation.received.length} verified ${reputation.received.length === 1 ? 'review' : 'reviews'}`
+        : reviewsAvailable ? 'No reviews yet' : 'Reviews activate after the database update';
+      $('#profile-review-list').innerHTML = reputation.received.slice(0, 4).map(review => `
+        <article class="review-entry">
+          <div class="review-entry-meta">
+            <span>${escapeHtml(review.reviewer?.display_name || 'Project participant')} · ${escapeHtml(review.projects?.title || 'Project')}</span>
+            <span class="reputation-stars">${starText(review.rating)}</span>
+          </div>
+          ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}
+        </article>
+      `).join('');
     }
 
     function bindSigninButtons() {
       $$('[data-google-signin]').forEach(button => {
         button.onclick = event => beginGoogleSignIn(event.currentTarget);
       });
+    }
+
+    function bindReviewButtons() {
+      $$('[data-review-project]').forEach(button => {
+        button.onclick = () => openReviewPicker(button.dataset.reviewProject);
+      });
+    }
+
+    async function openReviewPicker(projectId) {
+      if (!(await requireUser())) return;
+      if (!reviewsAvailable) return toast('Participant reviews need the latest Supabase schema update.');
+      const project = projects.find(item => String(item.id) === String(projectId))
+        || sentApplications.find(item => String(item.project_id) === String(projectId))?.projects;
+      if (!project) return toast('This project could not be loaded.');
+
+      const result = await supabase
+        .from('applications')
+        .select('applicant_id,status,profiles:applicant_id(id,display_name,headline,avatar_url)')
+        .eq('project_id', projectId)
+        .in('status', ['accepted', 'interview']);
+      if (result.error) return toast(result.error.message);
+
+      const people = new Map();
+      const ownerName = project.owner || project.profiles?.display_name || 'Project initiator';
+      people.set(String(project.owner_id), {
+        id: project.owner_id,
+        display_name: ownerName,
+        headline: 'Project initiator'
+      });
+      for (const application of result.data || []) {
+        const person = application.profiles || {};
+        people.set(String(application.applicant_id), {
+          id: application.applicant_id,
+          display_name: person.display_name || 'Project participant',
+          headline: person.headline || 'Accepted participant',
+          avatar_url: person.avatar_url || ''
+        });
+      }
+      people.delete(String(user.id));
+      const participants = [...people.values()];
+      if (!participants.length) return toast('No other verified participants are available to review yet.');
+
+      $('#review-title').textContent = `Review ${project.title || 'project'} participants`;
+      $('#review-person-picker').hidden = false;
+      $('#review-form').hidden = true;
+      $('#review-people').innerHTML = participants.map(person => {
+        const existing = projectReviews.find(review =>
+          String(review.project_id) === String(projectId) &&
+          String(review.reviewer_id) === String(user.id) &&
+          String(review.reviewee_id) === String(person.id)
+        );
+        return `
+          <button class="review-person" type="button"
+            data-reviewee="${escapeHtml(person.id)}"
+            data-reviewee-name="${escapeHtml(person.display_name)}"
+            data-review-project-id="${escapeHtml(projectId)}">
+            <span><strong>${escapeHtml(person.display_name)}</strong><br><span class="muted">${escapeHtml(person.headline)}</span></span>
+            <span>${existing ? `Edit ${starText(existing.rating)}` : 'Leave review'}</span>
+          </button>
+        `;
+      }).join('');
+      $$('[data-reviewee]').forEach(button => {
+        button.onclick = () => selectReviewPerson(
+          button.dataset.reviewProjectId,
+          button.dataset.reviewee,
+          button.dataset.revieweeName
+        );
+      });
+      openModal('review');
+    }
+
+    function selectReviewPerson(projectId, revieweeId, revieweeName) {
+      const form = $('#review-form');
+      form.reset();
+      form.project_id.value = projectId;
+      form.reviewee_id.value = revieweeId;
+      const existing = projectReviews.find(review =>
+        String(review.project_id) === String(projectId) &&
+        String(review.reviewer_id) === String(user.id) &&
+        String(review.reviewee_id) === String(revieweeId)
+      );
+      if (existing) {
+        const rating = form.querySelector(`[name="rating"][value="${existing.rating}"]`);
+        if (rating) rating.checked = true;
+        form.comment.value = existing.comment || '';
+      }
+      $('#review-context').textContent = `Your verified review of ${revieweeName} will appear on their connectEd profile.`;
+      $('#review-person-picker').hidden = true;
+      form.hidden = false;
+    }
+
+    async function submitParticipantReview(form) {
+      if (!(await requireUser())) return;
+      const values = new FormData(form);
+      const payload = {
+        project_id: values.get('project_id'),
+        reviewer_id: user.id,
+        reviewee_id: values.get('reviewee_id'),
+        rating: Number(values.get('rating')),
+        comment: String(values.get('comment') || '').trim()
+      };
+      const result = await supabase
+        .from('project_reviews')
+        .upsert(payload, { onConflict: 'project_id,reviewer_id,reviewee_id' });
+      if (result.error) return toast(result.error.message);
+      closeModal('review');
+      toast('Verified participant review published.');
+      await loadAll();
     }
 
     async function openProjectDetail(id) {
@@ -2449,7 +2746,9 @@
       $('#detail-owner').textContent = `Shared by ${activeProject.owner}`;
       $('#detail-description').textContent = activeProject.description;
       $('#detail-tags').innerHTML = projectTags(activeProject).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
-      $('#application-form').hidden = activeProject.owner_id === user?.id;
+      const canApply = activeProject.owner_id !== user?.id && isAcceptingApplications(activeProject);
+      $('#application-form').hidden = !canApply;
+      $('#application-paused-message').hidden = activeProject.owner_id === user?.id || isAcceptingApplications(activeProject);
 
       let questions = [];
       if (isSupabaseConfigured && !String(id).startsWith('preview-')) {
@@ -2505,6 +2804,9 @@
       } else if (existingImage) {
         tags.push(`${PROJECT_IMAGE_PREFIX}${existingImage}`);
       }
+      if ((existingProject?.tags || []).includes(APPLICATIONS_PAUSED_TAG)) {
+        tags.push(APPLICATIONS_PAUSED_TAG);
+      }
       const payload = {
         title: String(values.get('title')).trim(),
         summary: String(values.get('summary')).trim(),
@@ -2529,6 +2831,19 @@
       toast(editingProjectId ? 'Project updated.' : 'Project published.');
       editingProjectId = null;
       editingQuestionId = null;
+      await loadAll();
+    }
+
+    async function toggleProjectIntake(projectId) {
+      if (!(await requireUser())) return;
+      const project = ownedProjects.find(item => String(item.id) === String(projectId));
+      if (!project) return;
+      const tags = [...(project.tags || [])].filter(tag => String(tag) !== APPLICATIONS_PAUSED_TAG);
+      const currentlyAccepting = isAcceptingApplications(project);
+      if (currentlyAccepting) tags.push(APPLICATIONS_PAUSED_TAG);
+      const result = await supabase.from('projects').update({ tags }).eq('id', project.id);
+      if (result.error) return toast(result.error.message);
+      toast(currentlyAccepting ? 'New applications paused.' : 'New applications resumed.');
       await loadAll();
     }
 
@@ -2560,6 +2875,7 @@
       if (!(await requireUser())) return;
       if (!activeProject || String(activeProject.id).startsWith('preview-')) return toast('Preview projects do not accept applications.');
       if (activeProject.owner_id === user.id) return toast('You already own this project.');
+      if (!isAcceptingApplications(activeProject)) return toast('This project has paused new applications.');
       const values = new FormData(form);
       const answers = {};
       for (const question of activeProject.questions || []) {
@@ -2737,6 +3053,7 @@
     bindAsyncForm('#project-form', saveProject, 'Saving…');
     bindAsyncForm('#application-form', submitApplication, 'Sending…');
     bindAsyncForm('#interview-form', scheduleInterview, 'Scheduling…');
+    bindAsyncForm('#review-form', submitParticipantReview, 'Publishing…');
     bindAsyncForm('#profile-form', saveProfile, 'Saving…');
     $('#membership-action').onclick = () => profile?.priority_match_active
       ? switchPanel('owned')
@@ -2757,6 +3074,10 @@
       $('#notification-panel').hidden = true;
       $('#notification-action').setAttribute('aria-expanded', 'false');
       switchPanel('requests');
+    };
+    $('#review-back').onclick = () => {
+      $('#review-form').hidden = true;
+      $('#review-person-picker').hidden = false;
     };
     document.addEventListener('click', () => {
       $('#notification-panel').hidden = true;

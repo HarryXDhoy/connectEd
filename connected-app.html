@@ -1788,8 +1788,12 @@
       .filter(Boolean)
       .slice(0, 8);
     const PROJECT_IMAGE_PREFIX = '__image__:';
+    const APPLICATIONS_PAUSED_TAG = '__applications_paused__';
     const projectTags = project => (project?.tags || [])
-      .filter(tag => !String(tag).startsWith(PROJECT_IMAGE_PREFIX));
+      .filter(tag =>
+        !String(tag).startsWith(PROJECT_IMAGE_PREFIX) &&
+        String(tag) !== APPLICATIONS_PAUSED_TAG
+      );
     const projectImageData = project => {
       const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_IMAGE_PREFIX));
       return marker ? String(marker).slice(PROJECT_IMAGE_PREFIX.length) : '';

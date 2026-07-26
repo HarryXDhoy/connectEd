@@ -65,6 +65,21 @@ create table if not exists public.interviews (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.project_reviews (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  reviewer_id uuid not null references public.profiles(id) on delete cascade,
+  reviewee_id uuid not null references public.profiles(id) on delete cascade,
+  rating smallint not null,
+  comment text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(project_id, reviewer_id, reviewee_id),
+  check (reviewer_id <> reviewee_id),
+  check (rating between 1 and 5),
+  check (char_length(comment) <= 1200)
+);
+
 create table if not exists public.billing_entitlements (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -137,6 +152,10 @@ create index if not exists applications_applicant_idx
   on public.applications(applicant_id, created_at desc);
 create index if not exists interviews_participants_idx
   on public.interviews(organizer_id, candidate_id, starts_at);
+create index if not exists project_reviews_reviewee_idx
+  on public.project_reviews(reviewee_id, created_at desc);
+create index if not exists project_reviews_project_idx
+  on public.project_reviews(project_id, created_at desc);
 create index if not exists billing_entitlements_user_idx
   on public.billing_entitlements(user_id, plan, active);
 
@@ -145,6 +164,7 @@ alter table public.projects enable row level security;
 alter table public.project_questions enable row level security;
 alter table public.applications enable row level security;
 alter table public.interviews enable row level security;
+alter table public.project_reviews enable row level security;
 alter table public.billing_entitlements enable row level security;
 
 drop policy if exists "profiles are readable" on public.profiles;
@@ -160,11 +180,41 @@ drop policy if exists "applicants create applications" on public.applications;
 drop policy if exists "applicants read own applications" on public.applications;
 drop policy if exists "owners read project applications" on public.applications;
 drop policy if exists "owners review applications" on public.applications;
+drop policy if exists "project participants read accepted teammates" on public.applications;
 drop policy if exists "interview participants read" on public.interviews;
 drop policy if exists "organizers create interviews" on public.interviews;
 drop policy if exists "organizers update interviews" on public.interviews;
 drop policy if exists "organizers delete interviews" on public.interviews;
+drop policy if exists "reviews are readable" on public.project_reviews;
+drop policy if exists "participants create reviews" on public.project_reviews;
+drop policy if exists "reviewers update own reviews" on public.project_reviews;
 drop policy if exists "users read own entitlements" on public.billing_entitlements;
+
+create or replace function public.is_project_participant(target_project uuid, target_user uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    exists (
+      select 1
+      from public.projects
+      where projects.id = target_project
+        and projects.owner_id = target_user
+    )
+    or exists (
+      select 1
+      from public.applications
+      where applications.project_id = target_project
+        and applications.applicant_id = target_user
+        and applications.status in ('accepted', 'interview')
+    );
+$$;
+
+revoke all on function public.is_project_participant(uuid, uuid) from public;
+grant execute on function public.is_project_participant(uuid, uuid) to authenticated;
 
 create policy "profiles are readable"
   on public.profiles for select
@@ -223,6 +273,7 @@ create policy "applicants create applications"
       select 1 from public.projects
       where projects.id = applications.project_id
         and projects.status = 'open'
+        and not ('__applications_paused__' = any(projects.tags))
         and projects.owner_id <> auth.uid()
     )
   );
@@ -250,6 +301,13 @@ create policy "owners review applications"
     auth.uid() = (
       select owner_id from public.projects where id = applications.project_id
     )
+  );
+
+create policy "project participants read accepted teammates"
+  on public.applications for select
+  using (
+    status in ('accepted', 'interview')
+    and public.is_project_participant(project_id, auth.uid())
   );
 
 create policy "interview participants read"
@@ -281,6 +339,27 @@ create policy "organizers delete interviews"
   on public.interviews for delete
   using (auth.uid() = organizer_id);
 
+create policy "reviews are readable"
+  on public.project_reviews for select
+  using (true);
+
+create policy "participants create reviews"
+  on public.project_reviews for insert
+  with check (
+    auth.uid() = reviewer_id
+    and public.is_project_participant(project_id, reviewer_id)
+    and public.is_project_participant(project_id, reviewee_id)
+  );
+
+create policy "reviewers update own reviews"
+  on public.project_reviews for update
+  using (auth.uid() = reviewer_id)
+  with check (
+    auth.uid() = reviewer_id
+    and public.is_project_participant(project_id, reviewer_id)
+    and public.is_project_participant(project_id, reviewee_id)
+  );
+
 create policy "users read own entitlements"
   on public.billing_entitlements for select
   using (auth.uid() = user_id);
@@ -308,6 +387,9 @@ grant select, insert on public.applications to authenticated;
 revoke update on public.applications from authenticated;
 grant update (status, updated_at) on public.applications to authenticated;
 grant select, insert, update, delete on public.interviews to authenticated;
+grant select on public.project_reviews to anon, authenticated;
+grant insert on public.project_reviews to authenticated;
+grant update (rating, comment, updated_at) on public.project_reviews to authenticated;
 
 revoke select on public.billing_entitlements from authenticated;
 grant select (
@@ -339,6 +421,11 @@ for each row execute procedure public.set_updated_at();
 drop trigger if exists applications_set_updated_at on public.applications;
 create trigger applications_set_updated_at
 before update on public.applications
+for each row execute procedure public.set_updated_at();
+
+drop trigger if exists project_reviews_set_updated_at on public.project_reviews;
+create trigger project_reviews_set_updated_at
+before update on public.project_reviews
 for each row execute procedure public.set_updated_at();
 
 create or replace function public.handle_new_user()

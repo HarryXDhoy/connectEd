@@ -139,4 +139,6 @@ Copy the signing secret to `STRIPE_WEBHOOK_SECRET`.
 4. Sign in as a second test user and apply.
 5. Review that applicant from the project owner account.
 6. Schedule an interview and confirm both Calendar and Meet links.
-7. Complete a Stripe test subscription and activate the boost on one owned project.
+7. Accept the applicant, then confirm both accounts can review verified project participants.
+8. Pause applications from My projects and confirm the project stays visible but no longer accepts a new request.
+9. Complete a Stripe test subscription and activate the boost on one owned project.
