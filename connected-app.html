@@ -1122,6 +1122,33 @@
       border-color: color-mix(in oklab, var(--accent), transparent 45%);
       box-shadow: var(--focus-ring);
     }
+    .account-control { gap: var(--space-2); }
+    .account-control.account-signed-in {
+      min-height: 40px;
+      padding: 4px var(--space-3) 4px 4px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      background: var(--surface);
+      color: var(--fg);
+    }
+    .account-control.account-signed-in:hover {
+      border-color: color-mix(in oklab, var(--fg), transparent 68%);
+      background: color-mix(in oklab, var(--surface), var(--fg) 4%);
+    }
+    .account-avatar {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--accent-on);
+      font: 500 var(--text-xs)/1 var(--font-mono);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .account-avatar[hidden] { display: none; }
     .hero {
       min-height: 720px;
       padding-block: 104px;
@@ -1349,6 +1376,18 @@
       .stage { margin-inline: 0; }
       .network-steps { display: none; }
       .network-focus { max-width: 180px; }
+      .account-control.account-signed-in {
+        width: 40px;
+        padding: 4px;
+      }
+      .account-control.account-signed-in .account-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+      }
       .hero { min-height: auto; padding-block: var(--section-y-tablet); }
       .hero h1 { max-width: 9ch; }
       .board-tools { align-items: stretch; }
@@ -1399,7 +1438,10 @@
       </label>
       <div class="nav-actions">
         <a class="btn btn-ghost btn-small" href="project-hub.html">Browse projects</a>
-        <button id="account-button" class="btn btn-primary btn-small" data-open="auth">Sign in</button>
+        <button id="account-button" class="account-control btn btn-primary btn-small" data-open="auth">
+          <span class="account-avatar" id="account-avatar" aria-hidden="true" hidden></span>
+          <span class="account-label" id="account-label">Sign in</span>
+        </button>
       </div>
     </div>
   </header>
@@ -1751,12 +1793,30 @@
     async function refreshAccount() {
       const user = await currentUser();
       const button = $('#account-button');
+      const avatar = $('#account-avatar');
+      const label = $('#account-label');
       if (user) {
-        button.textContent = 'Account';
+        const displayName = user.user_metadata?.full_name
+          || user.user_metadata?.name
+          || user.user_metadata?.display_name
+          || user.email
+          || 'Account';
+        const initial = String(displayName).trim().charAt(0) || 'A';
+        avatar.textContent = initial;
+        avatar.hidden = false;
+        label.textContent = 'Account';
+        button.classList.add('account-signed-in');
+        button.setAttribute('aria-label', `Open ${displayName}'s profile`);
+        button.title = displayName;
         button.dataset.open = '';
         button.onclick = () => { window.location.href = 'project-hub.html'; };
       } else {
-        button.textContent = 'Sign in';
+        avatar.textContent = '';
+        avatar.hidden = true;
+        label.textContent = 'Sign in';
+        button.classList.remove('account-signed-in');
+        button.setAttribute('aria-label', 'Sign in');
+        button.removeAttribute('title');
         button.dataset.open = 'auth';
         button.onclick = () => openModal('auth');
       }
