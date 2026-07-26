@@ -1794,6 +1794,26 @@
         .subscribe();
     }
 
+    async function pollRequestStatuses() {
+      if (!supabase || !user || document.hidden) return;
+      const result = await supabase
+        .from('applications')
+        .select('id,project_id,applicant_id,message,status,created_at,updated_at,projects(id,title,owner_id,profiles:owner_id(display_name))')
+        .eq('applicant_id', user.id)
+        .order('created_at', { ascending: false });
+      if (result.error) return;
+      const next = result.data || [];
+      const previous = new Map(sentApplications.map(item => [item.id, item.status]));
+      const changed = next.find(item => previous.has(item.id) && previous.get(item.id) !== item.status);
+      sentApplications = next;
+      $('#request-count').textContent = sentApplications.length;
+      renderRequests();
+      renderNotifications();
+      if (changed) {
+        toast(`Your request for ${changed.projects?.title || 'a project'} is now ${statusLabel(changed.status).toLowerCase()}.`);
+      }
+    }
+
     let activeModal = null;
     let modalReturnFocus = null;
     const modalBackground = [document.querySelector('header'), document.querySelector('main'), $('#preview-note')].filter(Boolean);
@@ -2673,6 +2693,10 @@
 
     if (supabase) {
       supabase.auth.onAuthStateChange(() => window.setTimeout(loadAll, 0));
+      window.setInterval(pollRequestStatuses, 45000);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) pollRequestStatuses();
+      });
     }
     await loadAll();
     if (authIntent === 'google' && !user) {
