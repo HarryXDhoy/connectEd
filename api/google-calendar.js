@@ -10,12 +10,28 @@ function validDate(value) {
   return Number.isFinite(date.getTime()) ? date : null;
 }
 
+async function candidateEmail(userId) {
+  const url = process.env.SUPABASE_URL || 'https://josrjdvcdkqkwfzomxxh.supabase.co';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) return '';
+  const response = await fetch(`${url}/auth/v1/admin/users/${userId}`, {
+    headers: {
+      apikey: serviceRoleKey,
+      authorization: `Bearer ${serviceRoleKey}`
+    }
+  });
+  if (!response.ok) return '';
+  const candidate = await response.json();
+  return String(candidate.email || '').trim();
+}
+
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
+  if (!['GET', 'POST'].includes(req.method)) return json(res, 405, { error: 'Method not allowed.' });
 
   const identity = await requireSupabaseUser(req);
   if (identity.error) return json(res, identity.status, { error: identity.error });
 
+  const payload = req.method === 'GET' ? req.query || {} : req.body || {};
   const {
     googleAccessToken,
     applicationId,
@@ -25,29 +41,13 @@ export default async function handler(req, res) {
     endsAt,
     notes = '',
     attendeeEmail = ''
-  } = req.body || {};
+  } = payload;
 
   if (
-    !googleAccessToken ||
     !validUuid(applicationId) ||
-    !validUuid(projectId) ||
-    !String(title || '').trim()
+    !validUuid(projectId)
   ) {
     return json(res, 400, { error: 'Missing or invalid interview details.' });
-  }
-
-  const start = validDate(startsAt);
-  const end = validDate(endsAt);
-  const duration = start && end ? end.getTime() - start.getTime() : 0;
-  if (!start || !end || start.getTime() < Date.now() - 60000 || duration < 900000 || duration > 10800000) {
-    return json(res, 400, { error: 'Choose a future interview lasting 15 minutes to 3 hours.' });
-  }
-
-  if (
-    attendeeEmail &&
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(attendeeEmail)
-  ) {
-    return json(res, 400, { error: 'Enter a valid attendee email.' });
   }
 
   const projectResponse = await userQuery(
@@ -64,12 +64,34 @@ export default async function handler(req, res) {
   const applications = applicationResponse.ok ? await applicationResponse.json() : [];
   if (!applications.length) return json(res, 403, { error: 'Application does not belong to this project.' });
 
+  const accountEmail = await candidateEmail(applications[0].applicant_id);
+  if (req.method === 'GET') {
+    if (!accountEmail) return json(res, 404, { error: 'Candidate account email is unavailable.' });
+    return json(res, 200, { candidateEmail: accountEmail });
+  }
+
+  if (!googleAccessToken || !String(title || '').trim()) {
+    return json(res, 400, { error: 'Missing or invalid interview details.' });
+  }
+
+  const start = validDate(startsAt);
+  const end = validDate(endsAt);
+  const duration = start && end ? end.getTime() - start.getTime() : 0;
+  if (!start || !end || start.getTime() < Date.now() - 60000 || duration < 900000 || duration > 10800000) {
+    return json(res, 400, { error: 'Choose a future interview lasting 15 minutes to 3 hours.' });
+  }
+
+  const resolvedEmail = accountEmail || String(attendeeEmail).trim();
+  if (!resolvedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resolvedEmail)) {
+    return json(res, 400, { error: 'Candidate email is unavailable or invalid.' });
+  }
+
   const event = {
     summary: String(title).trim().slice(0, 120),
     description: String(notes).trim().slice(0, 2000) || 'Interview scheduled through connectEd',
     start: { dateTime: start.toISOString(), timeZone: 'UTC' },
     end: { dateTime: end.toISOString(), timeZone: 'UTC' },
-    attendees: attendeeEmail ? [{ email: attendeeEmail }] : [],
+    attendees: [{ email: resolvedEmail }],
     conferenceData: {
       createRequest: {
         requestId: `connected-${applicationId}-${Date.now()}`,

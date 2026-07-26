@@ -763,6 +763,19 @@
     }
     .modal-head { display: flex; justify-content: space-between; gap: var(--space-5); }
     .modal h2 { font-size: var(--text-2xl); }
+    .meeting-result {
+      display: grid;
+      gap: var(--space-4);
+      margin-top: var(--space-5);
+      padding: var(--space-6);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+    }
+    .meeting-result[hidden] { display: none; }
+    .meeting-result h3 { font-size: var(--text-xl); }
+    .meeting-result p { color: var(--muted); }
+    .meeting-result .form-actions { justify-content: flex-start; }
     .detail-cover {
       margin: var(--space-5) 0;
       overflow: hidden;
@@ -1807,17 +1820,40 @@
         <input type="hidden" name="project_id">
         <input type="hidden" name="candidate_id">
         <label>Interview title<input class="field" name="title" maxlength="120" value="connectEd project interview" required></label>
-        <label>Candidate email<input class="field" name="email" type="email" required></label>
+        <label>Candidate email<input class="field" name="email" type="email" placeholder="Finding candidate email…" required></label>
+        <span class="field-help" id="candidate-email-help">Added automatically from the candidate’s connectEd account.</span>
         <div class="field-row">
-          <label>Starts<input class="field" name="starts" type="datetime-local" required></label>
-          <label>Ends<input class="field" name="ends" type="datetime-local" required></label>
+          <label>Interview date<input class="field" name="date" type="date" required></label>
+          <label>Start time<input class="field" name="time" type="time" required></label>
         </div>
+        <label>Duration
+          <select class="field" name="duration" required>
+            <option value="15">15 minutes</option>
+            <option value="30" selected>30 minutes</option>
+            <option value="45">45 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="90">1 hour 30 minutes</option>
+          </select>
+        </label>
         <label>Notes<textarea class="field" name="notes" maxlength="2000"></textarea></label>
         <div class="form-actions">
           <button class="btn" type="button" data-close="interview">Cancel</button>
           <button class="btn btn-primary" type="submit">Create Meet interview</button>
         </div>
       </form>
+      <section class="meeting-result" id="interview-result" aria-live="polite" hidden>
+        <div>
+          <p class="eyebrow">Interview scheduled</p>
+          <h3>Your Google Meet is ready</h3>
+        </div>
+        <p id="interview-result-time"></p>
+        <div class="form-actions">
+          <a class="btn btn-primary" id="interview-meet-link" href="#" target="_blank" rel="noopener">Open Google Meet</a>
+          <button class="btn" id="copy-meet-link" type="button">Copy Meet link</button>
+          <a class="btn" id="interview-calendar-link" href="#" target="_blank" rel="noopener">View in Google Calendar</a>
+          <button class="btn" type="button" data-close="interview">Done</button>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -1950,6 +1986,7 @@
     let ownedProjects = [];
     let applications = [];
     let sentApplications = [];
+    let interviews = [];
     let projectReviews = [];
     let reviewsAvailable = false;
     let activeProject = null;
@@ -2167,6 +2204,7 @@
         ownedProjects = [];
         applications = [];
         sentApplications = [];
+        interviews = [];
         projectReviews = [];
         reviewsAvailable = false;
         $('#preview-note').hidden = false;
@@ -2186,6 +2224,7 @@
         ownedProjects = [];
         applications = [];
         sentApplications = [];
+        interviews = [];
         projectReviews = [];
         reviewsAvailable = false;
         loadError = projectResult.error.message || 'The project board could not be loaded.';
@@ -2236,6 +2275,12 @@
           .order('created_at', { ascending: false });
         sentApplications = sentApplicationResult.error ? [] : sentApplicationResult.data || [];
 
+        const interviewResult = await supabase
+          .from('interviews')
+          .select('id,application_id,project_id,organizer_id,candidate_id,starts_at,ends_at,title,google_event_id,meet_url,created_at')
+          .order('starts_at', { ascending: true });
+        interviews = interviewResult.error ? [] : interviewResult.data || [];
+
         const reviewResult = await supabase
           .from('project_reviews')
           .select('id,project_id,reviewer_id,reviewee_id,rating,comment,created_at,updated_at,reviewer:reviewer_id(display_name),projects:project_id(title)')
@@ -2248,6 +2293,7 @@
         profile = null;
         applications = [];
         sentApplications = [];
+        interviews = [];
         projectReviews = [];
         reviewsAvailable = false;
         subscribeToRequestUpdates();
@@ -2480,6 +2526,7 @@
         ? sentApplications.map(application => {
             const project = application.projects || {};
             const owner = project.profiles?.display_name || 'Project owner';
+            const interview = interviews.find(item => String(item.application_id) === String(application.id));
             return `
               <article class="applicant glass" data-od-id="sent-request-${escapeHtml(application.id)}">
                 <span class="avatar">${escapeHtml((project.title || 'cE').slice(0, 2).toUpperCase())}</span>
@@ -2496,6 +2543,9 @@
                 </div>
                 <div class="applicant-actions">
                   <span class="request-status" data-status="${escapeHtml(application.status)}">${escapeHtml(statusLabel(application.status))}</span>
+                  ${interview?.meet_url
+                    ? `<a class="btn btn-small" href="${escapeHtml(interview.meet_url)}" target="_blank" rel="noopener">Open Meet</a>`
+                    : ''}
                   ${['accepted', 'interview'].includes(application.status) && reviewsAvailable
                     ? `<button class="btn btn-small" data-review-project="${escapeHtml(application.project_id)}">Review project team</button>`
                     : ''}
@@ -2566,6 +2616,7 @@
       const applicantMarkup = application => {
         const person = application.profiles || {};
         const reputation = reviewSummary(person.id);
+        const interview = interviews.find(item => String(item.application_id) === String(application.id));
         const answers = Object.values(application.answers || {}).filter(Boolean);
         const avatar = person.avatar_url
           ? `<span class="avatar"><img src="${escapeHtml(person.avatar_url)}" alt=""></span>`
@@ -2595,6 +2646,9 @@
             </div>
             <div class="applicant-actions">
               <span class="request-status" data-status="${escapeHtml(application.status)}">${escapeHtml(statusLabel(application.status))}</span>
+              ${interview?.meet_url
+                ? `<a class="btn btn-small" href="${escapeHtml(interview.meet_url)}" target="_blank" rel="noopener">Open Meet</a>`
+                : ''}
               ${pendingActions}
             </div>
           </article>
@@ -2965,16 +3019,46 @@
       await loadAll();
     }
 
-    function openInterview(id) {
+    async function openInterview(id) {
       const application = applications.find(item => String(item.id) === String(id));
       if (!application) return;
       const form = $('#interview-form');
       form.reset();
+      form.hidden = false;
+      $('#interview-result').hidden = true;
       form.application_id.value = application.id;
       form.project_id.value = application.project_id;
       form.candidate_id.value = application.applicant_id;
       form.title.value = `${application.projects?.title || 'connectEd'} interview`;
+      const suggestedStart = new Date(Date.now() + 60 * 60 * 1000);
+      suggestedStart.setMinutes(Math.ceil(suggestedStart.getMinutes() / 30) * 30, 0, 0);
+      const localDate = date => [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0')
+      ].join('-');
+      form.date.min = localDate(new Date());
+      form.date.value = localDate(suggestedStart);
+      form.time.value = `${String(suggestedStart.getHours()).padStart(2, '0')}:${String(suggestedStart.getMinutes()).padStart(2, '0')}`;
+      form.email.value = '';
+      form.email.readOnly = true;
+      form.email.placeholder = 'Finding candidate email…';
+      $('#candidate-email-help').textContent = 'Added automatically from the candidate’s connectEd account.';
       openModal('interview');
+
+      const response = await fetch(`/api/google-calendar?applicationId=${encodeURIComponent(application.id)}&projectId=${encodeURIComponent(application.project_id)}`, {
+        headers: await authHeaders()
+      });
+      const data = await response.json();
+      if (response.ok && data.candidateEmail) {
+        form.email.value = data.candidateEmail;
+        form.email.placeholder = '';
+      } else {
+        form.email.readOnly = false;
+        form.email.placeholder = 'candidate@example.com';
+        $('#candidate-email-help').textContent = 'We could not retrieve the account email. Enter it once to continue.';
+        toast(data.error || 'Candidate email could not be added automatically.');
+      }
     }
 
     async function scheduleInterview(form) {
@@ -2984,13 +3068,11 @@
         toast('Reconnect Google to grant Calendar access.');
         return beginGoogleSignIn();
       }
-      const startsAt = new Date(String(values.get('starts')));
-      const endsAt = new Date(String(values.get('ends')));
-      if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
-        return toast('Choose valid interview start and end times.');
-      }
-      if (endsAt <= startsAt) {
-        return toast('Interview end time must be after the start time.');
+      const startsAt = new Date(`${String(values.get('date'))}T${String(values.get('time'))}:00`);
+      const durationMinutes = Number(values.get('duration'));
+      const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
+      if (Number.isNaN(startsAt.getTime()) || ![15, 30, 45, 60, 90].includes(durationMinutes)) {
+        return toast('Choose a valid interview date, time, and duration.');
       }
       const response = await fetch('/api/google-calendar', {
         method: 'POST',
@@ -3023,10 +3105,33 @@
       });
       if (saved.error) return toast(saved.error.message);
       await supabase.from('applications').update({ status: 'interview' }).eq('id', values.get('application_id'));
-      closeModal('interview');
-      toast(data.meetUrl ? 'Interview scheduled with a Google Meet link.' : 'Interview added to Google Calendar.');
+      form.hidden = true;
+      const result = $('#interview-result');
+      const meetLink = $('#interview-meet-link');
+      const copyMeetLink = $('#copy-meet-link');
+      const calendarLink = $('#interview-calendar-link');
+      meetLink.hidden = !data.meetUrl;
+      copyMeetLink.hidden = !data.meetUrl;
+      meetLink.href = data.meetUrl || '#';
+      copyMeetLink.dataset.url = data.meetUrl || '';
+      calendarLink.hidden = !data.htmlLink;
+      calendarLink.href = data.htmlLink || '#';
+      $('#interview-result-time').textContent = `${startsAt.toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })} · ${durationMinutes} minutes`;
+      result.hidden = false;
+      toast(data.meetUrl ? 'Interview scheduled. Your Meet link is ready.' : 'Interview added to Google Calendar.');
       await loadAll();
     }
+
+    $('#copy-meet-link').onclick = async event => {
+      const url = event.currentTarget.dataset.url;
+      if (!url) return;
+      try {
+        await navigator.clipboard.writeText(url);
+        toast('Google Meet link copied.');
+      } catch (_) {
+        toast('Open the Meet link and copy it from your browser.');
+      }
+    };
 
     let checkoutPending = false;
 
