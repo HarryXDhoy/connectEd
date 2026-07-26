@@ -1,30 +1,28 @@
-# connectEd spatial glass system
+# connectEd — Supabase visual system
 
-A cinematic architectural backdrop carries one oversized warm glass workspace:
-bright hairline edges, smoke-taupe translucency, white type, Pinterest-density
-project discovery, and restrained red actions.
+The product now uses a dark, code-first Supabase posture: near-black canvas, border-defined surfaces, restrained emerald signals, and dense but calm product typography.
 
 ## Core tokens
 
 ```css
---bg:      oklch(0.985 0.004 80);
---surface: oklch(0.710 0.025 55);
---fg:      oklch(0.180 0.012 55);
---muted:   oklch(0.795 0.014 60);
---border:  oklch(0.930 0.010 65);
---accent:  oklch(0.582 0.236 25.5);
+--bg: oklch(0.205 0 0);
+--surface: oklch(0.226 0 0);
+--fg: oklch(0.985 0 0);
+--muted: oklch(0.627 0 0);
+--border: oklch(0.297 0 0);
+--accent: oklch(0.778 0.139 164);
 ```
 
 ## Type
 
-- Display: `"Pin Sans", -apple-system, system-ui, "Segoe UI", sans-serif`
-- Body: `"Pin Sans", -apple-system, system-ui, "Segoe UI", sans-serif`
-- Mono: `ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace`
+- Display and body: `"Circular", "custom-font", "Helvetica Neue", Helvetica, Arial, sans-serif`
+- Technical labels: `"Source Code Pro", "Office Code Pro", Menlo, Monaco, Consolas, monospace`
+- Regular weight carries the hierarchy; medium weight is reserved for navigation and controls.
 
 ## Posture
 
-- One architectural photograph fills the viewport; content never floats on a blank canvas.
-- The application reads as one physical glass object, with navigation and panels nested inside it.
-- White hairlines and inner highlights define edges; large shadows anchor the shell.
-- Pinterest-density masonry stays inside the workspace rather than becoming a separate page texture.
-- Red is reserved for the highest-signal action; landing motion is spatial and input-responsive.
+- Near-black surfaces are separated by one-pixel border steps, not decorative shadows.
+- Emerald appears on the brand mark, primary action, active state, or technical status—not as a large wash.
+- Primary actions and tabs use pills; secondary controls use a compact 6px radius.
+- The project board is a uniform responsive grid, with database-console density rather than Pinterest masonry.
+- Motion confirms spatial state only; transforms are removed when reduced motion is requested.

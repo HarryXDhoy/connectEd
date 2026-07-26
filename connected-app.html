@@ -7,48 +7,36 @@
   <title>connectEd — Find your next project</title>
   <style>
     :root {
-      --bg: #ffffff;
-      --surface: #f6f6f3;
-      --surface-warm: #e5e5e0;
-      --fg: #211922;
-      --fg-2: #000000;
-      --muted: #62625b;
-      --meta: #91918c;
-      --border: #c8c8c1;
-      --border-soft: #e0e0d9;
-      --accent: #e60023;
-      --accent-on: #000000;
-      --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+      --bg: #171717;
+      --surface: #1c1c1c;
+      --surface-warm: var(--surface);
+      --fg: #fafafa;
+      --fg-2: #b4b4b4;
+      --muted: #898989;
+      --meta: #4d4d4d;
+      --border: #2e2e2e;
+      --border-soft: #242424;
+      --accent: #3ecf8e;
+      --accent-on: #0f0f0f;
+      --accent-hover: #00c573;
       --accent-active: color-mix(in oklab, var(--accent), black 14%);
-      --success: #103c25;
-      --warn: #c47700;
-      --danger: #9e0a0a;
-      --font-display:
-        "Pin Sans", -apple-system, system-ui, "Segoe UI", Roboto, "Oxygen-Sans",
-        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Ubuntu, Cantarell,
-        "Fira Sans", "Droid Sans", "Helvetica Neue", Helvetica,
-        "ヒラギノ角ゴ Pro W3", メイリオ, Meiryo, "ＭＳ Ｐゴシック", Arial,
-        sans-serif;
-      --font-body:
-        "Pin Sans", -apple-system, system-ui, "Segoe UI", Roboto, "Oxygen-Sans",
-        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Ubuntu, Cantarell,
-        "Fira Sans", "Droid Sans", "Helvetica Neue", Helvetica,
-        "ヒラギノ角ゴ Pro W3", メイリオ, Meiryo, "ＭＳ Ｐゴシック", Arial,
-        sans-serif;
-      --font-mono:
-        ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco,
-        Consolas, monospace;
+      --success: #16a34a;
+      --warn: #eab308;
+      --danger: #dc2626;
+      --font-display: "Circular", "custom-font", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --font-body: "Circular", "custom-font", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --font-mono: "Source Code Pro", "Office Code Pro", Menlo, Monaco, Consolas, monospace;
       --text-xs: 12px;
       --text-sm: 14px;
       --text-base: 16px;
       --text-lg: 18px;
-      --text-xl: 22px;
-      --text-2xl: 28px;
-      --text-3xl: 44px;
-      --text-4xl: 70px;
-      --leading-body: 1.4;
-      --leading-tight: 1.15;
-      --tracking-display: -0.02em;
+      --text-xl: 24px;
+      --text-2xl: 32px;
+      --text-3xl: 36px;
+      --text-4xl: 72px;
+      --leading-body: 1.5;
+      --leading-tight: 1.00;
+      --tracking-display: normal;
       --space-1: 4px;
       --space-2: 8px;
       --space-3: 12px;
@@ -57,23 +45,23 @@
       --space-6: 24px;
       --space-8: 32px;
       --space-12: 48px;
-      --section-y-desktop: 80px;
-      --section-y-tablet: 48px;
-      --section-y-phone: 32px;
-      --radius-sm: 12px;
-      --radius-md: 16px;
-      --radius-lg: 28px;
+      --section-y-desktop: 128px;
+      --section-y-tablet: 80px;
+      --section-y-phone: 48px;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 16px;
       --radius-pill: 9999px;
       --elev-flat: none;
       --elev-ring: 0 0 0 1px var(--border);
-      --elev-raised: 0 4px 16px rgba(33, 25, 34, 0.06);
-      --focus-ring: 0 0 0 3px color-mix(in oklab, #435ee5, transparent 70%);
+      --elev-raised: 0 0 0 1px var(--border), 0 4px 12px rgba(0, 0, 0, 0.4);
+      --focus-ring: 0 0 0 2px color-mix(in oklab, var(--accent), transparent 50%);
       --motion-fast: 150ms;
       --motion-base: 200ms;
       --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-      --container-max: 1280px;
-      --container-gutter-desktop: 32px;
-      --container-gutter-tablet: 24px;
+      --container-max: 1200px;
+      --container-gutter-desktop: 24px;
+      --container-gutter-tablet: 16px;
       --container-gutter-phone: 16px;
     }
 
@@ -686,6 +674,280 @@
       section:not(.hero) { padding-inline: 18px; border-radius: 10px 10px 28px 28px; }
       .stage { transform: none; }
     }
+    /* Supabase ship override */
+    html { background: var(--bg); }
+    body {
+      min-height: 100vh;
+      padding: 0;
+      background: var(--bg);
+      color: var(--fg);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-image:
+        linear-gradient(var(--border-soft) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: .34;
+      mask-image: linear-gradient(to bottom, black, transparent 82%);
+    }
+    .glass {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .glass::after { display: none; }
+    .topbar {
+      top: 0;
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      border-radius: 0;
+      background: color-mix(in oklab, var(--bg), transparent 8%);
+      box-shadow: none;
+    }
+    .hero::before { display: none; }
+    .hero h1 {
+      color: var(--fg);
+      text-shadow: none;
+    }
+    .brand { color: var(--fg); }
+    .brand-mark {
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: var(--accent-on);
+      box-shadow: none;
+    }
+    .nav-search,
+    .filter-bar,
+    .tag,
+    .badge {
+      border-color: var(--border);
+      background: var(--surface);
+      color: var(--fg-2);
+    }
+    .nav-search input,
+    .field input,
+    .field textarea,
+    .field select {
+      color: var(--fg);
+    }
+    .nav-search input::placeholder,
+    .field input::placeholder,
+    .field textarea::placeholder { color: var(--muted); }
+    .btn {
+      min-height: 44px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--fg);
+      font-weight: 500;
+      letter-spacing: .02em;
+      box-shadow: none;
+    }
+    .btn:hover {
+      border-color: color-mix(in oklab, var(--fg), transparent 68%);
+      background: color-mix(in oklab, var(--surface), var(--fg) 4%);
+      transform: translateY(-1px);
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary,
+    .filter.active {
+      border-color: var(--accent);
+      border-radius: var(--radius-pill);
+      background: var(--accent);
+      color: var(--accent-on);
+    }
+    .btn-primary:hover {
+      border-color: var(--accent-hover);
+      background: var(--accent-hover);
+    }
+    .btn:disabled {
+      cursor: wait;
+      opacity: .58;
+      transform: none;
+    }
+    main { margin-top: 0; }
+    .hero {
+      min-height: 720px;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .hero .eyebrow,
+    .section-head .eyebrow {
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    h1,
+    h2,
+    h3 {
+      color: var(--fg);
+      font-family: var(--font-display);
+      font-weight: 400;
+    }
+    h1 {
+      line-height: var(--leading-tight);
+      letter-spacing: -.025em;
+      text-shadow: none;
+    }
+    h2 { letter-spacing: -.02em; }
+    .lede,
+    .section-copy,
+    .pin-body p,
+    .plan-card p { color: var(--fg-2); }
+    .stage {
+      min-height: 560px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      box-shadow: var(--elev-ring);
+      transform: perspective(1200px) rotateY(-4deg) rotateX(2deg);
+    }
+    .stage::before {
+      content: "PROJECT PIPELINE / LIVE";
+      position: absolute;
+      top: var(--space-4);
+      left: var(--space-5);
+      color: var(--accent);
+      font: var(--text-xs)/1 var(--font-mono);
+      letter-spacing: .1em;
+    }
+    .stage-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: color-mix(in oklab, var(--surface), var(--fg) 2%);
+      box-shadow: var(--elev-raised);
+    }
+    .stage-card:nth-child(1) { transform: translate3d(-28px, -12px, 70px) rotate(-3deg); }
+    .stage-card:nth-child(2) { transform: translate3d(72px, 112px, 110px) rotate(3deg); }
+    .stage-card:nth-child(3) { transform: translate3d(-14px, 272px, 34px) rotate(-1deg); }
+    .stage-cover,
+    .pin-cover,
+    .pin:nth-child(3n + 2) .pin-cover,
+    .pin:nth-child(3n) .pin-cover {
+      background: color-mix(in oklab, var(--surface), var(--fg) 3%);
+      color: var(--fg);
+    }
+    .stage-cover { border-bottom: 1px solid var(--border-soft); }
+    .stage-meta { color: var(--muted); font-family: var(--font-mono); }
+    section:not(.hero) {
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      border-radius: 0;
+      background: color-mix(in oklab, var(--bg), transparent 5%);
+      box-shadow: none;
+    }
+    .masonry {
+      columns: unset;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-5);
+    }
+    .pin {
+      display: flex;
+      min-height: 390px;
+      margin: 0;
+      flex-direction: column;
+      overflow: hidden;
+      border-color: var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+    }
+    .pin:hover {
+      border-color: color-mix(in oklab, var(--fg), transparent 68%);
+      transform: translateY(-2px);
+    }
+    .pin-cover {
+      min-height: 176px;
+      height: 176px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .pin-body {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      background: var(--surface);
+    }
+    .pin .pin-body p { color: var(--fg-2); }
+    .pin .owner { color: var(--muted); }
+    .pin-foot { margin-top: auto; }
+    .badge {
+      width: fit-content;
+      border-radius: var(--radius-pill);
+      font-family: var(--font-mono);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .plan-card,
+    .plan-card.featured {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      color: var(--fg);
+      box-shadow: none;
+    }
+    .plan-card.featured { border-color: color-mix(in oklab, var(--accent), transparent 45%); }
+    .plan-card p,
+    .plan-card.featured p { color: var(--fg-2); }
+    .modal,
+    .toast {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--fg);
+      box-shadow: var(--elev-raised);
+    }
+    .modal .btn:not(.btn-primary) { background: var(--surface); color: var(--fg); }
+    .empty {
+      grid-column: 1 / -1;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--muted);
+    }
+    .skeleton {
+      min-height: 390px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(100deg, var(--surface) 35%, color-mix(in oklab, var(--surface), var(--fg) 5%) 50%, var(--surface) 65%);
+      background-size: 220% 100%;
+      animation: skeleton-shift 1.2s var(--ease-standard) infinite;
+    }
+    @keyframes skeleton-shift { to { background-position-x: -220%; } }
+    @media (max-width: 900px) {
+      body { padding: 0; }
+      .topbar { top: 0; width: 100%; }
+      main { margin-top: 0; }
+      .stage { transform: none; }
+      .masonry { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 600px) {
+      body { padding: 0; }
+      .topbar {
+        top: 0;
+        width: 100%;
+        border-radius: 0;
+      }
+      .topbar .container { width: min(calc(100% - 32px), var(--container-max)); }
+      .hero,
+      section:not(.hero) {
+        padding-inline: 0;
+        border-radius: 0;
+      }
+      .masonry { grid-template-columns: 1fr; }
+      .stage { margin-inline: 0; }
+    }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         scroll-behavior: auto !important;
@@ -693,6 +955,8 @@
         transition-duration: 0.01ms !important;
       }
       .stage-card { transform: none !important; }
+      .stage { transform: none !important; }
+      .skeleton { animation: none !important; }
     }
   </style>
 </head>
@@ -764,7 +1028,7 @@
       <div class="container">
         <div class="section-head">
           <p class="eyebrow">Project discovery</p>
-          <h2>Browse ideas like inspiration.</h2>
+          <h2>Browse projects with context.</h2>
           <p class="section-copy">
             Search the board by project, discipline, or skill. Boosted projects appear first,
             but every open idea stays discoverable.
@@ -779,7 +1043,7 @@
           </div>
           <a class="btn btn-small" href="project-hub.html">Open full board</a>
         </div>
-        <div id="project-pins" class="masonry" aria-live="polite"></div>
+        <div id="project-pins" class="masonry" aria-live="polite" aria-busy="true"></div>
       </div>
     </section>
 
@@ -826,7 +1090,7 @@
     </div>
   </footer>
 
-  <div id="modal-auth" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+  <div id="modal-auth" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="auth-title" tabindex="-1">
     <div class="modal glass">
       <div class="modal-head">
         <div>
@@ -859,7 +1123,7 @@
     </div>
   </div>
 
-  <div id="modal-create" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="create-title">
+  <div id="modal-create" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="create-title" tabindex="-1">
     <div class="modal glass">
       <div class="modal-head">
         <div><p class="eyebrow">Publish thoughtfully</p><h2 id="create-title">Share a project idea</h2></div>
@@ -880,7 +1144,7 @@
     </div>
   </div>
 
-  <div id="modal-project" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="project-title">
+  <div id="modal-project" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="project-title" tabindex="-1">
     <div class="modal glass">
       <div class="modal-head">
         <div><p class="eyebrow" id="project-owner">Project</p><h2 id="project-title">Project detail</h2></div>
@@ -975,15 +1239,57 @@
       toast.timer = window.setTimeout(() => element.classList.remove('show'), 3200);
     }
 
+    let activeModal = null;
+    let modalReturnFocus = null;
+
     function openModal(name) {
-      $(`#modal-${name}`).classList.add('open');
+      const modal = $(`#modal-${name}`);
+      modalReturnFocus = document.activeElement;
+      activeModal = modal;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
       document.body.classList.add('modal-open');
+      window.requestAnimationFrame(() => {
+        const target = modal.querySelector('input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])');
+        (target || modal).focus();
+      });
     }
 
     function closeModal(name) {
-      $(`#modal-${name}`).classList.remove('open');
+      const modal = $(`#modal-${name}`);
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('modal-open');
+      activeModal = null;
+      if (modalReturnFocus && document.contains(modalReturnFocus)) modalReturnFocus.focus();
+      modalReturnFocus = null;
     }
+
+    document.addEventListener('keydown', event => {
+      if (!activeModal) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeModal(activeModal.id.replace('modal-', ''));
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = [...activeModal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter(element => !element.hidden && element.offsetParent !== null);
+      if (!focusable.length) {
+        event.preventDefault();
+        activeModal.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
 
     async function refreshAccount() {
       const user = await currentUser();
@@ -1001,10 +1307,14 @@
     }
 
     async function loadProjects() {
+      const board = $('#project-pins');
+      board.setAttribute('aria-busy', 'true');
+      board.innerHTML = '<div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';
       if (!isSupabaseConfigured) {
         projects = previewProjects;
         $('#preview-note').hidden = false;
         renderProjects();
+        board.setAttribute('aria-busy', 'false');
         return;
       }
 
@@ -1017,7 +1327,11 @@
 
       if (error) {
         projects = [];
+        board.innerHTML = '<div class="empty">Projects could not be loaded. <button class="btn btn-small" id="retry-projects" type="button">Retry</button></div>';
+        $('#retry-projects').onclick = loadProjects;
+        board.setAttribute('aria-busy', 'false');
         toast('Projects could not be loaded.');
+        return;
       } else {
         projects = (data || []).map(project => ({
           ...project,
@@ -1025,6 +1339,7 @@
         }));
       }
       renderProjects();
+      board.setAttribute('aria-busy', 'false');
     }
 
     function renderProjects() {
@@ -1195,7 +1510,13 @@
 
     $('#auth-form').onsubmit = async event => {
       event.preventDefault();
-      const values = new FormData(event.currentTarget);
+      const form = event.currentTarget;
+      const submit = $('#email-auth');
+      const originalLabel = submit.textContent;
+      form.setAttribute('aria-busy', 'true');
+      submit.disabled = true;
+      submit.textContent = authMode === 'signup' ? 'Creating…' : 'Signing in…';
+      const values = new FormData(form);
       try {
         const result = authMode === 'signup'
           ? await signUpWithPassword(
@@ -1213,6 +1534,10 @@
         await refreshAccount();
       } catch (error) {
         toast(error.message);
+      } finally {
+        form.setAttribute('aria-busy', 'false');
+        submit.disabled = false;
+        submit.textContent = originalLabel;
       }
     };
 
@@ -1221,14 +1546,30 @@
       catch (error) { toast(error.message); }
     };
     $('#auth-mode').onclick = () => setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
-    $('#create-form').onsubmit = event => {
-      event.preventDefault();
-      createProject(event.currentTarget);
-    };
-    $('#join-form').onsubmit = event => {
-      event.preventDefault();
-      submitApplication(event.currentTarget);
-    };
+    function bindAsyncForm(selector, handler, pendingLabel) {
+      const form = $(selector);
+      form.onsubmit = async event => {
+        event.preventDefault();
+        const submit = form.querySelector('[type="submit"]');
+        const originalLabel = submit?.textContent;
+        form.setAttribute('aria-busy', 'true');
+        if (submit) {
+          submit.disabled = true;
+          submit.textContent = pendingLabel;
+        }
+        try {
+          await handler(form);
+        } finally {
+          form.setAttribute('aria-busy', 'false');
+          if (submit) {
+            submit.disabled = false;
+            submit.textContent = originalLabel;
+          }
+        }
+      };
+    }
+    bindAsyncForm('#create-form', createProject, 'Publishing…');
+    bindAsyncForm('#join-form', submitApplication, 'Sending…');
     $('#plus-checkout').onclick = startCheckout;
     $('#nav-search').oninput = renderProjects;
 

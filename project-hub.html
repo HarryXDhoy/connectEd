@@ -7,48 +7,36 @@
   <title>connectEd — Project board</title>
   <style>
     :root {
-      --bg: #ffffff;
-      --surface: #f6f6f3;
-      --surface-warm: #e5e5e0;
-      --fg: #211922;
-      --fg-2: #000000;
-      --muted: #62625b;
-      --meta: #91918c;
-      --border: #c8c8c1;
-      --border-soft: #e0e0d9;
-      --accent: #e60023;
-      --accent-on: #000000;
-      --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+      --bg: #171717;
+      --surface: #1c1c1c;
+      --surface-warm: var(--surface);
+      --fg: #fafafa;
+      --fg-2: #b4b4b4;
+      --muted: #898989;
+      --meta: #4d4d4d;
+      --border: #2e2e2e;
+      --border-soft: #242424;
+      --accent: #3ecf8e;
+      --accent-on: #0f0f0f;
+      --accent-hover: #00c573;
       --accent-active: color-mix(in oklab, var(--accent), black 14%);
-      --success: #103c25;
-      --warn: #c47700;
-      --danger: #9e0a0a;
-      --font-display:
-        "Pin Sans", -apple-system, system-ui, "Segoe UI", Roboto, "Oxygen-Sans",
-        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Ubuntu, Cantarell,
-        "Fira Sans", "Droid Sans", "Helvetica Neue", Helvetica,
-        "ヒラギノ角ゴ Pro W3", メイリオ, Meiryo, "ＭＳ Ｐゴシック", Arial,
-        sans-serif;
-      --font-body:
-        "Pin Sans", -apple-system, system-ui, "Segoe UI", Roboto, "Oxygen-Sans",
-        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Ubuntu, Cantarell,
-        "Fira Sans", "Droid Sans", "Helvetica Neue", Helvetica,
-        "ヒラギノ角ゴ Pro W3", メイリオ, Meiryo, "ＭＳ Ｐゴシック", Arial,
-        sans-serif;
-      --font-mono:
-        ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco,
-        Consolas, monospace;
+      --success: #16a34a;
+      --warn: #eab308;
+      --danger: #dc2626;
+      --font-display: "Circular", "custom-font", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --font-body: "Circular", "custom-font", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --font-mono: "Source Code Pro", "Office Code Pro", Menlo, Monaco, Consolas, monospace;
       --text-xs: 12px;
       --text-sm: 14px;
       --text-base: 16px;
       --text-lg: 18px;
-      --text-xl: 22px;
-      --text-2xl: 28px;
-      --text-3xl: 44px;
-      --text-4xl: 70px;
-      --leading-body: 1.4;
-      --leading-tight: 1.15;
-      --tracking-display: -0.02em;
+      --text-xl: 24px;
+      --text-2xl: 32px;
+      --text-3xl: 36px;
+      --text-4xl: 72px;
+      --leading-body: 1.5;
+      --leading-tight: 1.00;
+      --tracking-display: normal;
       --space-1: 4px;
       --space-2: 8px;
       --space-3: 12px;
@@ -57,23 +45,23 @@
       --space-6: 24px;
       --space-8: 32px;
       --space-12: 48px;
-      --section-y-desktop: 80px;
-      --section-y-tablet: 48px;
-      --section-y-phone: 32px;
-      --radius-sm: 12px;
-      --radius-md: 16px;
-      --radius-lg: 28px;
+      --section-y-desktop: 128px;
+      --section-y-tablet: 80px;
+      --section-y-phone: 48px;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 16px;
       --radius-pill: 9999px;
       --elev-flat: none;
       --elev-ring: 0 0 0 1px var(--border);
-      --elev-raised: 0 4px 16px rgba(33, 25, 34, 0.06);
-      --focus-ring: 0 0 0 3px color-mix(in oklab, #435ee5, transparent 70%);
+      --elev-raised: 0 0 0 1px var(--border), 0 4px 12px rgba(0, 0, 0, 0.4);
+      --focus-ring: 0 0 0 2px color-mix(in oklab, var(--accent), transparent 50%);
       --motion-fast: 150ms;
       --motion-base: 200ms;
       --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-      --container-max: 1280px;
-      --container-gutter-desktop: 32px;
-      --container-gutter-tablet: 24px;
+      --container-max: 1200px;
+      --container-gutter-desktop: 24px;
+      --container-gutter-tablet: 16px;
       --container-gutter-phone: 16px;
     }
 
@@ -669,11 +657,309 @@
       .board-shell > .container { padding: 22px 16px; }
       .tabs { top: 120px; }
     }
+    /* Supabase ship override */
+    html { background: var(--bg); }
+    body {
+      min-height: 100vh;
+      padding: 0;
+      background: var(--bg);
+      color: var(--fg);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-image:
+        linear-gradient(var(--border-soft) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: .3;
+      mask-image: linear-gradient(to bottom, black, transparent 78%);
+    }
+    .glass {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .glass::after { display: none; }
+    .topbar {
+      top: 0;
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      border-radius: 0;
+      background: color-mix(in oklab, var(--bg), transparent 8%);
+      box-shadow: none;
+    }
+    .brand { color: var(--fg); }
+    .brand-mark {
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: var(--accent-on);
+      box-shadow: none;
+    }
+    .search,
+    .field {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--fg);
+    }
+    .search input,
+    .field { color: var(--fg); }
+    .search input::placeholder,
+    .field::placeholder { color: var(--muted); }
+    .btn {
+      min-height: 44px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--fg);
+      font-weight: 500;
+      letter-spacing: .02em;
+      box-shadow: none;
+    }
+    .btn:hover {
+      border-color: color-mix(in oklab, var(--fg), transparent 68%);
+      background: color-mix(in oklab, var(--surface), var(--fg) 4%);
+      transform: translateY(-1px);
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary {
+      border-color: var(--accent);
+      border-radius: var(--radius-pill);
+      background: var(--accent);
+      color: var(--accent-on);
+    }
+    .btn-primary:hover {
+      border-color: var(--accent-hover);
+      background: var(--accent-hover);
+    }
+    .btn:disabled {
+      cursor: wait;
+      opacity: .58;
+      transform: none;
+    }
+    .board-shell {
+      width: 100%;
+      margin-top: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .board-shell > .container {
+      grid-template-columns: 196px minmax(0, 1fr);
+      padding-block: var(--space-12);
+      gap: var(--space-8);
+    }
+    .board-head {
+      padding-bottom: var(--space-6);
+      border-bottom: 1px solid var(--border);
+    }
+    .board-head h1 {
+      color: var(--fg);
+      text-shadow: none;
+    }
+    .board-head .muted,
+    .panel .muted,
+    .panel .owner,
+    .applicant p,
+    .answer-list { color: var(--fg-2); }
+    .eyebrow {
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    h1,
+    h2,
+    h3 {
+      color: var(--fg);
+      font-family: var(--font-display);
+      font-weight: 400;
+    }
+    h1 {
+      line-height: var(--leading-tight);
+      letter-spacing: -.025em;
+      text-shadow: none;
+    }
+    h2 { letter-spacing: -.02em; }
+    .muted,
+    .pin-body p,
+    .profile-card p,
+    .membership-card p { color: var(--fg-2); }
+    .tabs {
+      top: 96px;
+      padding: var(--space-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      box-shadow: none;
+    }
+    .tab {
+      min-height: 44px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      font-weight: 500;
+      letter-spacing: .02em;
+    }
+    .tab:hover {
+      border-color: var(--border);
+      background: color-mix(in oklab, var(--surface), var(--fg) 3%);
+      color: var(--fg);
+    }
+    .tab.active {
+      border-color: color-mix(in oklab, var(--accent), transparent 50%);
+      background: color-mix(in oklab, var(--accent), transparent 90%);
+      color: var(--fg);
+      box-shadow: none;
+    }
+    .count {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      background: var(--bg);
+      color: var(--fg-2);
+      font-family: var(--font-mono);
+    }
+    .panel { min-width: 0; }
+    .panel h2,
+    .panel h3 { color: var(--fg); }
+    .masonry {
+      columns: unset;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-4);
+    }
+    .pin,
+    .applicant,
+    .profile-card,
+    .membership-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      box-shadow: none;
+    }
+    .pin {
+      display: flex;
+      min-height: 374px;
+      margin: 0;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .pin:hover,
+    .applicant:hover {
+      border-color: color-mix(in oklab, var(--fg), transparent 68%);
+      transform: translateY(-2px);
+    }
+    .pin-cover,
+    .pin:nth-child(3n + 2) .pin-cover,
+    .pin:nth-child(3n) .pin-cover {
+      min-height: 164px;
+      height: 164px;
+      border-bottom: 1px solid var(--border-soft);
+      background: color-mix(in oklab, var(--surface), var(--fg) 3%);
+      color: var(--fg);
+    }
+    .pin-body {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      background: var(--surface);
+    }
+    .pin .pin-body p { color: var(--fg-2); }
+    .pin .owner { color: var(--muted); }
+    .pin-foot { margin-top: auto; }
+    .badge,
+    .priority {
+      width: fit-content;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      background: var(--bg);
+      color: var(--fg-2);
+      font-family: var(--font-mono);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .priority {
+      border-color: color-mix(in oklab, var(--accent), transparent 50%);
+      color: var(--accent);
+    }
+    .avatar {
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+    }
+    .empty,
+    .auth-wall {
+      grid-column: 1 / -1;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--muted);
+    }
+    .auth-wall h2 { color: var(--fg); }
+    .modal,
+    .toast {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--fg);
+      box-shadow: var(--elev-raised);
+    }
+    .modal .field {
+      border-color: var(--border);
+      background: var(--bg);
+      color: var(--fg);
+    }
+    .modal .btn:not(.btn-primary) { background: var(--surface); color: var(--fg); }
+    .skeleton {
+      min-height: 374px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(100deg, var(--surface) 35%, color-mix(in oklab, var(--surface), var(--fg) 5%) 50%, var(--surface) 65%);
+      background-size: 220% 100%;
+      animation: skeleton-shift 1.2s var(--ease-standard) infinite;
+    }
+    @keyframes skeleton-shift { to { background-position-x: -220%; } }
+    @media (max-width: 900px) {
+      body { padding: 0; }
+      .topbar { top: 0; width: 100%; }
+      .board-shell { margin-top: 0; }
+      .board-shell > .container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+        padding: var(--space-8) var(--container-gutter-tablet);
+      }
+      .tabs {
+        top: 122px;
+        flex-direction: row;
+        overflow-x: auto;
+      }
+      .masonry { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 600px) {
+      body { padding: 0; }
+      .topbar {
+        top: 0;
+        width: 100%;
+        border-radius: 0;
+      }
+      .topbar .container { width: min(calc(100% - 32px), var(--container-max)); }
+      .board-shell { border-radius: 0; }
+      .board-shell > .container { padding: var(--space-6) var(--container-gutter-phone); }
+      .masonry { grid-template-columns: 1fr; }
+    }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
       }
+      .skeleton { animation: none !important; }
     }
   </style>
 </head>
@@ -708,14 +994,14 @@
         <p class="muted" id="board-status">Loading the shared board…</p>
       </div>
 
-      <nav class="tabs glass" aria-label="Project board sections">
-        <button class="tab active" data-panel="discover">Discover</button>
-        <button class="tab" data-panel="owned">My projects <span class="tab-count" id="owned-count">0</span></button>
-        <button class="tab" data-panel="applicants">Applicants <span class="tab-count" id="applicant-count">0</span></button>
-        <button class="tab" data-panel="profile">Profile</button>
+      <nav class="tabs glass" aria-label="Project board sections" role="tablist">
+        <button id="tab-discover" class="tab active" data-panel="discover" role="tab" aria-selected="true" aria-controls="panel-discover">Discover</button>
+        <button id="tab-owned" class="tab" data-panel="owned" role="tab" aria-selected="false" aria-controls="panel-owned" tabindex="-1">My projects <span class="tab-count" id="owned-count">0</span></button>
+        <button id="tab-applicants" class="tab" data-panel="applicants" role="tab" aria-selected="false" aria-controls="panel-applicants" tabindex="-1">Applicants <span class="tab-count" id="applicant-count">0</span></button>
+        <button id="tab-profile" class="tab" data-panel="profile" role="tab" aria-selected="false" aria-controls="panel-profile" tabindex="-1">Profile</button>
       </nav>
 
-      <section id="panel-discover" class="panel" data-od-id="discover-panel">
+      <section id="panel-discover" class="panel" data-od-id="discover-panel" role="tabpanel" aria-labelledby="tab-discover" tabindex="0">
         <div class="panel-head">
           <div>
             <h2>Open ideas</h2>
@@ -728,10 +1014,10 @@
             <button class="chip" data-filter="research">Research</button>
           </div>
         </div>
-        <div id="discovery-board" class="masonry" aria-live="polite"></div>
+        <div id="discovery-board" class="masonry" aria-live="polite" aria-busy="true"></div>
       </section>
 
-      <section id="panel-owned" class="panel" data-od-id="owned-projects-panel" hidden>
+      <section id="panel-owned" class="panel" data-od-id="owned-projects-panel" role="tabpanel" aria-labelledby="tab-owned" tabindex="0" hidden>
         <div class="panel-head">
           <div><h2>Your projects</h2><p class="muted">Edit recruiting details and choose which project receives your Plus boost.</p></div>
           <button class="btn btn-primary" data-create-project>Share a project</button>
@@ -739,14 +1025,14 @@
         <div id="owned-board" class="masonry"></div>
       </section>
 
-      <section id="panel-applicants" class="panel" data-od-id="applicant-review-panel" hidden>
+      <section id="panel-applicants" class="panel" data-od-id="applicant-review-panel" role="tabpanel" aria-labelledby="tab-applicants" tabindex="0" hidden>
         <div class="panel-head">
           <div><h2>Applicant review</h2><p class="muted">Priority members appear first. Review the profile and contribution, not only the badge.</p></div>
         </div>
         <div id="applicant-list" class="applicants"></div>
       </section>
 
-      <section id="panel-profile" class="panel" data-od-id="profile-panel" hidden>
+      <section id="panel-profile" class="panel" data-od-id="profile-panel" role="tabpanel" aria-labelledby="tab-profile" tabindex="0" hidden>
         <div id="profile-wall" class="auth-wall">
           <h2>Sign in to build your profile</h2>
           <p>Your skills help project owners understand where you can contribute.</p>
@@ -775,7 +1061,7 @@
     </div>
   </main>
 
-  <div id="modal-project-form" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="project-form-title">
+  <div id="modal-project-form" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="project-form-title" tabindex="-1">
     <div class="modal glass">
       <div class="modal-head">
         <div><p class="eyebrow">Project setup</p><h2 id="project-form-title">Share a project</h2></div>
@@ -799,7 +1085,7 @@
     </div>
   </div>
 
-  <div id="modal-project-detail" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+  <div id="modal-project-detail" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="detail-title" tabindex="-1">
     <div class="modal glass">
       <div class="modal-head">
         <div><p class="eyebrow" id="detail-owner">Project</p><h2 id="detail-title">Project detail</h2></div>
@@ -818,7 +1104,7 @@
     </div>
   </div>
 
-  <div id="modal-interview" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="interview-title">
+  <div id="modal-interview" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="interview-title" tabindex="-1">
     <div class="modal glass">
       <div class="modal-head">
         <div><p class="eyebrow">Google Calendar + Meet</p><h2 id="interview-title">Schedule an interview</h2></div>
@@ -884,6 +1170,7 @@
     let activeFilter = 'all';
     let editingProjectId = null;
     let editingQuestionId = null;
+    let loadError = '';
 
     function toast(message) {
       const element = $('#toast');
@@ -893,15 +1180,57 @@
       toast.timer = window.setTimeout(() => element.classList.remove('show'), 3400);
     }
 
+    let activeModal = null;
+    let modalReturnFocus = null;
+
     function openModal(name) {
-      $(`#modal-${name}`).classList.add('open');
+      const modal = $(`#modal-${name}`);
+      modalReturnFocus = document.activeElement;
+      activeModal = modal;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
       document.body.classList.add('modal-open');
+      window.requestAnimationFrame(() => {
+        const target = modal.querySelector('input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])');
+        (target || modal).focus();
+      });
     }
 
     function closeModal(name) {
-      $(`#modal-${name}`).classList.remove('open');
+      const modal = $(`#modal-${name}`);
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('modal-open');
+      activeModal = null;
+      if (modalReturnFocus && document.contains(modalReturnFocus)) modalReturnFocus.focus();
+      modalReturnFocus = null;
     }
+
+    document.addEventListener('keydown', event => {
+      if (!activeModal) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeModal(activeModal.id.replace('modal-', ''));
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = [...activeModal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter(element => !element.hidden && element.offsetParent !== null);
+      if (!focusable.length) {
+        event.preventDefault();
+        activeModal.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
 
     async function requireUser() {
       if (user) return user;
@@ -911,6 +1240,10 @@
     }
 
     async function loadAll() {
+      const discoveryBoard = $('#discovery-board');
+      loadError = '';
+      discoveryBoard.setAttribute('aria-busy', 'true');
+      discoveryBoard.innerHTML = '<div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';
       user = await currentUser();
       await updateAccount();
       if (!isSupabaseConfigured) {
@@ -919,6 +1252,7 @@
         applications = [];
         $('#preview-note').hidden = false;
         renderAll();
+        discoveryBoard.setAttribute('aria-busy', 'false');
         return;
       }
 
@@ -928,7 +1262,18 @@
         .order('boost_until', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
-      projects = projectResult.error ? [] : (projectResult.data || []).map(project => ({
+      if (projectResult.error) {
+        projects = [];
+        ownedProjects = [];
+        applications = [];
+        loadError = projectResult.error.message || 'The project board could not be loaded.';
+        renderAll();
+        discoveryBoard.setAttribute('aria-busy', 'false');
+        toast('The project board could not be loaded.');
+        return;
+      }
+
+      projects = (projectResult.data || []).map(project => ({
         ...project,
         owner: project.profiles?.display_name || 'connectEd member'
       }));
@@ -953,6 +1298,7 @@
         applications = [];
       }
       renderAll();
+      discoveryBoard.setAttribute('aria-busy', 'false');
     }
 
     async function updateAccount() {
@@ -973,7 +1319,9 @@
 
     function renderAll() {
       const liveProjects = projects.filter(project => project.status !== 'closed');
-      $('#board-status').textContent = isSupabaseConfigured
+      $('#board-status').textContent = loadError
+        ? 'Board unavailable'
+        : isSupabaseConfigured
         ? `${liveProjects.length} open ${liveProjects.length === 1 ? 'idea' : 'ideas'}`
         : 'Preview board';
       $('#owned-count').textContent = ownedProjects.length;
@@ -1030,6 +1378,11 @@
     }
 
     function renderDiscovery() {
+      if (loadError) {
+        $('#discovery-board').innerHTML = `<div class="empty">The shared board could not be loaded.<br><button class="btn btn-small" id="retry-board" type="button">Retry</button></div>`;
+        $('#retry-board').onclick = loadAll;
+        return;
+      }
       const items = filteredProjects();
       $('#discovery-board').innerHTML = items.length
         ? items.map((project, index) => pinMarkup(project, index)).join('')
@@ -1318,17 +1671,45 @@
 
     function switchPanel(name) {
       $$('.panel').forEach(panel => panel.hidden = panel.id !== `panel-${name}`);
-      $$('[data-panel]').forEach(tab => tab.classList.toggle('active', tab.dataset.panel === name));
+      $$('[data-panel]').forEach(tab => {
+        const selected = tab.dataset.panel === name;
+        tab.classList.toggle('active', selected);
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
       if (name === 'profile') renderProfile();
+    }
+
+    function bindAsyncForm(selector, handler, pendingLabel) {
+      const form = $(selector);
+      form.onsubmit = async event => {
+        event.preventDefault();
+        const submit = form.querySelector('[type="submit"]');
+        const originalLabel = submit?.textContent;
+        form.setAttribute('aria-busy', 'true');
+        if (submit) {
+          submit.disabled = true;
+          submit.textContent = pendingLabel;
+        }
+        try {
+          await handler(form);
+        } finally {
+          form.setAttribute('aria-busy', 'false');
+          if (submit) {
+            submit.disabled = false;
+            submit.textContent = originalLabel;
+          }
+        }
+      };
     }
 
     $('#board-search').oninput = renderDiscovery;
     $('#new-project').onclick = () => openProjectForm();
     $$('[data-create-project]').forEach(button => button.onclick = () => openProjectForm());
-    $('#project-form').onsubmit = event => { event.preventDefault(); saveProject(event.currentTarget); };
-    $('#application-form').onsubmit = event => { event.preventDefault(); submitApplication(event.currentTarget); };
-    $('#interview-form').onsubmit = event => { event.preventDefault(); scheduleInterview(event.currentTarget); };
-    $('#profile-form').onsubmit = event => { event.preventDefault(); saveProfile(event.currentTarget); };
+    bindAsyncForm('#project-form', saveProject, 'Saving…');
+    bindAsyncForm('#application-form', submitApplication, 'Sending…');
+    bindAsyncForm('#interview-form', scheduleInterview, 'Scheduling…');
+    bindAsyncForm('#profile-form', saveProfile, 'Saving…');
     $('#membership-action').onclick = () => profile?.priority_match_active
       ? switchPanel('owned')
       : startCheckout();
