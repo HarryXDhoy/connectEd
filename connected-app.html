@@ -916,6 +916,14 @@
       color: var(--muted);
       letter-spacing: .02em;
     }
+    .network-focus small {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--accent);
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
     .network-steps {
       position: absolute;
       left: var(--space-4);
@@ -980,6 +988,10 @@
     }
     .globe-marker-west { top: 43%; left: 23%; }
     .globe-marker-south { top: 69%; left: 57%; }
+    .globe-marker-north { top: 24%; left: 49%; }
+    .globe-marker-east { top: 48%; left: 78%; }
+    .globe-marker-africa { top: 58%; left: 46%; }
+    .globe-marker-pacific { top: 62%; left: 72%; }
     .globe-route {
       position: absolute;
       top: 43%;
@@ -1501,6 +1513,10 @@
               <span class="globe-marker globe-marker-primary"></span>
               <span class="globe-marker globe-marker-west"></span>
               <span class="globe-marker globe-marker-south"></span>
+              <span class="globe-marker globe-marker-north"></span>
+              <span class="globe-marker globe-marker-east"></span>
+              <span class="globe-marker globe-marker-africa"></span>
+              <span class="globe-marker globe-marker-pacific"></span>
             </div>
           </div>
           <div class="stage-hud">
@@ -2386,45 +2402,34 @@
         earth.rotation.set(.12, -1.9, -.12);
         scene.add(earth);
 
-        scene.add(new THREE.AmbientLight(color('--fg'), .8));
-        const keyLight = new THREE.DirectionalLight(color('--accent'), 2.4);
+        scene.add(new THREE.AmbientLight(color('--fg'), .62));
+        const keyLight = new THREE.DirectionalLight(color('--accent'), 1.7);
         keyLight.position.set(-4, 3, 6);
         scene.add(keyLight);
-        const rimLight = new THREE.DirectionalLight(color('--fg-2'), 1.25);
+        const rimLight = new THREE.DirectionalLight(color('--fg-2'), .9);
         rimLight.position.set(4, -2, 2);
         scene.add(rimLight);
 
         const globeRadius = 2.28;
-        const globeGeometry = new THREE.SphereGeometry(globeRadius, 64, 48);
+        const globeGeometry = new THREE.SphereGeometry(globeRadius, 72, 54);
         const globeSurface = new THREE.Mesh(
           globeGeometry,
           new THREE.MeshStandardMaterial({
             color: color('--surface'),
-            roughness: .92,
-            metalness: .04,
+            roughness: 1,
+            metalness: 0,
             transparent: true,
-            opacity: .9
+            opacity: .96
           })
         );
         earth.add(globeSurface);
 
-        const globeGrid = new THREE.Mesh(
-          globeGeometry,
-          new THREE.MeshBasicMaterial({
-            color: color('--border'),
-            wireframe: true,
-            transparent: true,
-            opacity: .42
-          })
-        );
-        earth.add(globeGrid);
-
         const atmosphere = new THREE.Mesh(
-          new THREE.SphereGeometry(globeRadius + .09, 64, 48),
+          new THREE.SphereGeometry(globeRadius + .1, 72, 54),
           new THREE.MeshBasicMaterial({
             color: color('--accent'),
             transparent: true,
-            opacity: .045,
+            opacity: .065,
             side: THREE.BackSide
           })
         );
@@ -2440,10 +2445,36 @@
           );
         }
 
+        const gridMaterial = new THREE.LineBasicMaterial({
+          color: color('--fg-2'),
+          transparent: true,
+          opacity: .12
+        });
+        [-60, -30, 0, 30, 60].forEach(latitude => {
+          const points = [];
+          for (let longitude = -180; longitude <= 180; longitude += 4) {
+            points.push(latLonToVector(latitude, longitude, globeRadius + .012));
+          }
+          earth.add(new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(points),
+            gridMaterial
+          ));
+        });
+        for (let longitude = -150; longitude <= 180; longitude += 30) {
+          const points = [];
+          for (let latitude = -88; latitude <= 88; latitude += 4) {
+            points.push(latLonToVector(latitude, longitude, globeRadius + .012));
+          }
+          earth.add(new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(points),
+            gridMaterial
+          ));
+        }
+
         const continentMaterial = new THREE.LineBasicMaterial({
           color: color('--fg-2'),
           transparent: true,
-          opacity: .56
+          opacity: .44
         });
         const continentShapes = [
           [[-168, 71], [-140, 60], [-125, 49], [-117, 32], [-98, 18], [-82, 25], [-65, 45], [-82, 59], [-108, 72], [-140, 70], [-168, 71]],
@@ -2464,45 +2495,88 @@
         const routeMaterial = new THREE.LineBasicMaterial({
           color: color('--accent'),
           transparent: true,
-          opacity: .62
+          opacity: .34
         });
         const locations = [
-          { name: 'Seoul', detail: 'An open project connects with collaborators across disciplines.', latitude: 37.57, longitude: 126.98, active: true },
-          { name: 'San Francisco', detail: 'Design and engineering skills join the same project path.', latitude: 37.77, longitude: -122.42 },
-          { name: 'London', detail: 'A distributed team moves from interest to conversation.', latitude: 51.51, longitude: -.13 },
-          { name: 'Singapore', detail: 'Research and product context travel with the team.', latitude: 1.35, longitude: 103.82 }
+          { name: 'Seoul', meta: 'Education · Open now', detail: 'A learning-tools project is matching product designers with mobile engineers.', latitude: 37.57, longitude: 126.98, active: true },
+          { name: 'San Francisco', meta: 'AI tools · Building', detail: 'An independent team needs two collaborators for an explainable AI workspace.', latitude: 37.77, longitude: -122.42 },
+          { name: 'London', meta: 'Climate research · Interviewing', detail: 'Researchers are reviewing contributors for a neighborhood heat-mapping study.', latitude: 51.51, longitude: -.13 },
+          { name: 'Singapore', meta: 'Accessible fintech · New', detail: 'A financial-literacy prototype is looking for research and content partners.', latitude: 1.35, longitude: 103.82 },
+          { name: 'Tokyo', meta: 'Robotics learning · Prototype', detail: 'A classroom robotics kit needs interaction design and curriculum feedback.', latitude: 35.68, longitude: 139.69 },
+          { name: 'Berlin', meta: 'Civic tech · Design review', detail: 'An open-source public-services tool is preparing its next usability round.', latitude: 52.52, longitude: 13.41 },
+          { name: 'Nairobi', meta: 'Community health · Research', detail: 'A field team is recruiting a qualitative researcher for its care network.', latitude: -1.29, longitude: 36.82 },
+          { name: 'Lagos', meta: 'Creative commerce · Launching', detail: 'A maker marketplace is assembling its first growth and operations cohort.', latitude: 6.52, longitude: 3.38 },
+          { name: 'Toronto', meta: 'Accessibility · Contributor needed', detail: 'A browser-audit project is pairing front-end developers with accessibility testers.', latitude: 43.65, longitude: -79.38 },
+          { name: 'São Paulo', meta: 'Circular economy · Field pilot', detail: 'A reuse logistics team is mapping repair partners for a neighborhood pilot.', latitude: -23.55, longitude: -46.63 },
+          { name: 'Sydney', meta: 'Ocean data · Remote team', detail: 'A coastal data story needs visualization and marine-science collaborators.', latitude: -33.87, longitude: 151.21 },
+          { name: 'Bengaluru', meta: 'Learning platform · Engineering', detail: 'An offline-first study platform is recruiting web performance contributors.', latitude: 12.97, longitude: 77.59 },
+          { name: 'Dubai', meta: 'Future mobility · Strategy', detail: 'A shared-mobility concept is gathering policy, service, and systems perspectives.', latitude: 25.2, longitude: 55.27 },
+          { name: 'Mexico City', meta: 'Urban culture · Researchers', detail: 'A collaborative city archive is seeking oral-history and mapping partners.', latitude: 19.43, longitude: -99.13 },
+          { name: 'Paris', meta: 'Independent publishing · Visual systems', detail: 'A small editorial network needs a designer for its multilingual reading experience.', latitude: 48.86, longitude: 2.35 },
+          { name: 'Jakarta', meta: 'Disaster response · Community ops', detail: 'A preparedness toolkit is connecting local organizers with product builders.', latitude: -6.21, longitude: 106.85 }
         ];
 
         function addRoute(from, to) {
           const start = latLonToVector(from.latitude, from.longitude, globeRadius + .07);
           const end = latLonToVector(to.latitude, to.longitude, globeRadius + .07);
-          const midpoint = start.clone().add(end).normalize().multiplyScalar(globeRadius + .78);
+          const midpoint = start.clone().add(end).normalize().multiplyScalar(globeRadius + .62);
           const curve = new THREE.QuadraticBezierCurve3(start, midpoint, end);
           earth.add(new THREE.Line(
             new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),
             routeMaterial
           ));
         }
-        addRoute(locations[0], locations[1]);
-        addRoute(locations[0], locations[2]);
-        addRoute(locations[0], locations[3]);
+        [
+          [0, 1], [0, 2], [0, 3], [0, 4],
+          [2, 5], [3, 11], [6, 7], [8, 13],
+          [9, 13], [10, 15], [12, 3]
+        ].forEach(([from, to]) => addRoute(locations[from], locations[to]));
 
-        const markerGeometry = new THREE.SphereGeometry(.065, 20, 16);
+        const markerGeometry = new THREE.SphereGeometry(.052, 24, 18);
+        const markerHitGeometry = new THREE.SphereGeometry(.13, 16, 12);
+        const haloGeometry = new THREE.RingGeometry(.082, .125, 32);
+        const markerTargets = [];
         const markers = locations.map(location => {
-          const marker = new THREE.Mesh(
+          const marker = new THREE.Group();
+          const core = new THREE.Mesh(
             markerGeometry,
-            new THREE.MeshBasicMaterial({
-              color: color(location.active ? '--accent' : '--fg-2')
+            new THREE.MeshStandardMaterial({
+              color: color(location.active ? '--accent' : '--fg'),
+              emissive: color(location.active ? '--accent' : '--fg-2'),
+              emissiveIntensity: location.active ? .72 : .28,
+              roughness: .5
             })
           );
-          marker.position.copy(latLonToVector(location.latitude, location.longitude, globeRadius + .09));
+          const halo = new THREE.Mesh(
+            haloGeometry,
+            new THREE.MeshBasicMaterial({
+              color: color(location.active ? '--accent' : '--fg-2'),
+              transparent: true,
+              opacity: location.active ? .38 : .18,
+              side: THREE.DoubleSide,
+              depthWrite: false
+            })
+          );
+          const hitTarget = new THREE.Mesh(
+            markerHitGeometry,
+            new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+          );
+          hitTarget.userData = { location, marker, core, halo };
+          markerTargets.push(hitTarget);
+          marker.add(core, halo, hitTarget);
+          const position = latLonToVector(location.latitude, location.longitude, globeRadius + .085);
+          marker.position.copy(position);
+          marker.quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 0, 1),
+            position.clone().normalize()
+          );
           marker.userData = location;
           earth.add(marker);
           return marker;
         });
 
         const starPositions = [];
-        for (let index = 0; index < 72; index += 1) {
+        for (let index = 0; index < 48; index += 1) {
           const angle = index * 2.399963;
           const radius = 3.1 + (index % 9) * .22;
           starPositions.push(
@@ -2519,7 +2593,7 @@
             color: color('--muted'),
             size: .025,
             transparent: true,
-            opacity: .38
+            opacity: .22
           })
         ));
 
@@ -2571,12 +2645,17 @@
           pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
           pointerTilt.set(pointer.x, pointer.y);
           raycaster.setFromCamera(pointer, camera);
-          const hit = raycaster.intersectObjects(markers, false)[0];
-          markers.forEach(marker => marker.scale.setScalar(1));
-          if (hit) {
-            hit.object.scale.setScalar(1.8);
+          const hit = raycaster.intersectObjects([globeSurface, ...markerTargets], false)[0];
+          markers.forEach(marker => {
+            marker.scale.setScalar(1);
+            marker.children[1].material.opacity = marker.userData.active ? .38 : .18;
+          });
+          if (hit && markerTargets.includes(hit.object)) {
+            const { location, marker, halo } = hit.object.userData;
+            marker.scale.setScalar(1.42);
+            halo.material.opacity = .72;
             canvas.style.cursor = 'pointer';
-            focus.innerHTML = `${escapeHtml(hit.object.userData.name)}<span>${escapeHtml(hit.object.userData.detail)}</span>`;
+            focus.innerHTML = `<small>${escapeHtml(location.meta)}</small>${escapeHtml(location.name)}<span>${escapeHtml(location.detail)}</span>`;
           } else {
             canvas.style.cursor = 'grab';
             focus.innerHTML = 'Global project network<span>Move across a city to inspect a collaboration route.</span>';
@@ -2590,7 +2669,10 @@
           pointerTilt.set(0, 0);
           canvas.style.cursor = 'grab';
           focus.innerHTML = 'Global project network<span>Move across a city to inspect a collaboration route.</span>';
-          markers.forEach(marker => marker.scale.setScalar(1));
+          markers.forEach(marker => {
+            marker.scale.setScalar(1);
+            marker.children[1].material.opacity = marker.userData.active ? .38 : .18;
+          });
           if (reducedMotion) render(performance.now());
         });
         canvas.addEventListener('webglcontextlost', event => {
