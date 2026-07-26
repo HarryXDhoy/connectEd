@@ -1119,22 +1119,43 @@
       border-color: color-mix(in oklab, var(--accent), transparent 45%);
       box-shadow: var(--focus-ring);
     }
+    body::before {
+      position: fixed;
+      inset: 64px 0 0;
+      z-index: -1;
+      content: "";
+      background-image:
+        linear-gradient(color-mix(in oklab, var(--border-soft), transparent 34%) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in oklab, var(--border-soft), transparent 34%) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: linear-gradient(var(--bg), transparent 92%);
+      opacity: .34;
+      pointer-events: none;
+    }
     .board-shell > .container {
-      grid-template-columns: 192px minmax(0, 1fr);
-      gap: var(--space-8);
-      padding-block: var(--space-12);
+      grid-template-columns: 208px minmax(0, 1fr);
+      gap: var(--space-6);
+      padding-block: var(--space-6) var(--space-12);
+    }
+    .board-head {
+      align-items: end;
+      margin: 0;
+      padding: var(--space-5) 0 var(--space-6);
     }
     .board-head h1 {
-      max-width: 14ch;
-      font-size: clamp(42px, 4vw, 52px);
+      max-width: none;
+      font-size: clamp(34px, 3.4vw, 44px);
       letter-spacing: -.025em;
     }
-    .board-intro { max-width: 62ch; }
+    .board-intro {
+      max-width: 58ch;
+      margin-top: var(--space-3);
+    }
     .tabs {
-      top: 88px;
-      min-height: 420px;
+      top: 80px;
+      min-height: calc(100svh - 112px);
       align-self: start;
-      padding: 0 var(--space-6) 0 0;
+      padding: var(--space-2) var(--space-5) 0 0;
       border: 0;
       border-right: 1px solid var(--border);
       border-radius: 0;
@@ -1150,7 +1171,15 @@
       background: var(--surface);
       color: var(--fg);
     }
-    .panel { padding-top: var(--space-8); }
+    .panel {
+      min-height: 620px;
+      padding: var(--space-6);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: color-mix(in oklab, var(--surface), transparent 8%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
     .panel-head {
       align-items: center;
       padding-bottom: var(--space-4);
@@ -1179,7 +1208,7 @@
       color: var(--bg);
     }
     .masonry {
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: var(--space-4);
     }
     .pin {
@@ -1227,6 +1256,10 @@
         padding: 0 0 var(--space-4);
         border-right: 0;
         border-bottom: 1px solid var(--border);
+      }
+      .panel {
+        min-height: 0;
+        padding: var(--space-5);
       }
       .masonry { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
