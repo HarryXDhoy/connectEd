@@ -348,7 +348,7 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, display_name)
+  insert into public.profiles (id, display_name, avatar_url)
   values (
     new.id,
     left(
@@ -358,6 +358,10 @@ begin
         'connectEd member'
       ),
       80
+    ),
+    coalesce(
+      nullif(new.raw_user_meta_data->>'avatar_url', ''),
+      nullif(new.raw_user_meta_data->>'picture', '')
     )
   )
   on conflict (id) do nothing;
