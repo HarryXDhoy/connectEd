@@ -1,47 +1,1123 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>connectEd — Find the right project to build with</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Discover projects, show what you can contribute, and build with people who care.">
+  <title>connectEd — Find your next project</title>
   <style>
-    :root{--bg:#ffffff;--surface:#f5f5f5;--fg:#000000;--muted:#8c8c8c;--border:#dbdbdb;--accent:#0066cc;--accent-secondary:#2997ff;--accent-on:#ffffff;--font-display:"SF Pro HK",system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;--font-body:"SF Pro HK",system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;--font-mono:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--radius:8px;--max:1200px;--glass:color-mix(in srgb,var(--bg) 72%,transparent);--glass-strong:color-mix(in srgb,var(--bg) 86%,transparent);--shadow:0 1px 2px color-mix(in srgb,var(--fg) 8%,transparent),0 18px 48px color-mix(in srgb,var(--accent) 10%,transparent);--focus:0 0 0 3px color-mix(in srgb,var(--accent) 24%,transparent)}
-    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--fg);background:var(--bg);font:16px/1.55 var(--font-body);overflow-x:hidden}button,input,textarea,select{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:0;box-shadow:var(--focus)}
-    .wrap{width:min(calc(100% - 48px),var(--max));margin:auto}.topbar{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(22px) saturate(160%);border-bottom:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.nav{height:72px;display:flex;align-items:center;justify-content:space-between;gap:24px}.brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.03em}.mark{width:28px;height:28px;display:grid;place-items:center;border-radius:var(--radius);background:var(--fg);color:var(--accent-on);font:11px var(--font-mono)}.nav-links{display:flex;gap:24px;color:var(--muted);font-size:14px}.nav-links a:hover{color:var(--fg)}.actions{display:flex;gap:8px}.btn{min-height:44px;border:1px solid transparent;border-radius:var(--radius);padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;transition:transform .16s ease,background .16s ease,box-shadow .16s ease}.btn:active{transform:translateY(1px)}.primary{background:var(--fg);color:var(--accent-on);box-shadow:var(--shadow)}.primary:hover{background:color-mix(in srgb,var(--fg) 82%,var(--accent))}.secondary{background:var(--glass-strong);color:var(--fg);border-color:var(--border);backdrop-filter:blur(18px)}.secondary:hover{box-shadow:var(--shadow)}.small{min-height:36px;padding:0 12px;font-size:14px}
-    .hero{position:relative;padding:92px 0 70px;isolation:isolate}.hero:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,color-mix(in srgb,var(--border) 70%,transparent) 1px,transparent 1px),linear-gradient(color-mix(in srgb,var(--border) 70%,transparent) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(ellipse 78% 70% at 50% 15%,var(--fg),transparent 76%)}.hero-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);align-items:center;gap:64px}.eyebrow{color:var(--accent);font:11px/1.3 var(--font-mono);letter-spacing:.09em;text-transform:uppercase}.hero h1{max-width:760px;margin:16px 0 20px;font:600 clamp(48px,7vw,82px)/.97 var(--font-display);letter-spacing:-.055em}.hero h1 span{color:var(--accent)}.lede{max-width:58ch;color:var(--muted);font-size:20px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}.glass{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);border:1px solid color-mix(in srgb,var(--border) 76%,transparent);box-shadow:var(--shadow);border-radius:var(--radius)}.signal{padding:24px;transform:perspective(1000px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .12s ease-out}.signal-head{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;border-bottom:1px solid var(--border);padding-bottom:18px}.signal-head strong{font-size:30px;color:var(--fg);letter-spacing:-.06em}.signal-row{display:flex;gap:12px;align-items:center;padding-top:18px}.avatar{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:var(--fg);color:var(--accent-on);font-size:11px;font-weight:600}.signal-row p{margin:0;font-size:14px}.signal-row small{display:block;color:var(--muted);margin-top:2px}
-    section{padding:74px 0}.section-head{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:28px}.section-head h2{margin:8px 0 0;font-size:clamp(28px,4vw,44px);line-height:1;letter-spacing:-.05em}.section-head p{max-width:44ch;color:var(--muted);font-size:14px}.discover-grid{display:grid;grid-template-columns:220px 1fr;gap:32px}.filters{display:grid;align-content:start;gap:16px}.field,.select{width:100%;min-height:44px;border:1px solid var(--border);border-radius:var(--radius);padding:0 12px;background:var(--glass-strong);color:var(--fg);backdrop-filter:blur(16px)}textarea.field{padding:12px;min-height:108px;resize:vertical}.field::placeholder{color:var(--muted)}.filter{display:flex;flex-wrap:wrap;gap:8px}.chip{min-height:36px;padding:0 11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--glass-strong);color:var(--muted);font-size:13px}.chip.active,.chip:hover{color:var(--fg);border-color:var(--accent)}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card{display:flex;flex-direction:column;min-height:240px;padding:20px}.card:hover{transform:translateY(-3px);transition:transform .2s ease}.card-top,.card-foot{display:flex;justify-content:space-between;gap:12px}.badge{display:inline-flex;align-items:center;min-height:24px;padding:0 9px;border-radius:999px;border:1px solid var(--border);color:var(--muted);font:11px var(--font-mono)}.badge.open{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 46%,var(--border))}.card h3{margin:22px 0 8px;font-size:21px;line-height:1.15;letter-spacing:-.03em}.card p{margin:0;color:var(--muted);font-size:14px}.tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px;color:var(--muted);font-size:12px}.tags span:before{content:'#';color:var(--accent)}.card-foot{margin-top:auto;padding-top:20px;align-items:center;color:var(--muted);font-size:12px}.owner{display:flex;align-items:center;gap:8px}.empty{grid-column:1/-1;padding:48px;text-align:center;color:var(--muted)}
-    .modal-bg{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;padding:18px;background:color-mix(in srgb,var(--fg) 34%,transparent)}.modal-bg.open{display:flex}.modal{width:min(100%,560px);max-height:92vh;overflow:auto;padding:26px}.modal-head{display:flex;justify-content:space-between;gap:18px;margin-bottom:22px}.modal h2{margin:0;font-size:26px;letter-spacing:-.04em}.modal-head p{margin:5px 0 0;color:var(--muted);font-size:14px}.close{width:40px;height:40px;border:1px solid var(--border);border-radius:50%;background:var(--glass-strong)}.form{display:grid;gap:14px}.form label{display:grid;gap:7px;font-size:14px;font-weight:600}.form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}.toast{position:fixed;right:18px;bottom:18px;z-index:60;max-width:340px;padding:13px 15px;border-radius:var(--radius);background:var(--fg);color:var(--accent-on);transform:translateY(140%);transition:transform .2s ease;box-shadow:var(--shadow);font-size:14px}.toast.show{transform:translateY(0)}.config-note{padding:12px 16px;background:color-mix(in srgb,var(--accent) 8%,var(--bg));border-bottom:1px solid color-mix(in srgb,var(--accent) 22%,var(--border));color:var(--muted);font-size:13px;text-align:center}.config-note a{color:var(--accent);text-decoration:underline}
-    @media(max-width:800px){.wrap{width:min(calc(100% - 32px),var(--max))}.nav-links{display:none}.hero{padding-top:62px}.hero-grid,.discover-grid{grid-template-columns:1fr;gap:34px}.signal{max-width:520px}.filters{display:grid;grid-template-columns:1fr auto;align-items:end}.cards{grid-template-columns:1fr}.section-head{display:block}.section-head p{margin-top:12px}.hero h1{font-size:clamp(46px,13vw,72px)}}@media(max-width:520px){.nav{height:62px}.actions .secondary{display:none}.filters{grid-template-columns:1fr}.hero-actions .btn{width:100%}.modal{padding:20px}}
-    @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
-  .liquid-stage{background:radial-gradient(circle at 78% 8%,color-mix(in srgb,var(--accent-secondary) 14%,transparent),transparent 31%),radial-gradient(circle at 14% 20%,color-mix(in srgb,var(--surface) 90%,transparent),transparent 38%)}.topbar{background:color-mix(in srgb,var(--bg) 58%,transparent);border-bottom-color:color-mix(in srgb,var(--bg) 48%,var(--border))}.glass{position:relative;overflow:hidden;background:color-mix(in srgb,var(--bg) 54%,transparent);border-color:color-mix(in srgb,var(--bg) 62%,var(--border));box-shadow:inset 0 1px 0 color-mix(in srgb,var(--bg) 92%,transparent),0 18px 52px color-mix(in srgb,var(--fg) 9%,transparent)}.glass:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,color-mix(in srgb,var(--bg) 68%,transparent),transparent 34%,transparent 68%,color-mix(in srgb,var(--accent-secondary) 7%,transparent));opacity:.8}.glass>*{position:relative}.hero{background:radial-gradient(circle at 50% 0%,color-mix(in srgb,var(--accent-secondary) 9%,transparent),transparent 48%)}.card,.signal{border-radius:18px}.btn,.field,.select,.chip{border-radius:14px}.signal{box-shadow:inset 0 1px 0 color-mix(in srgb,var(--bg) 92%,transparent),0 28px 70px color-mix(in srgb,var(--accent) 11%,transparent)}
+    :root {
+      --bg: #ffffff;
+      --surface: #f6f6f3;
+      --surface-warm: #e5e5e0;
+      --fg: #211922;
+      --fg-2: #000000;
+      --muted: #62625b;
+      --meta: #91918c;
+      --border: #c8c8c1;
+      --border-soft: #e0e0d9;
+      --accent: #e60023;
+      --accent-on: #000000;
+      --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+      --accent-active: color-mix(in oklab, var(--accent), black 14%);
+      --success: #103c25;
+      --warn: #c47700;
+      --danger: #9e0a0a;
+      --font-display:
+        "Pin Sans", -apple-system, system-ui, "Segoe UI", Roboto, "Oxygen-Sans",
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Ubuntu, Cantarell,
+        "Fira Sans", "Droid Sans", "Helvetica Neue", Helvetica,
+        "ヒラギノ角ゴ Pro W3", メイリオ, Meiryo, "ＭＳ Ｐゴシック", Arial,
+        sans-serif;
+      --font-body:
+        "Pin Sans", -apple-system, system-ui, "Segoe UI", Roboto, "Oxygen-Sans",
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Ubuntu, Cantarell,
+        "Fira Sans", "Droid Sans", "Helvetica Neue", Helvetica,
+        "ヒラギノ角ゴ Pro W3", メイリオ, Meiryo, "ＭＳ Ｐゴシック", Arial,
+        sans-serif;
+      --font-mono:
+        ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco,
+        Consolas, monospace;
+      --text-xs: 12px;
+      --text-sm: 14px;
+      --text-base: 16px;
+      --text-lg: 18px;
+      --text-xl: 22px;
+      --text-2xl: 28px;
+      --text-3xl: 44px;
+      --text-4xl: 70px;
+      --leading-body: 1.4;
+      --leading-tight: 1.15;
+      --tracking-display: -0.02em;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-12: 48px;
+      --section-y-desktop: 80px;
+      --section-y-tablet: 48px;
+      --section-y-phone: 32px;
+      --radius-sm: 12px;
+      --radius-md: 16px;
+      --radius-lg: 28px;
+      --radius-pill: 9999px;
+      --elev-flat: none;
+      --elev-ring: 0 0 0 1px var(--border);
+      --elev-raised: 0 4px 16px rgba(33, 25, 34, 0.06);
+      --focus-ring: 0 0 0 3px color-mix(in oklab, #435ee5, transparent 70%);
+      --motion-fast: 150ms;
+      --motion-base: 200ms;
+      --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+      --container-max: 1280px;
+      --container-gutter-desktop: 32px;
+      --container-gutter-tablet: 24px;
+      --container-gutter-phone: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--bg); }
+    body {
+      margin: 0;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 88% 6%, color-mix(in oklab, var(--surface-warm), transparent 18%), transparent 28%),
+        var(--bg);
+      color: var(--fg);
+      font: 400 var(--text-base)/var(--leading-body) var(--font-body);
+    }
+    body.modal-open { overflow: hidden; }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+    button:focus-visible, a:focus-visible, input:focus-visible,
+    textarea:focus-visible, select:focus-visible {
+      outline: 0;
+      box-shadow: var(--focus-ring);
+    }
+    [hidden] { display: none !important; }
+    .container {
+      width: min(calc(100% - var(--container-gutter-desktop) * 2), var(--container-max));
+      margin-inline: auto;
+    }
+    .glass {
+      position: relative;
+      border: 1px solid color-mix(in oklab, var(--bg), var(--border) 48%);
+      background: color-mix(in oklab, var(--bg), transparent 24%);
+      box-shadow:
+        inset 0 1px 0 color-mix(in oklab, var(--bg), transparent 4%),
+        0 24px 70px color-mix(in oklab, var(--fg), transparent 91%);
+      backdrop-filter: blur(24px) saturate(135%);
+    }
+    .glass::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(
+        128deg,
+        color-mix(in oklab, var(--bg), transparent 36%),
+        transparent 34%,
+        transparent 72%,
+        color-mix(in oklab, var(--surface-warm), transparent 68%)
+      );
+    }
+    .glass > * { position: relative; z-index: 1; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      border-bottom: 1px solid color-mix(in oklab, var(--border-soft), transparent 25%);
+      background: color-mix(in oklab, var(--bg), transparent 18%);
+      backdrop-filter: blur(22px) saturate(145%);
+    }
+    .nav {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      gap: var(--space-6);
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+    }
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--accent-on);
+      font-size: var(--text-xs);
+      font-weight: 600;
+    }
+    .nav-search {
+      position: relative;
+      flex: 1;
+      max-width: 620px;
+    }
+    .nav-search input {
+      width: 100%;
+      min-height: 46px;
+      padding: 0 48px 0 18px;
+      border: 0;
+      border-radius: var(--radius-pill);
+      background: var(--surface);
+      color: var(--fg);
+    }
+    .nav-search span {
+      position: absolute;
+      right: 16px;
+      top: 13px;
+      color: var(--meta);
+      font-size: var(--text-sm);
+    }
+    .nav-actions { display: flex; align-items: center; gap: var(--space-2); }
+    .btn {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      border: 0;
+      border-radius: var(--radius-md);
+      padding: 0 18px;
+      background: var(--surface-warm);
+      color: var(--fg-2);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      transition:
+        transform var(--motion-fast) var(--ease-standard),
+        background var(--motion-fast) var(--ease-standard);
+    }
+    .btn:hover { background: var(--border-soft); transform: translateY(-1px); }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--accent); color: var(--accent-on); }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-ghost { background: transparent; }
+    .btn-small { min-height: 38px; padding-inline: 14px; font-size: var(--text-sm); }
+    .hero {
+      position: relative;
+      min-height: 760px;
+      display: grid;
+      align-items: center;
+      padding: var(--section-y-desktop) 0;
+      isolation: isolate;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset: 8% -12% auto;
+      height: 74%;
+      border-radius: 50%;
+      background: color-mix(in oklab, var(--surface), transparent 20%);
+      filter: blur(80px);
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+      gap: clamp(48px, 8vw, 112px);
+      align-items: center;
+    }
+    .eyebrow {
+      margin: 0 0 var(--space-4);
+      color: var(--muted);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 750px;
+      margin-bottom: var(--space-6);
+      font: 600 clamp(52px, 7.2vw, var(--text-4xl))/0.98 var(--font-display);
+      letter-spacing: -0.03em;
+    }
+    .lede {
+      max-width: 60ch;
+      margin-bottom: var(--space-8);
+      color: var(--muted);
+      font-size: var(--text-lg);
+      line-height: 1.55;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+    .stage {
+      position: relative;
+      min-height: 570px;
+      perspective: 1300px;
+      transform-style: preserve-3d;
+    }
+    .stage-card {
+      position: absolute;
+      width: min(74%, 400px);
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      transform-style: preserve-3d;
+      transition: transform 180ms var(--ease-standard);
+    }
+    .stage-card:nth-child(1) {
+      top: 0;
+      left: 1%;
+      transform:
+        translate3d(var(--x1, 0px), calc(var(--y1, 0px) + var(--s1, 0px)), -70px)
+        rotateX(calc(8deg + var(--rx, 0deg))) rotateY(calc(-12deg + var(--ry, 0deg)));
+    }
+    .stage-card:nth-child(2) {
+      top: 31%;
+      right: 0;
+      transform:
+        translate3d(var(--x2, 0px), calc(var(--y2, 0px) + var(--s2, 0px)), 45px)
+        rotateX(calc(-3deg + var(--rx, 0deg))) rotateY(calc(8deg + var(--ry, 0deg)));
+    }
+    .stage-card:nth-child(3) {
+      left: 8%;
+      bottom: 0;
+      transform:
+        translate3d(var(--x3, 0px), calc(var(--y3, 0px) + var(--s3, 0px)), 110px)
+        rotateX(calc(2deg + var(--rx, 0deg))) rotateY(calc(-3deg + var(--ry, 0deg)));
+    }
+    .stage-cover {
+      min-height: 128px;
+      padding: var(--space-5);
+      display: flex;
+      align-items: flex-end;
+      background: var(--fg);
+      color: var(--bg);
+    }
+    .stage-cover strong {
+      max-width: 13ch;
+      font-size: var(--text-xl);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+    .stage-body { padding: var(--space-4); }
+    .stage-body p { margin: 6px 0 0; color: var(--muted); font-size: var(--text-sm); }
+    .stage-meta {
+      margin-top: var(--space-2);
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-3);
+      color: var(--meta);
+      font-size: var(--text-xs);
+    }
+    section { padding: var(--section-y-desktop) 0; }
+    .section-head {
+      max-width: 760px;
+      margin-bottom: var(--space-8);
+    }
+    h2 {
+      margin-bottom: var(--space-4);
+      font: 600 clamp(34px, 4.8vw, 58px)/1 var(--font-display);
+      letter-spacing: -0.03em;
+    }
+    .section-copy { max-width: 62ch; color: var(--muted); }
+    .board-tools {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+    .filter-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .chip {
+      min-height: 40px;
+      border: 0;
+      border-radius: var(--radius-md);
+      padding: 0 14px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: var(--text-sm);
+    }
+    .chip:hover, .chip.active { background: var(--surface-warm); color: var(--fg); }
+    .masonry { columns: 4 250px; column-gap: var(--space-4); }
+    .pin {
+      width: 100%;
+      break-inside: avoid;
+      margin: 0 0 var(--space-4);
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      transition: transform var(--motion-base) var(--ease-standard);
+    }
+    .pin:hover { transform: translateY(-4px); }
+    .pin-cover {
+      min-height: var(--cover-height, 190px);
+      padding: var(--space-5);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: var(--surface-warm);
+    }
+    .pin:nth-child(3n + 2) .pin-cover { background: var(--fg); color: var(--bg); }
+    .pin:nth-child(3n) .pin-cover { background: var(--border-soft); }
+    .pin-cover h3 {
+      max-width: 14ch;
+      margin: auto 0 0;
+      font-size: clamp(var(--text-xl), 2.4vw, var(--text-2xl));
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+    .badge {
+      width: fit-content;
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: var(--radius-sm);
+      padding: 0 10px;
+      background: color-mix(in oklab, var(--bg), transparent 18%);
+      color: var(--fg);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .pin-body { padding: var(--space-5); }
+    .pin-body p { margin-bottom: var(--space-4); color: var(--muted); font-size: var(--text-sm); }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-4); }
+    .tag {
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: var(--text-xs);
+    }
+    .pin-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .owner { color: var(--muted); font-size: var(--text-xs); }
+    .empty {
+      padding: var(--space-12);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      color: var(--muted);
+      text-align: center;
+    }
+    .masonry > .empty { column-span: all; }
+    .plan {
+      display: grid;
+      grid-template-columns: 0.7fr 1.3fr;
+      gap: var(--space-4);
+      align-items: stretch;
+    }
+    .plan-card {
+      min-height: 340px;
+      padding: clamp(28px, 4vw, 52px);
+      border-radius: var(--radius-lg);
+    }
+    .plan-card.featured { background: var(--fg); color: var(--bg); }
+    .plan-card h3 {
+      margin: var(--space-6) 0 var(--space-4);
+      font-size: var(--text-3xl);
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .plan-card p { color: var(--muted); }
+    .plan-card.featured p { color: var(--border); }
+    .plan-list { display: grid; gap: 10px; margin: var(--space-6) 0; padding: 0; list-style: none; }
+    .plan-list li::before { content: "—"; margin-right: 8px; }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      place-items: center;
+      padding: var(--space-4);
+      background: color-mix(in oklab, var(--fg), transparent 48%);
+      backdrop-filter: blur(10px);
+    }
+    .modal-backdrop.open { display: grid; }
+    .modal {
+      width: min(100%, 620px);
+      max-height: 92vh;
+      overflow: auto;
+      border-radius: var(--radius-lg);
+      padding: clamp(24px, 4vw, 40px);
+    }
+    .modal-head { display: flex; justify-content: space-between; gap: var(--space-5); }
+    .modal h2 { font-size: var(--text-2xl); }
+    .close {
+      width: 44px;
+      height: 44px;
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 50%;
+      background: var(--surface-warm);
+      font-size: var(--text-xl);
+    }
+    .form { display: grid; gap: var(--space-4); margin-top: var(--space-6); }
+    .form label { display: grid; gap: 7px; font-size: var(--text-sm); font-weight: 600; }
+    .field {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0 15px;
+      background: color-mix(in oklab, var(--bg), transparent 5%);
+      color: var(--fg);
+    }
+    textarea.field { min-height: 120px; padding-block: 13px; resize: vertical; }
+    .field::placeholder { color: var(--meta); }
+    .form-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); }
+    .auth-switch { color: var(--muted); font-size: var(--text-sm); }
+    .toast {
+      position: fixed;
+      right: var(--space-5);
+      bottom: var(--space-5);
+      z-index: 70;
+      max-width: 360px;
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      background: var(--fg);
+      color: var(--bg);
+      transform: translateY(160%);
+      transition: transform var(--motion-base) var(--ease-standard);
+    }
+    .toast.show { transform: translateY(0); }
+    .preview-note {
+      padding: 10px var(--space-4);
+      background: var(--surface-warm);
+      color: var(--muted);
+      font-size: var(--text-sm);
+      text-align: center;
+    }
+    footer { padding: var(--section-y-tablet) 0; color: var(--muted); }
+    .footer-row { display: flex; justify-content: space-between; gap: var(--space-5); }
+
+    @media (max-width: 900px) {
+      .container {
+        width: min(calc(100% - var(--container-gutter-tablet) * 2), var(--container-max));
+      }
+      .nav-search { display: none; }
+      .hero { min-height: auto; }
+      .hero-grid { grid-template-columns: 1fr; }
+      .stage { min-height: 540px; max-width: 650px; }
+      .plan { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .container {
+        width: min(calc(100% - var(--container-gutter-phone) * 2), var(--container-max));
+      }
+      .nav { min-height: 64px; }
+      .nav-actions .btn-ghost { display: none; }
+      .hero { padding: var(--section-y-tablet) 0; }
+      h1 { font-size: clamp(44px, 14vw, 62px); }
+      .stage { min-height: 460px; margin-inline: -8px; }
+      .stage-card { width: 86%; }
+      .stage-cover { min-height: 128px; }
+      section { padding: var(--section-y-tablet) 0; }
+      .board-tools, .footer-row { align-items: stretch; flex-direction: column; }
+      .masonry { columns: 1; }
+      .plan-card { min-height: auto; }
+      .form-actions .btn { flex: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+      .stage-card { transform: none !important; }
+    }
   </style>
 </head>
 <body>
-  <div id="config-note" class="config-note" hidden>ConnectEd is in preview mode. Add your Supabase public settings in <code>app-config.js</code> to enable shared accounts and data.</div>
-  <header class="topbar"><div class="wrap nav"><a class="brand" href="connected-app.html"><span class="mark">cE</span><span>connectEd</span></a><nav class="nav-links"><a href="#discover">Discover</a><a href="project-hub.html">Project hub</a></nav><div class="actions"><button class="btn secondary small" data-open="auth">Sign in</button><button class="btn primary small" data-open="create">Share a project</button></div></div></header>
+  <div id="preview-note" class="preview-note" hidden>
+    Preview examples are shown because shared data is not connected.
+  </div>
+  <header class="topbar" data-od-id="site-header">
+    <div class="container nav">
+      <a class="brand" href="connected-app.html" aria-label="connectEd home">
+        <span class="brand-mark">cE</span><span>connectEd</span>
+      </a>
+      <label class="nav-search" aria-label="Search projects">
+        <input id="nav-search" type="search" placeholder="Search projects, roles, and skills">
+        <span>⌕</span>
+      </label>
+      <div class="nav-actions">
+        <a class="btn btn-ghost btn-small" href="project-hub.html">Project board</a>
+        <button id="account-button" class="btn btn-primary btn-small" data-open="auth">Sign in</button>
+      </div>
+    </div>
+  </header>
+
   <main>
-    <section class="hero"><div class="wrap hero-grid"><div><div class="eyebrow">A clearer way to find collaborators</div><h1><span>connectEd</span> gives good project ideas a better next step.</h1><p class="lede">Discover thoughtful projects, show the skills you bring, and make joining feel like a real conversation—not a cold pitch.</p><div class="hero-actions"><a class="btn primary" href="#discover">Explore projects <span>→</span></a><button class="btn secondary" data-open="create">Share a project</button></div></div><aside class="signal glass" id="signal"><div class="signal-head"><span>Live collaboration signal</span><strong>01</strong></div><div class="signal-row"><span class="avatar">MP</span><p><strong>Mindweave</strong><small>Looking for a React Native builder</small></p></div><div class="signal-row"><span class="avatar">JL</span><p><strong>Jun Lee</strong><small>Sent a join request with context</small></p></div><div class="signal-row"><span class="avatar">✓</span><p><strong>Clear next step</strong><small>Owners review requests in their hub</small></p></div></aside></div></section>
-    <section id="discover"><div class="wrap"><div class="section-head"><div><div class="eyebrow">Open projects</div><h2>Useful work, looking for the right people.</h2></div><p>Search by project, role, or skill. The list becomes shared and persistent when Supabase is configured.</p></div><div class="discover-grid"><aside class="filters"><label>Search<input id="search" class="field" type="search" placeholder="Try “mobile” or “research”"></label><div class="filter"><button class="chip active" data-filter="all">All</button><button class="chip" data-filter="open">Open seats</button><button class="chip" data-filter="design">Design</button><button class="chip" data-filter="engineering">Engineering</button></div></aside><div id="cards" class="cards" aria-live="polite"></div></div></div></section>
-    <section id="plans"><div class="wrap"><div class="section-head"><div><div class="eyebrow">One membership, both sides of the match</div><h2>Stay open to everyone. Move with more signal.</h2></div><p>Every member can discover and apply for free. One monthly subscription gives the same person better visibility as both a participant and a project initiator.</p></div><div class="cards"><article class="card glass"><div class="card-top"><span class="badge">Free</span><span class="eyebrow">For everyone</span></div><h3>Start with the work</h3><p>Browse projects, build your profile, apply, share ideas, and join interviews. No paywall on participation.</p><div class="card-foot"><strong>$0</strong><span>Always free</span></div></article><article class="card glass"><div class="card-top"><span class="badge open">connectEd Plus</span><span class="eyebrow">For participants & initiators</span></div><h3>Be seen when it matters</h3><p>Get Priority Match on your applications, so your profile and skills are reviewed earlier. When you share a project, get one active project boosted near the top of discovery while you recruit.</p><div class="card-foot"><strong>$6 / month</strong><button class="btn primary small" data-checkout="priority_match">Get connectEd Plus</button></div></article></div></div></section>
+    <section class="hero" data-od-id="landing-hero">
+      <div class="container hero-grid">
+        <div>
+          <p class="eyebrow">Ideas become teams here</p>
+          <h1 data-od-id="hero-heading">Find work worth joining.</h1>
+          <p class="lede">
+            A visual project board for people who want to build, not just network.
+            Share an idea, show what you bring, and move from interest to interview.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#discover" data-od-id="hero-explore-cta">Explore projects</a>
+            <button class="btn" data-open="create" data-od-id="hero-share-cta">Share your idea</button>
+          </div>
+        </div>
+        <div class="stage" id="stage" aria-label="Project collaboration preview">
+          <article class="stage-card glass">
+            <div class="stage-cover"><strong>A calmer way to reflect daily</strong></div>
+            <div class="stage-body">
+              <b>Mindweave</b>
+              <p>Seeking mobile engineering and product design.</p>
+              <div class="stage-meta"><span>AI journal</span><span>Open</span></div>
+            </div>
+          </article>
+          <article class="stage-card glass">
+            <div class="stage-cover"><strong>Build trust in local communities</strong></div>
+            <div class="stage-body">
+              <b>Nestmate</b>
+              <p>A useful network for new parents, block by block.</p>
+              <div class="stage-meta"><span>Community</span><span>Design</span></div>
+            </div>
+          </article>
+          <article class="stage-card glass">
+            <div class="stage-cover"><strong>Make the next conversation real</strong></div>
+            <div class="stage-body">
+              <b>Interview scheduled</b>
+              <p>Application reviewed. Google Meet ready.</p>
+              <div class="stage-meta"><span>Tomorrow</span><span>16:00</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="discover" data-od-id="project-discovery">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Project discovery</p>
+          <h2>Browse ideas like inspiration.</h2>
+          <p class="section-copy">
+            Search the board by project, discipline, or skill. Boosted projects appear first,
+            but every open idea stays discoverable.
+          </p>
+        </div>
+        <div class="board-tools">
+          <div class="filter-row" aria-label="Project filters">
+            <button class="chip active" data-filter="all">All ideas</button>
+            <button class="chip" data-filter="design">Design</button>
+            <button class="chip" data-filter="engineering">Engineering</button>
+            <button class="chip" data-filter="research">Research</button>
+          </div>
+          <a class="btn btn-small" href="project-hub.html">Open full board</a>
+        </div>
+        <div id="project-pins" class="masonry" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section data-od-id="membership">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">One membership, both roles</p>
+          <h2>Be seen as a builder and an initiator.</h2>
+        </div>
+        <div class="plan">
+          <article class="plan-card glass">
+            <span class="badge">Free</span>
+            <h3>$0</h3>
+            <p>Profiles, project sharing, applications, reviews, and interviews stay open.</p>
+            <ul class="plan-list">
+              <li>Build a skills profile</li>
+              <li>Apply with project-specific answers</li>
+              <li>Publish and manage ideas</li>
+            </ul>
+          </article>
+          <article class="plan-card featured">
+            <span class="badge">connectEd Plus</span>
+            <h3>$6 monthly</h3>
+            <p>
+              Your applications are reviewed earlier, and you can boost one of your own
+              active projects on the same subscription.
+            </p>
+            <ul class="plan-list">
+              <li>Priority placement in applicant review</li>
+              <li>One active project boosted on discovery</li>
+              <li>Benefits follow you across both roles</li>
+            </ul>
+            <button class="btn btn-primary" id="plus-checkout">Get connectEd Plus</button>
+          </article>
+        </div>
+      </div>
+    </section>
   </main>
-  <div id="modal-auth" class="modal-bg"><div class="modal glass"><div class="modal-head"><div><h2>Welcome back</h2><p>Sign in to send requests and manage your profile.</p></div><button class="close" data-close="auth">×</button></div><form id="auth-form" class="form"><label>Email<input class="field" name="email" type="email" required placeholder="you@example.com"></label><label>Password<input class="field" name="password" type="password" required placeholder="At least 6 characters"></label><div class="form-actions"><button class="btn secondary" type="button" id="google-auth">Continue with Google</button><button class="btn primary" type="submit">Sign in</button></div><button class="btn secondary" type="button" id="signup">Create an account</button></form></div></div>
-  <div id="modal-create" class="modal-bg"><div class="modal glass"><div class="modal-head"><div><h2>Share a project</h2><p>Give a future collaborator enough context to see themselves in it.</p></div><button class="close" data-close="create">×</button></div><form id="create-form" class="form"><label>Project title<input class="field" name="title" required placeholder="What are you building?"></label><label>One-line summary<input class="field" name="summary" required placeholder="Explain the opportunity in one sentence"></label><label>Description<textarea class="field" name="description" required placeholder="What exists today, and who would make the next step possible?"></textarea></label><label>Skills or tags<input class="field" name="tags" placeholder="mobile, design, research"></label><label>Application question<input class="field" name="question" placeholder="What would you bring to this project?"></label><div class="form-actions"><button class="btn secondary" type="button" data-close="create">Cancel</button><button class="btn primary" type="submit">Publish project</button></div></form></div></div>
-  <div id="modal-join" class="modal-bg"><div class="modal glass"><div class="modal-head"><div><h2>Ask to join</h2><p id="join-copy">Share the skills and perspective you would bring.</p></div><button class="close" data-close="join">×</button></div><form id="join-form" class="form"><label>Your message<textarea class="field" name="message" required placeholder="What would you contribute, and why this project?"></textarea></label><div id="join-question-wrap"></div><div class="form-actions"><button class="btn secondary" type="button" data-close="join">Cancel</button><button class="btn primary" type="submit">Send request</button></div></form></div></div>
-  <div id="toast" class="toast" role="status"></div>
-  <script src="app-config.js"></script><script type="module">
-    import { supabase, isSupabaseConfigured, currentUser, signInWithGoogle, signInWithPassword, signUpWithPassword } from './supabase-client.js';
-    const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)], esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    let activeFilter='all', activeProject=null;
-    const demo=[{id:'demo-1',title:'Mindweave — AI journaling for people who hate journaling',summary:'Voice-first daily journal that surfaces patterns in mood, sleep, and energy.',description:'A calm mobile product looking for collaborators who care about humane, useful reflection.',tags:['open','engineering','mobile'],owner:'Ada Lovelace',initials:'AL',question:'What would you bring to the first-use experience?'},{id:'demo-2',title:'Nestmate — local community for new parents',summary:'A hyperlocal way for new parents to find playdates, walks, and support.',description:'A small community product exploring how local trust is built in a busy season of life.',tags:['open','design','community'],owner:'Grace Hopper',initials:'GH',question:'Tell us about a community you helped grow.'},{id:'demo-3',title:'Pulseboard — a tiny status page for indie hackers',summary:'Self-hosted status pages in 60 seconds, with a generous free tier for solo founders.',description:'A focused developer tool looking for writing, infrastructure, and product feedback.',tags:['open','engineering','research'],owner:'Linus Pauling',initials:'LP',question:'Which part of this problem would you investigate first?'}];
-    function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
-    function open(name){$('#modal-'+name).classList.add('open')} function close(name){$('#modal-'+name).classList.remove('open')}
-    async function loadProjects(){let data=demo;if(supabase){const r=await supabase.from('projects').select('id,title,summary,description,tags,status,seats_total,profiles:owner_id(display_name)').order('created_at',{ascending:false});if(!r.error&&r.data?.length)data=r.data.map(p=>({...p,owner:p.profiles?.display_name||'connectEd member',initials:(p.profiles?.display_name||'cE').slice(0,2).toUpperCase(),question:'What would you bring to this project?'}));}render(data)}
-    function render(data){const q=$('#search').value.toLowerCase().trim();const items=data.filter(p=>(activeFilter==='all'||p.tags?.includes(activeFilter))&&(!q||[p.title,p.summary,p.description,p.owner,(p.tags||[]).join(' ')].join(' ').toLowerCase().includes(q)));$('#cards').innerHTML=items.length?items.map(p=>`<article class="card glass"><div class="card-top"><span class="badge open">${p.status==='invite_only'?'Invite only':'Open seats'}</span><span class="eyebrow">${p.tags?.includes('engineering')?'Build':'Explore'}</span></div><h3>${esc(p.title)}</h3><p>${esc(p.summary)}</p><div class="tags">${(p.tags||[]).map(t=>`<span>${esc(t)}</span>`).join('')}</div><div class="card-foot"><span class="owner"><span class="avatar">${esc(p.initials)}</span>${esc(p.owner)}</span><button class="btn secondary small" data-join="${esc(p.id)}">View & join</button></div></article>`).join(''):'<div class="empty">No projects match that search. Try a broader phrase.</div>';$$('[data-join]').forEach(b=>b.onclick=()=>{activeProject=data.find(p=>String(p.id)===b.dataset.join);$('#join-copy').textContent=`You’re asking to join ${activeProject.title}.`;$('#join-question-wrap').innerHTML=activeProject.question?`<label>Project question<textarea class="field" name="answer" required>${esc(activeProject.question)}\n\n</textarea></label>`:'';open('join')})}
-    async function createProject(form){if(!supabase){toast('Preview mode: configure Supabase to publish to the shared hub.');close('create');return}const user=await currentUser();if(!user){toast('Sign in first, then publish your project.');close('create');open('auth');return}const fd=new FormData(form);const p={owner_id:user.id,title:fd.get('title'),summary:fd.get('summary'),description:fd.get('description'),tags:String(fd.get('tags')).split(',').map(x=>x.trim()).filter(Boolean),status:'open',seats_total:3};const r=await supabase.from('projects').insert(p).select().single();if(r.error)toast(r.error.message);else{if(fd.get('question'))await supabase.from('project_questions').insert({project_id:r.data.id,prompt:fd.get('question'),position:0});toast('Project published to the shared hub.');form.reset();close('create');loadProjects()}}
-    $('#search').oninput=loadProjects;$$('[data-filter]').forEach(b=>b.onclick=()=>{activeFilter=b.dataset.filter;$$('[data-filter]').forEach(x=>x.classList.toggle('active',x===b));loadProjects()});$$('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));$$('[data-close]').forEach(b=>b.onclick=()=>close(b.dataset.close));$$('.modal-bg').forEach(b=>b.onclick=e=>{if(e.target===b)b.classList.remove('open')});$('#create-form').onsubmit=e=>{e.preventDefault();createProject(e.target)};
-    $('#join-form').onsubmit=async e=>{e.preventDefault();if(!activeProject)return;if(!supabase){toast('Preview mode: configure Supabase to send a real join request.');close('join');return}const user=await currentUser();if(!user){toast('Sign in first to send a join request.');close('join');open('auth');return}const fd=new FormData(e.target);const r=await supabase.from('applications').insert({project_id:activeProject.id,applicant_id:user.id,message:fd.get('message'),answers:{answer:fd.get('answer')||''}});if(r.error)toast(r.error.message);else{toast('Request sent. The project owner can review your profile.');e.target.reset();close('join')}};
-    $('#google-auth').onclick=async()=>{try{await signInWithGoogle()}catch(e){toast(e.message)}};$('#auth-form').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target);try{const r=await signInWithPassword(fd.get('email'),fd.get('password'));if(r.error)throw r.error;toast('Signed in.');close('auth')}catch(err){toast(err.message)}};$('#signup').onclick=async()=>{const email=prompt('Email for your connectEd account');const password=prompt('Choose a password');const name=prompt('Your display name');if(email&&password){try{const r=await signUpWithPassword(email,password,name);if(r.error)throw r.error;toast('Account created. Check your email to confirm.');close('auth')}catch(err){toast(err.message)}}};
-    async function checkout(plan){const user=await currentUser();if(!user){toast('Sign in before starting a subscription.');open('auth');return}const email=user.email||'';const r=await fetch('/api/create-checkout-session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({plan,email,userId:user.id,projectId:''})});const data=await r.json();if(!r.ok){toast(data.error||'Checkout is not configured yet.');return}window.location.href=data.url}$$('[data-checkout]').forEach(b=>b.onclick=()=>checkout(b.dataset.checkout));
-    if(!isSupabaseConfigured)$('#config-note').hidden=false;$('#signal').onpointermove=e=>{const r=e.currentTarget.getBoundingClientRect();e.currentTarget.style.setProperty('--ry',`${((e.clientX-r.left)/r.width-.5)*8}deg`);e.currentTarget.style.setProperty('--rx',`${-((e.clientY-r.top)/r.height-.5)*8}deg`)};$('#signal').onpointerleave=e=>{e.currentTarget.style.setProperty('--ry','0deg');e.currentTarget.style.setProperty('--rx','0deg')};loadProjects();
+
+  <footer>
+    <div class="container footer-row">
+      <span>connectEd</span>
+      <span>Useful ideas. Thoughtful teams.</span>
+    </div>
+  </footer>
+
+  <div id="modal-auth" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <div class="modal glass">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Your account</p>
+          <h2 id="auth-title">Sign in to continue</h2>
+        </div>
+        <button class="close" data-close="auth" aria-label="Close">×</button>
+      </div>
+      <form id="auth-form" class="form">
+        <label id="name-field" hidden>
+          Display name
+          <input class="field" name="name" maxlength="80" autocomplete="name">
+        </label>
+        <label>
+          Email
+          <input class="field" name="email" type="email" required autocomplete="email">
+        </label>
+        <label>
+          Password
+          <input class="field" name="password" type="password" minlength="8" required autocomplete="current-password">
+        </label>
+        <div class="form-actions">
+          <button class="btn" type="button" id="google-auth">Continue with Google</button>
+          <button class="btn btn-primary" type="submit" id="email-auth">Sign in</button>
+        </div>
+        <button class="btn btn-ghost auth-switch" type="button" id="auth-mode">
+          New here? Create an account
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-create" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="create-title">
+    <div class="modal glass">
+      <div class="modal-head">
+        <div><p class="eyebrow">Publish thoughtfully</p><h2 id="create-title">Share a project idea</h2></div>
+        <button class="close" data-close="create" aria-label="Close">×</button>
+      </div>
+      <form id="create-form" class="form">
+        <label>Project title<input class="field" name="title" minlength="4" maxlength="120" required></label>
+        <label>Short summary<input class="field" name="summary" minlength="12" maxlength="240" required></label>
+        <label>Description<textarea class="field" name="description" minlength="40" maxlength="8000" required></textarea></label>
+        <label>Skills and topics<input class="field" name="tags" maxlength="240" placeholder="design, mobile, education"></label>
+        <label>Application question<input class="field" name="question" minlength="8" maxlength="500" required></label>
+        <label>Open seats<input class="field" name="seats" type="number" min="1" max="50" value="3" required></label>
+        <div class="form-actions">
+          <button class="btn" type="button" data-close="create">Cancel</button>
+          <button class="btn btn-primary" type="submit">Publish idea</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-project" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="project-title">
+    <div class="modal glass">
+      <div class="modal-head">
+        <div><p class="eyebrow" id="project-owner">Project</p><h2 id="project-title">Project detail</h2></div>
+        <button class="close" data-close="project" aria-label="Close">×</button>
+      </div>
+      <p id="project-description" class="section-copy"></p>
+      <div id="project-tags" class="tags"></div>
+      <form id="join-form" class="form">
+        <label>
+          Why are you a strong fit?
+          <textarea class="field" name="message" minlength="20" maxlength="3000" required></textarea>
+        </label>
+        <div id="project-questions"></div>
+        <div class="form-actions">
+          <button class="btn" type="button" data-close="project">Cancel</button>
+          <button class="btn btn-primary" type="submit">Send application</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app-config.js"></script>
+  <script type="module">
+    import {
+      supabase,
+      isSupabaseConfigured,
+      currentUser,
+      authHeaders,
+      signInWithGoogle,
+      signInWithPassword,
+      signUpWithPassword,
+      signOut
+    } from './supabase-client.js';
+
+    const $ = selector => document.querySelector(selector);
+    const $$ = selector => [...document.querySelectorAll(selector)];
+    const escapeHtml = value => String(value ?? '').replace(
+      /[&<>"']/g,
+      char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]
+    );
+    const safeTags = value => String(value || '')
+      .split(',')
+      .map(tag => tag.trim().toLowerCase().replace(/[^a-z0-9 +#.-]/g, ''))
+      .filter(Boolean)
+      .slice(0, 8);
+
+    const previewProjects = [
+      {
+        id: 'preview-mindweave',
+        title: 'Mindweave',
+        summary: 'A voice-first journal for people who do not enjoy journaling.',
+        description: 'Preview example: a humane reflection product seeking mobile engineering and product design.',
+        tags: ['engineering', 'design', 'mobile'],
+        status: 'open',
+        owner: 'Preview project',
+        boost_until: null
+      },
+      {
+        id: 'preview-nestmate',
+        title: 'Nestmate',
+        summary: 'A local support network designed around the realities of new parenthood.',
+        description: 'Preview example: a community product exploring trust, safety, and useful neighborhood connection.',
+        tags: ['design', 'research', 'community'],
+        status: 'open',
+        owner: 'Preview project',
+        boost_until: null
+      },
+      {
+        id: 'preview-pulseboard',
+        title: 'Pulseboard',
+        summary: 'A focused status page for independent product teams.',
+        description: 'Preview example: a small developer tool seeking infrastructure and documentation collaborators.',
+        tags: ['engineering', 'research'],
+        status: 'open',
+        owner: 'Preview project',
+        boost_until: null
+      }
+    ];
+
+    let projects = [];
+    let activeFilter = 'all';
+    let activeProject = null;
+    let authMode = 'signin';
+
+    function toast(message) {
+      const element = $('#toast');
+      element.textContent = message;
+      element.classList.add('show');
+      window.clearTimeout(toast.timer);
+      toast.timer = window.setTimeout(() => element.classList.remove('show'), 3200);
+    }
+
+    function openModal(name) {
+      $(`#modal-${name}`).classList.add('open');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeModal(name) {
+      $(`#modal-${name}`).classList.remove('open');
+      document.body.classList.remove('modal-open');
+    }
+
+    async function refreshAccount() {
+      const user = await currentUser();
+      const button = $('#account-button');
+      if (user) {
+        button.textContent = 'Account';
+        button.dataset.open = '';
+        button.onclick = () => { window.location.href = 'project-hub.html'; };
+      } else {
+        button.textContent = 'Sign in';
+        button.dataset.open = 'auth';
+        button.onclick = () => openModal('auth');
+      }
+      return user;
+    }
+
+    async function loadProjects() {
+      if (!isSupabaseConfigured) {
+        projects = previewProjects;
+        $('#preview-note').hidden = false;
+        renderProjects();
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('projects')
+        .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,profiles:owner_id(display_name)')
+        .neq('status', 'closed')
+        .order('boost_until', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        projects = [];
+        toast('Projects could not be loaded.');
+      } else {
+        projects = (data || []).map(project => ({
+          ...project,
+          owner: project.profiles?.display_name || 'connectEd member'
+        }));
+      }
+      renderProjects();
+    }
+
+    function renderProjects() {
+      const query = $('#nav-search').value.toLowerCase().trim();
+      const filtered = projects.filter(project => {
+        const matchesFilter = activeFilter === 'all' || project.tags?.includes(activeFilter);
+        const haystack = [
+          project.title,
+          project.summary,
+          project.description,
+          project.owner,
+          ...(project.tags || [])
+        ].join(' ').toLowerCase();
+        return matchesFilter && (!query || haystack.includes(query));
+      });
+
+      $('#project-pins').innerHTML = filtered.length
+        ? filtered.map((project, index) => {
+            const boosted = project.boost_until && new Date(project.boost_until) > new Date();
+            return `
+              <article class="pin glass" data-od-id="project-card-${escapeHtml(project.id)}">
+                <div class="pin-cover" style="--cover-height:${170 + (index % 3) * 44}px">
+                  <span class="badge">${boosted ? 'Boosted idea' : 'Open project'}</span>
+                  <h3>${escapeHtml(project.title)}</h3>
+                </div>
+                <div class="pin-body">
+                  <p>${escapeHtml(project.summary)}</p>
+                  <div class="tags">
+                    ${(project.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+                  </div>
+                  <div class="pin-foot">
+                    <span class="owner">${escapeHtml(project.owner)}</span>
+                    <button class="btn btn-small" data-project="${escapeHtml(project.id)}">View</button>
+                  </div>
+                </div>
+              </article>
+            `;
+          }).join('')
+        : '<div class="empty">No open projects match this view yet.</div>';
+
+      $$('[data-project]').forEach(button => {
+        button.onclick = () => showProject(button.dataset.project);
+      });
+    }
+
+    async function showProject(id) {
+      activeProject = projects.find(project => String(project.id) === id);
+      if (!activeProject) return;
+      $('#project-title').textContent = activeProject.title;
+      $('#project-owner').textContent = `Shared by ${activeProject.owner}`;
+      $('#project-description').textContent = activeProject.description;
+      $('#project-tags').innerHTML = (activeProject.tags || [])
+        .map(tag => `<span class="tag">${escapeHtml(tag)}</span>`)
+        .join('');
+
+      let questions = [];
+      if (isSupabaseConfigured && !id.startsWith('preview-')) {
+        const result = await supabase
+          .from('project_questions')
+          .select('id,prompt,required,position')
+          .eq('project_id', id)
+          .order('position');
+        if (!result.error) questions = result.data || [];
+      }
+      activeProject.questions = questions;
+      $('#project-questions').innerHTML = questions.map(question => `
+        <label>
+          ${escapeHtml(question.prompt)}
+          <textarea class="field" name="question-${escapeHtml(question.id)}"
+            maxlength="2000" ${question.required ? 'required' : ''}></textarea>
+        </label>
+      `).join('');
+      openModal('project');
+    }
+
+    async function createProject(form) {
+      const user = await currentUser();
+      if (!user) {
+        closeModal('create');
+        openModal('auth');
+        toast('Sign in before sharing a project.');
+        return;
+      }
+      const values = new FormData(form);
+      const { data, error } = await supabase.from('projects').insert({
+        owner_id: user.id,
+        title: String(values.get('title')).trim(),
+        summary: String(values.get('summary')).trim(),
+        description: String(values.get('description')).trim(),
+        tags: safeTags(values.get('tags')),
+        seats_total: Number(values.get('seats')),
+        status: 'open'
+      }).select('id').single();
+      if (error) return toast(error.message);
+
+      const question = String(values.get('question')).trim();
+      const questionResult = await supabase.from('project_questions').insert({
+        project_id: data.id,
+        prompt: question,
+        position: 0,
+        required: true
+      });
+      if (questionResult.error) return toast(questionResult.error.message);
+
+      form.reset();
+      closeModal('create');
+      toast('Your project is live.');
+      await loadProjects();
+    }
+
+    async function submitApplication(form) {
+      const user = await currentUser();
+      if (!user) {
+        closeModal('project');
+        openModal('auth');
+        toast('Sign in before applying.');
+        return;
+      }
+      if (!activeProject || String(activeProject.id).startsWith('preview-')) {
+        return toast('Preview projects do not accept applications.');
+      }
+      if (activeProject.owner_id === user.id) return toast('You already own this project.');
+
+      const values = new FormData(form);
+      const answers = {};
+      for (const question of activeProject.questions || []) {
+        answers[question.id] = String(values.get(`question-${question.id}`) || '').trim();
+      }
+      const { error } = await supabase.from('applications').insert({
+        project_id: activeProject.id,
+        applicant_id: user.id,
+        message: String(values.get('message')).trim(),
+        answers
+      });
+      if (error) return toast(error.code === '23505' ? 'You already applied to this project.' : error.message);
+      form.reset();
+      closeModal('project');
+      toast('Application sent to the project owner.');
+    }
+
+    async function startCheckout() {
+      const user = await currentUser();
+      if (!user) {
+        openModal('auth');
+        return toast('Sign in before starting connectEd Plus.');
+      }
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ plan: 'connected_plus' })
+      });
+      const data = await response.json();
+      if (!response.ok) return toast(data.error || 'Checkout is unavailable.');
+      window.location.href = data.url;
+    }
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      const signup = mode === 'signup';
+      $('#name-field').hidden = !signup;
+      $('#auth-title').textContent = signup ? 'Create your account' : 'Sign in to continue';
+      $('#email-auth').textContent = signup ? 'Create account' : 'Sign in';
+      $('#auth-mode').textContent = signup
+        ? 'Already have an account? Sign in'
+        : 'New here? Create an account';
+      $('#auth-form [name=password]').autocomplete = signup ? 'new-password' : 'current-password';
+    }
+
+    $('#auth-form').onsubmit = async event => {
+      event.preventDefault();
+      const values = new FormData(event.currentTarget);
+      try {
+        const result = authMode === 'signup'
+          ? await signUpWithPassword(
+              String(values.get('email')).trim(),
+              String(values.get('password')),
+              String(values.get('name')).trim()
+            )
+          : await signInWithPassword(
+              String(values.get('email')).trim(),
+              String(values.get('password'))
+            );
+        if (result.error) throw result.error;
+        closeModal('auth');
+        toast(authMode === 'signup' ? 'Check your email to confirm your account.' : 'Signed in.');
+        await refreshAccount();
+      } catch (error) {
+        toast(error.message);
+      }
+    };
+
+    $('#google-auth').onclick = async () => {
+      try { await signInWithGoogle('/project-hub.html'); }
+      catch (error) { toast(error.message); }
+    };
+    $('#auth-mode').onclick = () => setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+    $('#create-form').onsubmit = event => {
+      event.preventDefault();
+      createProject(event.currentTarget);
+    };
+    $('#join-form').onsubmit = event => {
+      event.preventDefault();
+      submitApplication(event.currentTarget);
+    };
+    $('#plus-checkout').onclick = startCheckout;
+    $('#nav-search').oninput = renderProjects;
+
+    $$('[data-filter]').forEach(button => {
+      button.onclick = () => {
+        activeFilter = button.dataset.filter;
+        $$('[data-filter]').forEach(item => item.classList.toggle('active', item === button));
+        renderProjects();
+      };
+    });
+    $$('[data-open]:not(#account-button)').forEach(button => {
+      if (button.dataset.open) button.addEventListener('click', () => openModal(button.dataset.open));
+    });
+    $$('[data-close]').forEach(button => {
+      button.onclick = () => closeModal(button.dataset.close);
+    });
+    $$('.modal-backdrop').forEach(backdrop => {
+      backdrop.onclick = event => {
+        if (event.target === backdrop) closeModal(backdrop.id.replace('modal-', ''));
+      };
+    });
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reducedMotion) {
+      const stage = $('#stage');
+      stage.addEventListener('pointermove', event => {
+        const rect = stage.getBoundingClientRect();
+        const x = (event.clientX - rect.left) / rect.width - 0.5;
+        const y = (event.clientY - rect.top) / rect.height - 0.5;
+        stage.style.setProperty('--x1', `${x * -8}px`);
+        stage.style.setProperty('--y1', `${y * -6}px`);
+        stage.style.setProperty('--x2', `${x * 12}px`);
+        stage.style.setProperty('--y2', `${y * 10}px`);
+        stage.style.setProperty('--x3', `${x * -5}px`);
+        stage.style.setProperty('--y3', `${y * -4}px`);
+        stage.style.setProperty('--rx', `${y * -2.5}deg`);
+        stage.style.setProperty('--ry', `${x * 3}deg`);
+      });
+      stage.addEventListener('pointerleave', () => {
+        ['--x1', '--y1', '--x2', '--y2', '--x3', '--y3', '--rx', '--ry']
+          .forEach(property => stage.style.removeProperty(property));
+      });
+      let scheduled = false;
+      window.addEventListener('scroll', () => {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(() => {
+          const distance = Math.min(window.scrollY, 700);
+          stage.style.setProperty('--s1', `${distance * -0.12}px`);
+          stage.style.setProperty('--s2', `${distance * -0.22}px`);
+          stage.style.setProperty('--s3', `${distance * -0.32}px`);
+          scheduled = false;
+        });
+      }, { passive: true });
+    }
+
+    if (supabase) {
+      supabase.auth.onAuthStateChange(() => refreshAccount());
+    }
+    await Promise.all([refreshAccount(), loadProjects()]);
   </script>
 </body>
 </html>

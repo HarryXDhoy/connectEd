@@ -1,36 +1,1162 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>connectEd — Project hub</title><style>
-  :root{--bg:#ffffff;--surface:#f5f5f5;--fg:#000000;--muted:#8c8c8c;--border:#dbdbdb;--accent:#0066cc;--accent-secondary:#2997ff;--accent-on:#ffffff;--font-display:"SF Pro HK",system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;--font-body:"SF Pro HK",system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;--font-mono:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--radius:8px;--glass:color-mix(in srgb,var(--bg) 72%,transparent);--strong:color-mix(in srgb,var(--bg) 88%,transparent);--shadow:0 1px 2px color-mix(in srgb,var(--fg) 8%,transparent),0 18px 48px color-mix(in srgb,var(--accent) 10%,transparent);--focus:0 0 0 3px color-mix(in srgb,var(--accent) 24%,transparent)}
-  *{box-sizing:border-box}body{margin:0;color:var(--fg);background:var(--bg);font:14px/1.5 var(--font-body);overflow-x:hidden}button,input,textarea,select{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:0;box-shadow:var(--focus)}.wrap{width:min(calc(100% - 48px),1280px);margin:auto}.topbar{height:70px;display:flex;align-items:center;background:var(--glass);backdrop-filter:blur(22px) saturate(160%);border-bottom:1px solid color-mix(in srgb,var(--border) 76%,transparent)}.nav{display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.03em}.mark{width:28px;height:28px;display:grid;place-items:center;border-radius:var(--radius);background:var(--fg);color:var(--accent-on);font:11px var(--font-mono)}.top-actions{display:flex;align-items:center;gap:10px}.muted-link{color:var(--muted)}.btn{min-height:42px;padding:0 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--strong);color:var(--fg);font-weight:600;transition:transform .15s ease,box-shadow .15s ease}.btn:active{transform:translateY(1px)}.primary{border-color:transparent;background:var(--fg);color:var(--accent-on);box-shadow:var(--shadow)}.primary:hover{background:color-mix(in srgb,var(--fg) 82%,var(--accent))}.small{min-height:36px;padding:0 11px;font-size:13px}.shell{display:grid;grid-template-columns:210px minmax(0,1fr);gap:38px;padding-top:50px}.sidebar{align-self:start;position:sticky;top:92px;padding:14px;background:var(--glass);backdrop-filter:blur(22px);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}.side-label{margin:8px 10px;color:var(--muted);font:10px var(--font-mono);letter-spacing:.09em;text-transform:uppercase}.side-nav{display:grid;gap:3px}.side-nav button{min-height:38px;text-align:left;border:0;border-radius:var(--radius);background:transparent;color:var(--muted);padding:0 10px}.side-nav button.active,.side-nav button:hover{color:var(--fg);background:var(--strong);box-shadow:0 0 0 1px var(--border)}.side-group+ .side-group{margin-top:26px}.hub-head{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:32px}.eyebrow{color:var(--accent);font:11px var(--font-mono);letter-spacing:.09em;text-transform:uppercase}.hub-head h1{max-width:780px;margin:10px 0 10px;font:600 clamp(38px,5vw,64px)/.98 var(--font-display);letter-spacing:-.055em}.lede{max-width:62ch;color:var(--muted);font-size:17px}.glass{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);border:1px solid color-mix(in srgb,var(--border) 76%,transparent);box-shadow:var(--shadow);border-radius:var(--radius)}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}.stat{padding:17px}.stat-label,.stat-note{color:var(--muted);font-size:12px}.stat-value{margin:8px 0;font-size:28px;letter-spacing:-.06em}.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px}.search{flex:1;display:flex;align-items:center;gap:9px;padding:0 12px;min-height:44px}.search input{width:100%;border:0;outline:0;background:transparent;color:var(--fg)}.filters{display:flex;flex-wrap:wrap;gap:7px}.chip{min-height:36px;padding:0 11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--strong);color:var(--muted);font-size:13px}.chip.active,.chip:hover{color:var(--fg);border-color:var(--accent)}.project-list{display:grid;gap:10px}.project{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;padding:20px}.project:hover{transform:translateY(-2px);transition:transform .18s ease}.project-top{display:flex;justify-content:space-between;gap:16px}.project h3{margin:0;font-size:19px;line-height:1.15;letter-spacing:-.025em}.project-summary{margin:8px 0 0;color:var(--muted)}.status{display:inline-flex;align-items:center;min-height:25px;padding:0 9px;border-radius:999px;border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border));color:var(--accent);white-space:nowrap;font:11px var(--font-mono)}.meta{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:18px;color:var(--muted);font-size:12px}.project-side{min-width:156px;display:flex;flex-direction:column;justify-content:space-between;align-items:end;gap:15px}.seats{display:flex;align-items:center;gap:8px;color:var(--muted);font:12px var(--font-mono)}.bar{width:72px;height:5px;overflow:hidden;border-radius:999px;background:var(--surface)}.bar span{display:block;height:100%;background:var(--accent)}.lower{display:grid;grid-template-columns:1.2fr .8fr;gap:12px;margin-top:24px}.panel{padding:20px}.panel-head{display:flex;justify-content:space-between;gap:16px;align-items:start;margin-bottom:14px}.panel h2{margin:0;font-size:20px;letter-spacing:-.03em}.panel-head p{margin:5px 0 0;color:var(--muted)}.request{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:15px 0;border-top:1px solid var(--border)}.request:first-of-type{border-top:0}.avatar{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;background:var(--fg);color:var(--accent-on);font-size:10px;font-weight:600}.request p{margin:3px 0;color:var(--muted);font-size:13px}.request-actions{display:flex;gap:6px}.empty{padding:42px;text-align:center;color:var(--muted)}
-  .modal-bg{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;padding:18px;background:color-mix(in srgb,var(--fg) 34%,transparent)}.modal-bg.open{display:flex}.modal{width:min(100%,620px);max-height:92vh;overflow:auto;padding:24px}.modal-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:20px}.modal h2{margin:0;font-size:24px;letter-spacing:-.035em}.modal-head p{margin:4px 0 0;color:var(--muted)}.close{width:38px;height:38px;border:1px solid var(--border);border-radius:50%;background:var(--strong)}.form{display:grid;gap:13px}.form label{display:grid;gap:6px;font-weight:600}.field,.select{width:100%;min-height:42px;padding:0 11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--strong);color:var(--fg)}textarea.field{padding:11px;min-height:90px;resize:vertical}.form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}.toast{position:fixed;right:18px;bottom:18px;z-index:50;padding:13px 15px;border-radius:var(--radius);background:var(--fg);color:var(--accent-on);transform:translateY(140%);transition:transform .2s ease;box-shadow:var(--shadow)}.toast.show{transform:translateY(0)}
-  @media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{position:static;display:flex;justify-content:space-between;gap:10px}.side-group+.side-group{margin-top:0}.side-nav{display:flex}.side-label{display:none}.stats{grid-template-columns:repeat(2,1fr)}}@media(max-width:640px){.wrap{width:min(calc(100% - 32px),1280px)}.top-link{display:none}.hub-head,.toolbar{display:block}.hub-head .btn{margin-top:18px}.filters{margin-top:10px}.project{grid-template-columns:1fr}.project-side{min-width:0;flex-direction:row;align-items:center}.project-top{display:block}.status{margin-top:10px}.lower{grid-template-columns:1fr}.split{grid-template-columns:1fr}.sidebar{overflow:auto}.side-nav{flex-wrap:wrap}.topbar{height:62px}}
-  .liquid-stage{background:radial-gradient(circle at 82% 4%,color-mix(in srgb,var(--accent-secondary) 14%,transparent),transparent 30%),radial-gradient(circle at 18% 20%,color-mix(in srgb,var(--surface) 90%,transparent),transparent 36%)}.topbar{background:color-mix(in srgb,var(--bg) 58%,transparent);border-bottom-color:color-mix(in srgb,var(--bg) 48%,var(--border))}.glass{position:relative;overflow:hidden;background:color-mix(in srgb,var(--bg) 54%,transparent);border-color:color-mix(in srgb,var(--bg) 62%,var(--border));box-shadow:inset 0 1px 0 color-mix(in srgb,var(--bg) 92%,transparent),0 18px 52px color-mix(in srgb,var(--fg) 9%,transparent)}.glass:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,color-mix(in srgb,var(--bg) 68%,transparent),transparent 34%,transparent 68%,color-mix(in srgb,var(--accent-secondary) 7%,transparent));opacity:.8}.glass>*{position:relative}.sidebar,.stat,.panel,.project{border-radius:18px}.btn,.field,.select,.chip{border-radius:14px}.request.priority{background:color-mix(in srgb,var(--accent-secondary) 6%,transparent);padding-left:10px;padding-right:10px;border-radius:14px}.priority-label{display:inline-flex;align-items:center;margin-left:6px;min-height:22px;padding:0 8px;border-radius:999px;background:var(--accent);color:var(--accent-on);font:10px var(--font-mono);letter-spacing:.04em;text-transform:uppercase}
-</style></head>
-<body class="liquid-stage">
- <header class="topbar"><div class="wrap nav"><a class="brand" href="connected-app.html"><span class="mark">cE</span><span>connectEd</span></a><div class="top-actions"><a class="muted-link top-link" href="connected-app.html">Back to landing</a><button class="btn small" id="boost-project">Boost visibility</button><button class="btn primary small" id="new-project">New project</button></div></div></header>
- <main class="wrap shell"><aside class="sidebar glass"><div class="side-group"><div class="side-label">Workspace</div><div class="side-nav"><button class="active" data-panel="projects">Projects</button><button data-panel="requests">Requests</button><button data-panel="profile">Profile</button></div></div><div class="side-group"><div class="side-label">Views</div><div class="side-nav"><button data-filter="open">Open seats</button><button data-filter="all">Recent</button></div></div></aside>
- <section><div class="hub-head"><div><div class="eyebrow">Project hub</div><h1>Make the next collaboration visible.</h1><p class="lede">Browse live projects, review applicants, tune your skills profile, and schedule the next conversation from one calm workspace.</p></div><button class="btn primary" id="new-project-hero">Share a project →</button></div>
-  <div class="stats"><div class="stat glass"><div class="stat-label">Projects</div><div id="stat-projects" class="stat-value">—</div><div class="stat-note">Shared in the hub</div></div><div class="stat glass"><div class="stat-label">Open seats</div><div id="stat-seats" class="stat-value">—</div><div class="stat-note">Across active projects</div></div><div class="stat glass"><div class="stat-label">Requests</div><div id="stat-requests" class="stat-value">—</div><div class="stat-note">Waiting for review</div></div><div class="stat glass"><div class="stat-label">Mode</div><div id="stat-mode" class="stat-value">Demo</div><div class="stat-note">Supabase connection</div></div></div>
-  <div class="panel glass" style="margin-bottom:22px"><div class="panel-head"><div><h2>Get seen before the queue gets busy</h2><p>Priority Match puts your profile and skills ahead of standard applicants when project initiators review requests.</p></div><button class="btn primary small" id="priority-match">Priority Match · $6/mo</button></div></div>
-  <div id="projects-panel"><div class="toolbar"><label class="search glass"><span aria-hidden="true">⌕</span><input id="hub-search" type="search" placeholder="Search projects, roles, or people"></label><div class="filters"><button class="chip active" data-filter="all">All</button><button class="chip" data-filter="open">Open seats</button><button class="chip" data-filter="design">Design</button><button class="chip" data-filter="engineering">Engineering</button><button class="chip" data-filter="research">Research</button></div></div><div id="hub-projects" class="project-list"></div></div>
-  <div id="requests-panel" hidden class="lower"><section class="panel glass"><div class="panel-head"><div><h2>Requests to review</h2><p>Review profile context before you decide.</p></div><span class="status" id="pending-count">0 pending</span></div><div id="requests-list"></div></section><section class="panel glass"><div class="panel-head"><div><h2>Schedule interviews</h2><p>Accepted applicants can be given a Meet link.</p></div></div><p style="color:var(--muted)">Choose an applicant, set a time, then connect Google Calendar. The event creates a Google Meet conference when Google OAuth is enabled.</p></section></div>
-  <div id="profile-panel" hidden class="panel glass"><div class="panel-head"><div><h2>Your profile</h2><p>Make your skills legible before you ask to join a project.</p></div></div><form id="profile-form" class="form"><label>Display name<input class="field" name="display_name" placeholder="Your name"></label><label>Headline<input class="field" name="headline" placeholder="Product designer, researcher, builder"></label><label>Bio<textarea class="field" name="bio" placeholder="What kind of work do you enjoy?"></textarea></label><label>Skills<input class="field" name="skills" placeholder="React, research, writing"></label><div class="form-actions"><button class="btn primary" type="submit">Save profile</button></div></form></div>
- </section></main>
- <div id="project-modal" class="modal-bg"><div class="modal glass"><div class="modal-head"><div><h2>Share a project</h2><p>Project questions become part of the join request.</p></div><button class="close" data-close="project-modal">×</button></div><form id="project-form" class="form"><label>Title<input class="field" name="title" required placeholder="What are you building?"></label><label>Summary<input class="field" name="summary" required placeholder="One clear sentence"></label><label>Description<textarea class="field" name="description" required placeholder="What exists today and what is next?"></textarea></label><div class="split"><label>Tags<input class="field" name="tags" placeholder="design, engineering"></label><label>Seats<input class="field" name="seats" type="number" min="1" value="3"></label></div><label>Application question<input class="field" name="question" placeholder="What would you bring?"></label><div class="form-actions"><button class="btn" type="button" data-close="project-modal">Cancel</button><button class="btn primary" type="submit">Publish project</button></div></form></div></div>
- <div id="interview-modal" class="modal-bg"><div class="modal glass"><div class="modal-head"><div><h2>Schedule an interview</h2><p>Google Calendar will create the event and Meet link.</p></div><button class="close" data-close="interview-modal">×</button></div><form id="interview-form" class="form"><input type="hidden" name="candidate"><label>Title<input class="field" name="title" value="connectEd project interview" required></label><div class="split"><label>Starts<input class="field" name="starts" type="datetime-local" required></label><label>Ends<input class="field" name="ends" type="datetime-local" required></label></div><label>Candidate email<input class="field" name="email" type="email" placeholder="candidate@example.com"></label><label>Notes<textarea class="field" name="notes" placeholder="What should you cover?"></textarea></label><div class="form-actions"><button class="btn" type="button" data-close="interview-modal">Cancel</button><button class="btn primary" type="submit">Create Meet + Calendar</button></div></form></div></div>
- <div id="toast" class="toast" role="status"></div><script src="app-config.js"></script><script type="module">
-  import {supabase,isSupabaseConfigured,currentUser,signInWithGoogle} from './supabase-client.js';
-  const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let projects=[],requests=[],filter='all';
-  const demo=[{id:'demo-1',title:'Mindweave — AI journaling for people who hate journaling',summary:'Voice-first daily journal that surfaces patterns in mood, sleep, and energy.',tags:['open','engineering','mobile'],owner:'Ada Lovelace',initials:'AL',filled:2,total:5},{id:'demo-2',title:'Nestmate — local community for new parents',summary:'A hyperlocal way for new parents to find playdates, walks, and support.',tags:['open','design','community'],owner:'Grace Hopper',initials:'GH',filled:3,total:5},{id:'demo-3',title:'Pulseboard — a tiny status page for indie hackers',summary:'Self-hosted status pages in 60 seconds, with a generous free tier for solo founders.',tags:['open','research','engineering'],owner:'Linus Pauling',initials:'LP',filled:3,total:6}];
-  function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200)}function open(id){$('#'+id).classList.add('open')}function close(id){$('#'+id).classList.remove('open')}
-  function render(){const q=$('#hub-search').value.toLowerCase().trim();const list=projects.filter(p=>(filter==='all'||p.tags?.includes(filter))&&(!q||[p.title,p.summary,p.owner,(p.tags||[]).join(' ')].join(' ').toLowerCase().includes(q)));$('#hub-projects').innerHTML=list.length?list.map(p=>`<article class="project glass"><div><div class="project-top"><div><h3>${esc(p.title)}</h3><p class="project-summary">${esc(p.summary)}</p></div><span class="status">Open seats</span></div><div class="meta"><span>${esc(p.owner)}</span><span>${(p.tags||[]).map(esc).join(' · ')}</span><span>${p.filled||0}/${p.total||p.seats_total||3} seats filled</span></div></div><div class="project-side"><div class="seats"><span class="bar"><span style="width:${Math.round(((p.filled||0)/(p.total||p.seats_total||3))*100)}%"></span></span>${p.filled||0}/${p.total||p.seats_total||3}</div><button class="btn small" data-open-applicants="${esc(p.id)}">View applicants</button></div></article>`).join(''):'<div class="empty glass">No projects match that search. Try a broader phrase.</div>';$$('[data-open-applicants]').forEach(b=>b.onclick=()=>{switchPanel('requests');loadRequests(b.dataset.openApplicants)});$('#stat-projects').textContent=projects.length;$('#stat-seats').textContent=projects.reduce((n,p)=>n+Math.max((p.total||p.seats_total||3)-(p.filled||0),0),0);$('#stat-requests').textContent=requests.length;$('#stat-mode').textContent=isSupabaseConfigured?'Live':'Demo'}
-  async function load(){projects=demo;requests=[];if(supabase){const r=await supabase.from('projects').select('id,title,summary,tags,status,seats_total,owner_id,profiles:owner_id(display_name)').order('created_at',{ascending:false});if(!r.error&&r.data?.length)projects=r.data.map(p=>({...p,owner:p.profiles?.display_name||'connectEd member',filled:0,total:p.seats_total||3,initials:(p.profiles?.display_name||'cE').slice(0,2).toUpperCase()}));const u=await currentUser();if(u){const a=await supabase.from('applications').select('id,message,status,project_id,applicant_id,profiles:applicant_id(display_name,headline,skills,priority_match_active)').eq('status','pending');if(!a.error)requests=a.data||[]}}render();renderRequests()}
-  function renderRequests(){const list=$('#requests-list');const ordered=[...requests].sort((a,b)=>Number(Boolean(b.profiles?.priority_match_active))-Number(Boolean(a.profiles?.priority_match_active)));list.innerHTML=ordered.length?ordered.map(r=>`<div class="request ${r.profiles?.priority_match_active?'priority':''}"><span class="avatar">${esc((r.profiles?.display_name||'cE').slice(0,2).toUpperCase())}</span><div><strong>${esc(r.profiles?.display_name||'Applicant')}${r.profiles?.priority_match_active?'<span class="priority-label">Priority</span>':''}</strong><p>${esc(r.profiles?.headline||'Profile headline not added yet')}</p><p>${esc(r.message)}</p><small style="color:var(--accent)">${esc((r.profiles?.skills||[]).join(' · '))}</small></div><div class="request-actions"><button class="btn small" data-review="declined" data-id="${r.id}">Decline</button><button class="btn primary small" data-review="accepted" data-id="${r.id}">Accept</button><button class="btn small" data-interview="${r.applicant_id}">Meet</button></div></div>`).join(''):'<div class="empty">No pending applications. New requests will appear here.</div>';$$('[data-review]').forEach(b=>b.onclick=()=>review(b.dataset.id,b.dataset.review));$$('[data-interview]').forEach(b=>b.onclick=()=>{$('#interview-form [name=candidate]').value=b.dataset.interview;open('interview-modal')})}
-  async function review(id,status){if(!supabase){toast('Preview mode: configure Supabase to review shared applications.');return}const r=await supabase.from('applications').update({status}).eq('id',id);if(r.error)toast(r.error.message);else{requests=requests.filter(x=>x.id!==id);renderRequests();toast(status==='accepted'?'Applicant accepted.':'Application declined.')}}
-  async function saveProject(form){if(!supabase){toast('Preview mode: configure Supabase to publish shared projects.');close('project-modal');return}const u=await currentUser();if(!u){toast('Sign in with Google first to publish.');close('project-modal');await signInWithGoogle();return}const fd=new FormData(form);const r=await supabase.from('projects').insert({owner_id:u.id,title:fd.get('title'),summary:fd.get('summary'),description:fd.get('description'),tags:String(fd.get('tags')).split(',').map(x=>x.trim()).filter(Boolean),seats_total:Number(fd.get('seats'))||3}).select().single();if(r.error)toast(r.error.message);else{if(fd.get('question'))await supabase.from('project_questions').insert({project_id:r.data.id,prompt:fd.get('question')});form.reset();close('project-modal');toast('Project published.');load()}}
-  async function loadProfile(){if(!supabase){toast('Configure Supabase before editing a shared profile.');return}const u=await currentUser();if(!u){toast('Sign in with Google to edit your profile.');await signInWithGoogle();return}const r=await supabase.from('profiles').select('*').eq('id',u.id).single();if(r.data)for(const k of ['display_name','headline','bio'])$('#profile-form [name='+k+']').value=r.data[k]||'';$('#profile-form [name=skills]').value=(r.data?.skills||[]).join(', ')}
-  $('#profile-form').onsubmit=async e=>{e.preventDefault();const u=await currentUser();if(!u){toast('Sign in first.');return}const fd=new FormData(e.target);const r=await supabase.from('profiles').upsert({id:u.id,display_name:fd.get('display_name'),headline:fd.get('headline'),bio:fd.get('bio'),skills:String(fd.get('skills')).split(',').map(x=>x.trim()).filter(Boolean),updated_at:new Date().toISOString()});toast(r.error?r.error.message:'Profile saved.')};$('#project-form').onsubmit=e=>{e.preventDefault();saveProject(e.target)};
-  $('#interview-form').onsubmit=async e=>{e.preventDefault();if(!supabase){toast('Preview mode: configure Supabase and Google OAuth to schedule.');return}const u=await currentUser();const s=new FormData(e.target);const {data}=await supabase.auth.getSession();const token=data.session?.provider_token;if(!u||!token){toast('Reconnect Google to grant Calendar access.');await signInWithGoogle();return}const r=await fetch('/api/google-calendar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({accessToken:token,title:s.get('title'),startsAt:new Date(s.get('starts')).toISOString(),endsAt:new Date(s.get('ends')).toISOString(),notes:s.get('notes'),attendeeEmail:s.get('email')})});const out=await r.json();if(!r.ok){toast(out.error||'Calendar could not be created.');return}const saved=await supabase.from('interviews').insert({organizer_id:u.id,candidate_id:s.get('candidate'),starts_at:new Date(s.get('starts')).toISOString(),ends_at:new Date(s.get('ends')).toISOString(),title:s.get('title'),notes:s.get('notes'),google_event_id:out.eventId,meet_url:out.meetUrl});toast(saved.error?saved.error.message:(out.meetUrl?`Interview scheduled. Meet: ${out.meetUrl}`:'Interview added to Google Calendar.'));close('interview-modal')};
-  async function checkout(plan='project_boost'){const u=await currentUser();const r=await fetch('/api/create-checkout-session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({plan,userId:u?.id||'',email:u?.email||'',projectId:''})});const data=await r.json();if(!r.ok){toast(data.error||'Stripe is not configured yet.');return}window.location.href=data.url}function switchPanel(name){$('#projects-panel').hidden=name!=='projects';$('#requests-panel').hidden=name!=='requests';$('#profile-panel').hidden=name!=='profile';$$('[data-panel]').forEach(b=>b.classList.toggle('active',b.dataset.panel===name));if(name==='profile')loadProfile();if(name==='requests')loadRequests()};function loadRequests(){renderRequests()}$$('[data-panel]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.panel));$$('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;$$('[data-filter]').forEach(x=>x.classList.toggle('active',x===b));render()});$('#hub-search').oninput=render;$('#new-project').onclick=()=>open('project-modal');$('#new-project-hero').onclick=()=>open('project-modal');$('#boost-project').onclick=()=>checkout('project_boost');$('#priority-match').onclick=()=>checkout('priority_match');$$('[data-close]').forEach(b=>b.onclick=()=>close(b.dataset.close));$$('.modal-bg').forEach(b=>b.onclick=e=>{if(e.target===b)b.classList.remove('open')});load();
- </script></body></html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Discover, publish, and manage collaborative projects on connectEd.">
+  <title>connectEd — Project board</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f6f6f3;
+      --surface-warm: #e5e5e0;
+      --fg: #211922;
+      --fg-2: #000000;
+      --muted: #62625b;
+      --meta: #91918c;
+      --border: #c8c8c1;
+      --border-soft: #e0e0d9;
+      --accent: #e60023;
+      --accent-on: #000000;
+      --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+      --accent-active: color-mix(in oklab, var(--accent), black 14%);
+      --success: #103c25;
+      --warn: #c47700;
+      --danger: #9e0a0a;
+      --font-display:
+        "Pin Sans", -apple-system, system-ui, "Segoe UI", Roboto, "Oxygen-Sans",
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Ubuntu, Cantarell,
+        "Fira Sans", "Droid Sans", "Helvetica Neue", Helvetica,
+        "ヒラギノ角ゴ Pro W3", メイリオ, Meiryo, "ＭＳ Ｐゴシック", Arial,
+        sans-serif;
+      --font-body:
+        "Pin Sans", -apple-system, system-ui, "Segoe UI", Roboto, "Oxygen-Sans",
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Ubuntu, Cantarell,
+        "Fira Sans", "Droid Sans", "Helvetica Neue", Helvetica,
+        "ヒラギノ角ゴ Pro W3", メイリオ, Meiryo, "ＭＳ Ｐゴシック", Arial,
+        sans-serif;
+      --font-mono:
+        ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco,
+        Consolas, monospace;
+      --text-xs: 12px;
+      --text-sm: 14px;
+      --text-base: 16px;
+      --text-lg: 18px;
+      --text-xl: 22px;
+      --text-2xl: 28px;
+      --text-3xl: 44px;
+      --text-4xl: 70px;
+      --leading-body: 1.4;
+      --leading-tight: 1.15;
+      --tracking-display: -0.02em;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-12: 48px;
+      --section-y-desktop: 80px;
+      --section-y-tablet: 48px;
+      --section-y-phone: 32px;
+      --radius-sm: 12px;
+      --radius-md: 16px;
+      --radius-lg: 28px;
+      --radius-pill: 9999px;
+      --elev-flat: none;
+      --elev-ring: 0 0 0 1px var(--border);
+      --elev-raised: 0 4px 16px rgba(33, 25, 34, 0.06);
+      --focus-ring: 0 0 0 3px color-mix(in oklab, #435ee5, transparent 70%);
+      --motion-fast: 150ms;
+      --motion-base: 200ms;
+      --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+      --container-max: 1280px;
+      --container-gutter-desktop: 32px;
+      --container-gutter-tablet: 24px;
+      --container-gutter-phone: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 10% 4%, color-mix(in oklab, var(--surface-warm), transparent 28%), transparent 24%),
+        var(--bg);
+      color: var(--fg);
+      font: 400 var(--text-base)/var(--leading-body) var(--font-body);
+    }
+    body.modal-open { overflow: hidden; }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+    button:focus-visible, a:focus-visible, input:focus-visible,
+    textarea:focus-visible, select:focus-visible {
+      outline: 0;
+      box-shadow: var(--focus-ring);
+    }
+    [hidden] { display: none !important; }
+    .container {
+      width: min(calc(100% - var(--container-gutter-desktop) * 2), var(--container-max));
+      margin-inline: auto;
+    }
+    .glass {
+      position: relative;
+      border: 1px solid color-mix(in oklab, var(--bg), var(--border) 48%);
+      background: color-mix(in oklab, var(--bg), transparent 18%);
+      box-shadow:
+        inset 0 1px 0 color-mix(in oklab, var(--bg), transparent 3%),
+        0 18px 55px color-mix(in oklab, var(--fg), transparent 93%);
+      backdrop-filter: blur(24px) saturate(135%);
+    }
+    .glass::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(
+        132deg,
+        color-mix(in oklab, var(--bg), transparent 42%),
+        transparent 32%,
+        transparent 74%,
+        color-mix(in oklab, var(--surface-warm), transparent 72%)
+      );
+    }
+    .glass > * { position: relative; z-index: 1; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      border-bottom: 1px solid color-mix(in oklab, var(--border-soft), transparent 25%);
+      background: color-mix(in oklab, var(--bg), transparent 12%);
+      backdrop-filter: blur(22px) saturate(145%);
+    }
+    .nav {
+      min-height: 72px;
+      display: grid;
+      grid-template-columns: auto minmax(260px, 1fr) auto;
+      align-items: center;
+      gap: var(--space-5);
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--accent-on);
+      font-size: var(--text-xs);
+      font-weight: 600;
+    }
+    .search { position: relative; }
+    .search input {
+      width: 100%;
+      min-height: 46px;
+      border: 0;
+      border-radius: var(--radius-pill);
+      padding: 0 48px 0 18px;
+      background: var(--surface);
+      color: var(--fg);
+    }
+    .search span { position: absolute; right: 17px; top: 13px; color: var(--meta); }
+    .nav-actions { display: flex; gap: var(--space-2); align-items: center; }
+    .btn {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      border: 0;
+      border-radius: var(--radius-md);
+      padding: 0 17px;
+      background: var(--surface-warm);
+      color: var(--fg-2);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      transition:
+        transform var(--motion-fast) var(--ease-standard),
+        background var(--motion-fast) var(--ease-standard);
+    }
+    .btn:hover { background: var(--border-soft); transform: translateY(-1px); }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--accent); color: var(--accent-on); }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-ghost { background: transparent; }
+    .btn-small { min-height: 38px; padding-inline: 13px; font-size: var(--text-sm); }
+    .board-shell { padding: var(--space-8) 0 var(--section-y-desktop); }
+    .board-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--space-6);
+      margin-bottom: var(--space-6);
+    }
+    .eyebrow {
+      margin: 0 0 var(--space-2);
+      color: var(--muted);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      margin-bottom: 0;
+      font: 600 clamp(38px, 5vw, 64px)/1 var(--font-display);
+      letter-spacing: -0.03em;
+    }
+    h2 {
+      margin-bottom: var(--space-4);
+      font-size: var(--text-2xl);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    .muted { color: var(--muted); }
+    .tabs {
+      position: sticky;
+      top: 88px;
+      z-index: 20;
+      width: fit-content;
+      max-width: 100%;
+      display: flex;
+      gap: var(--space-1);
+      overflow-x: auto;
+      margin-bottom: var(--space-8);
+      padding: 6px;
+      border-radius: var(--radius-lg);
+    }
+    .tab {
+      min-height: 42px;
+      white-space: nowrap;
+      border: 0;
+      border-radius: var(--radius-md);
+      padding: 0 16px;
+      background: transparent;
+      color: var(--muted);
+    }
+    .tab.active { background: var(--fg); color: var(--bg); }
+    .tab-count {
+      min-width: 22px;
+      height: 22px;
+      display: inline-grid;
+      place-items: center;
+      margin-left: 6px;
+      border-radius: var(--radius-pill);
+      background: color-mix(in oklab, var(--bg), transparent 82%);
+      font-size: var(--text-xs);
+    }
+    .panel { min-height: 520px; }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: var(--space-5);
+      margin-bottom: var(--space-6);
+    }
+    .filter-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .chip {
+      min-height: 40px;
+      border: 0;
+      border-radius: var(--radius-md);
+      padding: 0 14px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: var(--text-sm);
+    }
+    .chip:hover, .chip.active { background: var(--surface-warm); color: var(--fg); }
+    .masonry { columns: 4 250px; column-gap: var(--space-4); }
+    .pin {
+      width: 100%;
+      break-inside: avoid;
+      margin: 0 0 var(--space-4);
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      transition: transform var(--motion-base) var(--ease-standard);
+    }
+    .pin:hover { transform: translateY(-4px); }
+    .pin-cover {
+      min-height: var(--cover-height, 180px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: var(--space-5);
+      background: var(--surface-warm);
+    }
+    .pin:nth-child(3n + 2) .pin-cover { background: var(--fg); color: var(--bg); }
+    .pin:nth-child(3n) .pin-cover { background: var(--border-soft); }
+    .pin-cover h3 {
+      max-width: 14ch;
+      margin: auto 0 0;
+      font-size: clamp(var(--text-xl), 2.3vw, var(--text-2xl));
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+    .badge {
+      width: fit-content;
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: var(--radius-sm);
+      padding: 0 10px;
+      background: color-mix(in oklab, var(--bg), transparent 16%);
+      color: var(--fg);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .pin-body { padding: var(--space-5); }
+    .pin-body p { margin-bottom: var(--space-4); color: var(--muted); font-size: var(--text-sm); }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-4); }
+    .tag {
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: var(--text-xs);
+    }
+    .pin-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .owner { color: var(--muted); font-size: var(--text-xs); }
+    .project-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--space-4); }
+    .applicants { display: grid; gap: var(--space-4); }
+    .applicant {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: var(--space-4);
+      align-items: start;
+      padding: var(--space-5);
+      border-radius: var(--radius-lg);
+    }
+    .avatar {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--fg);
+      color: var(--bg);
+      font-weight: 600;
+    }
+    .applicant h3 { margin-bottom: 4px; font-size: var(--text-lg); }
+    .applicant p { margin-bottom: 8px; color: var(--muted); font-size: var(--text-sm); }
+    .applicant-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+    .answer-list {
+      display: grid;
+      gap: 6px;
+      margin-top: var(--space-3);
+      color: var(--muted);
+      font-size: var(--text-sm);
+    }
+    .priority { background: var(--surface-warm); color: var(--fg); }
+    .profile-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: var(--space-6);
+    }
+    .profile-card, .membership-card {
+      border-radius: var(--radius-lg);
+      padding: clamp(24px, 4vw, 42px);
+    }
+    .membership-card { align-self: start; position: sticky; top: 164px; }
+    .membership-card h3 { font-size: var(--text-2xl); letter-spacing: -0.02em; }
+    .form { display: grid; gap: var(--space-4); margin-top: var(--space-6); }
+    .form label { display: grid; gap: 7px; font-size: var(--text-sm); font-weight: 600; }
+    .field {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0 15px;
+      background: color-mix(in oklab, var(--bg), transparent 4%);
+      color: var(--fg);
+    }
+    textarea.field { min-height: 120px; padding-block: 13px; resize: vertical; }
+    .field::placeholder { color: var(--meta); }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+    .form-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); }
+    .empty, .auth-wall {
+      padding: clamp(36px, 7vw, 88px);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      color: var(--muted);
+      text-align: center;
+    }
+    .masonry > .empty, .masonry > .auth-wall { column-span: all; }
+    .auth-wall h2 { color: var(--fg); }
+    .auth-wall .btn { margin-top: var(--space-4); }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      place-items: center;
+      padding: var(--space-4);
+      background: color-mix(in oklab, var(--fg), transparent 48%);
+      backdrop-filter: blur(10px);
+    }
+    .modal-backdrop.open { display: grid; }
+    .modal {
+      width: min(100%, 650px);
+      max-height: 92vh;
+      overflow: auto;
+      border-radius: var(--radius-lg);
+      padding: clamp(24px, 4vw, 40px);
+    }
+    .modal-head { display: flex; justify-content: space-between; gap: var(--space-5); }
+    .modal h2 { font-size: var(--text-2xl); }
+    .close {
+      width: 44px;
+      height: 44px;
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 50%;
+      background: var(--surface-warm);
+      font-size: var(--text-xl);
+    }
+    .toast {
+      position: fixed;
+      right: var(--space-5);
+      bottom: var(--space-5);
+      z-index: 70;
+      max-width: 380px;
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      background: var(--fg);
+      color: var(--bg);
+      transform: translateY(160%);
+      transition: transform var(--motion-base) var(--ease-standard);
+    }
+    .toast.show { transform: translateY(0); }
+    .preview-note {
+      padding: 10px var(--space-4);
+      background: var(--surface-warm);
+      color: var(--muted);
+      font-size: var(--text-sm);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .container {
+        width: min(calc(100% - var(--container-gutter-tablet) * 2), var(--container-max));
+      }
+      .nav { grid-template-columns: auto 1fr; }
+      .search { grid-column: 1 / -1; grid-row: 2; padding-bottom: var(--space-3); }
+      .profile-layout { grid-template-columns: 1fr; }
+      .membership-card { position: static; }
+      .applicant { grid-template-columns: auto minmax(0, 1fr); }
+      .applicant-actions { grid-column: 1 / -1; justify-content: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .container {
+        width: min(calc(100% - var(--container-gutter-phone) * 2), var(--container-max));
+      }
+      .nav { min-height: 64px; gap: var(--space-3); }
+      .nav-actions .btn-ghost { display: none; }
+      .board-head, .panel-head { align-items: stretch; flex-direction: column; }
+      .tabs { top: 120px; width: 100%; }
+      .masonry { columns: 1; }
+      .field-row { grid-template-columns: 1fr; }
+      .form-actions .btn { flex: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="preview-note" class="preview-note" hidden>
+    Preview examples are shown because shared data is not connected.
+  </div>
+  <header class="topbar" data-od-id="board-header">
+    <div class="container nav">
+      <a class="brand" href="connected-app.html" aria-label="connectEd landing page">
+        <span class="brand-mark">cE</span><span>connectEd</span>
+      </a>
+      <label class="search" aria-label="Search project board">
+        <input id="board-search" type="search" placeholder="Search ideas, people, and skills">
+        <span>⌕</span>
+      </label>
+      <div class="nav-actions">
+        <a class="btn btn-ghost btn-small" href="connected-app.html">Landing</a>
+        <button class="btn btn-primary btn-small" id="new-project">Share idea</button>
+        <button class="btn btn-small" id="account-action">Sign in</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="board-shell">
+    <div class="container">
+      <div class="board-head">
+        <div>
+          <p class="eyebrow">The project board</p>
+          <h1 data-od-id="board-heading">Find your place to build.</h1>
+        </div>
+        <p class="muted" id="board-status">Loading the shared board…</p>
+      </div>
+
+      <nav class="tabs glass" aria-label="Project board sections">
+        <button class="tab active" data-panel="discover">Discover</button>
+        <button class="tab" data-panel="owned">My projects <span class="tab-count" id="owned-count">0</span></button>
+        <button class="tab" data-panel="applicants">Applicants <span class="tab-count" id="applicant-count">0</span></button>
+        <button class="tab" data-panel="profile">Profile</button>
+      </nav>
+
+      <section id="panel-discover" class="panel" data-od-id="discover-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Open ideas</h2>
+            <p class="muted">Boosted projects lead the board. Every open project remains visible.</p>
+          </div>
+          <div class="filter-row">
+            <button class="chip active" data-filter="all">All</button>
+            <button class="chip" data-filter="design">Design</button>
+            <button class="chip" data-filter="engineering">Engineering</button>
+            <button class="chip" data-filter="research">Research</button>
+          </div>
+        </div>
+        <div id="discovery-board" class="masonry" aria-live="polite"></div>
+      </section>
+
+      <section id="panel-owned" class="panel" data-od-id="owned-projects-panel" hidden>
+        <div class="panel-head">
+          <div><h2>Your projects</h2><p class="muted">Edit recruiting details and choose which project receives your Plus boost.</p></div>
+          <button class="btn btn-primary" data-create-project>Share a project</button>
+        </div>
+        <div id="owned-board" class="masonry"></div>
+      </section>
+
+      <section id="panel-applicants" class="panel" data-od-id="applicant-review-panel" hidden>
+        <div class="panel-head">
+          <div><h2>Applicant review</h2><p class="muted">Priority members appear first. Review the profile and contribution, not only the badge.</p></div>
+        </div>
+        <div id="applicant-list" class="applicants"></div>
+      </section>
+
+      <section id="panel-profile" class="panel" data-od-id="profile-panel" hidden>
+        <div id="profile-wall" class="auth-wall">
+          <h2>Sign in to build your profile</h2>
+          <p>Your skills help project owners understand where you can contribute.</p>
+          <button class="btn btn-primary" data-google-signin>Continue with Google</button>
+        </div>
+        <div id="profile-content" class="profile-layout" hidden>
+          <article class="profile-card glass">
+            <p class="eyebrow">Public profile</p>
+            <h2>Show the work you can do.</h2>
+            <form id="profile-form" class="form">
+              <label>Display name<input class="field" name="display_name" maxlength="80" required></label>
+              <label>Headline<input class="field" name="headline" maxlength="160" placeholder="Product designer · Community builder"></label>
+              <label>Bio<textarea class="field" name="bio" maxlength="1200" placeholder="What do you care about building?"></textarea></label>
+              <label>Skills<input class="field" name="skills" maxlength="400" placeholder="research, React, storytelling"></label>
+              <div class="form-actions"><button class="btn btn-primary" type="submit">Save profile</button></div>
+            </form>
+          </article>
+          <aside class="membership-card glass">
+            <p class="eyebrow">Membership</p>
+            <h3 id="membership-title">Free member</h3>
+            <p class="muted" id="membership-copy">Applications and project sharing are free.</p>
+            <button class="btn btn-primary" id="membership-action">Get connectEd Plus</button>
+          </aside>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="modal-project-form" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="project-form-title">
+    <div class="modal glass">
+      <div class="modal-head">
+        <div><p class="eyebrow">Project setup</p><h2 id="project-form-title">Share a project</h2></div>
+        <button class="close" data-close="project-form" aria-label="Close">×</button>
+      </div>
+      <form id="project-form" class="form">
+        <label>Project title<input class="field" name="title" minlength="4" maxlength="120" required></label>
+        <label>Short summary<input class="field" name="summary" minlength="12" maxlength="240" required></label>
+        <label>Description<textarea class="field" name="description" minlength="40" maxlength="8000" required></textarea></label>
+        <label>Skills and topics<input class="field" name="tags" maxlength="240" placeholder="design, mobile, education"></label>
+        <div class="field-row">
+          <label>Open seats<input class="field" name="seats" type="number" min="1" max="50" value="3" required></label>
+          <label>Status<select class="field" name="status"><option value="open">Open</option><option value="invite_only">Invite only</option><option value="closed">Closed</option></select></label>
+        </div>
+        <label>Application question<input class="field" name="question" minlength="8" maxlength="500" required></label>
+        <div class="form-actions">
+          <button class="btn" type="button" data-close="project-form">Cancel</button>
+          <button class="btn btn-primary" type="submit">Save project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-project-detail" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <div class="modal glass">
+      <div class="modal-head">
+        <div><p class="eyebrow" id="detail-owner">Project</p><h2 id="detail-title">Project detail</h2></div>
+        <button class="close" data-close="project-detail" aria-label="Close">×</button>
+      </div>
+      <p id="detail-description" class="muted"></p>
+      <div id="detail-tags" class="tags"></div>
+      <form id="application-form" class="form">
+        <label>What would you contribute?<textarea class="field" name="message" minlength="20" maxlength="3000" required></textarea></label>
+        <div id="application-questions"></div>
+        <div class="form-actions">
+          <button class="btn" type="button" data-close="project-detail">Cancel</button>
+          <button class="btn btn-primary" type="submit">Send application</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-interview" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="interview-title">
+    <div class="modal glass">
+      <div class="modal-head">
+        <div><p class="eyebrow">Google Calendar + Meet</p><h2 id="interview-title">Schedule an interview</h2></div>
+        <button class="close" data-close="interview" aria-label="Close">×</button>
+      </div>
+      <form id="interview-form" class="form">
+        <input type="hidden" name="application_id">
+        <input type="hidden" name="project_id">
+        <input type="hidden" name="candidate_id">
+        <label>Interview title<input class="field" name="title" maxlength="120" value="connectEd project interview" required></label>
+        <label>Candidate email<input class="field" name="email" type="email" required></label>
+        <div class="field-row">
+          <label>Starts<input class="field" name="starts" type="datetime-local" required></label>
+          <label>Ends<input class="field" name="ends" type="datetime-local" required></label>
+        </div>
+        <label>Notes<textarea class="field" name="notes" maxlength="2000"></textarea></label>
+        <div class="form-actions">
+          <button class="btn" type="button" data-close="interview">Cancel</button>
+          <button class="btn btn-primary" type="submit">Create Meet interview</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app-config.js"></script>
+  <script type="module">
+    import {
+      supabase,
+      isSupabaseConfigured,
+      currentUser,
+      getSession,
+      authHeaders,
+      signInWithGoogle,
+      signOut
+    } from './supabase-client.js';
+
+    const $ = selector => document.querySelector(selector);
+    const $$ = selector => [...document.querySelectorAll(selector)];
+    const escapeHtml = value => String(value ?? '').replace(
+      /[&<>"']/g,
+      char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]
+    );
+    const normalizeTags = value => String(value || '')
+      .split(',')
+      .map(tag => tag.trim().toLowerCase().replace(/[^a-z0-9 +#.-]/g, ''))
+      .filter(Boolean)
+      .slice(0, 8);
+
+    const previewProjects = [
+      { id: 'preview-1', title: 'Mindweave', summary: 'A voice-first journal for people who do not enjoy journaling.', description: 'Preview example for the disconnected board.', tags: ['engineering', 'design'], status: 'open', owner: 'Preview project' },
+      { id: 'preview-2', title: 'Nestmate', summary: 'A local support network designed around new parenthood.', description: 'Preview example for the disconnected board.', tags: ['design', 'research'], status: 'open', owner: 'Preview project' },
+      { id: 'preview-3', title: 'Pulseboard', summary: 'A focused status page for independent product teams.', description: 'Preview example for the disconnected board.', tags: ['engineering'], status: 'open', owner: 'Preview project' }
+    ];
+
+    let user = null;
+    let profile = null;
+    let projects = [];
+    let ownedProjects = [];
+    let applications = [];
+    let activeProject = null;
+    let activeFilter = 'all';
+    let editingProjectId = null;
+    let editingQuestionId = null;
+
+    function toast(message) {
+      const element = $('#toast');
+      element.textContent = message;
+      element.classList.add('show');
+      window.clearTimeout(toast.timer);
+      toast.timer = window.setTimeout(() => element.classList.remove('show'), 3400);
+    }
+
+    function openModal(name) {
+      $(`#modal-${name}`).classList.add('open');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeModal(name) {
+      $(`#modal-${name}`).classList.remove('open');
+      document.body.classList.remove('modal-open');
+    }
+
+    async function requireUser() {
+      if (user) return user;
+      toast('Sign in to continue.');
+      await signInWithGoogle('/project-hub.html');
+      return null;
+    }
+
+    async function loadAll() {
+      user = await currentUser();
+      await updateAccount();
+      if (!isSupabaseConfigured) {
+        projects = previewProjects;
+        ownedProjects = [];
+        applications = [];
+        $('#preview-note').hidden = false;
+        renderAll();
+        return;
+      }
+
+      const projectResult = await supabase
+        .from('projects')
+        .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,created_at,profiles:owner_id(display_name)')
+        .order('boost_until', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false });
+
+      projects = projectResult.error ? [] : (projectResult.data || []).map(project => ({
+        ...project,
+        owner: project.profiles?.display_name || 'connectEd member'
+      }));
+      ownedProjects = user ? projects.filter(project => project.owner_id === user.id) : [];
+
+      if (user) {
+        const profileResult = await supabase
+          .from('profiles')
+          .select('id,display_name,headline,bio,skills,priority_match_active')
+          .eq('id', user.id)
+          .maybeSingle();
+        profile = profileResult.data || null;
+
+        const applicationResult = await supabase
+          .from('applications')
+          .select('id,project_id,applicant_id,message,answers,status,created_at,projects!inner(id,title,owner_id),profiles:applicant_id(id,display_name,headline,bio,skills,priority_match_active)')
+          .eq('projects.owner_id', user.id)
+          .order('created_at', { ascending: false });
+        applications = applicationResult.error ? [] : applicationResult.data || [];
+      } else {
+        profile = null;
+        applications = [];
+      }
+      renderAll();
+    }
+
+    async function updateAccount() {
+      const button = $('#account-action');
+      if (user) {
+        button.textContent = 'Sign out';
+        button.onclick = async () => {
+          await signOut();
+          user = null;
+          await loadAll();
+          toast('Signed out.');
+        };
+      } else {
+        button.textContent = 'Sign in';
+        button.onclick = () => signInWithGoogle('/project-hub.html');
+      }
+    }
+
+    function renderAll() {
+      const liveProjects = projects.filter(project => project.status !== 'closed');
+      $('#board-status').textContent = isSupabaseConfigured
+        ? `${liveProjects.length} open ${liveProjects.length === 1 ? 'idea' : 'ideas'}`
+        : 'Preview board';
+      $('#owned-count').textContent = ownedProjects.length;
+      $('#applicant-count').textContent = applications.filter(item => item.status === 'pending').length;
+      renderDiscovery();
+      renderOwned();
+      renderApplicants();
+      renderProfile();
+    }
+
+    function filteredProjects() {
+      const query = $('#board-search').value.toLowerCase().trim();
+      return projects.filter(project => {
+        const filterMatch = activeFilter === 'all' || project.tags?.includes(activeFilter);
+        const text = [
+          project.title, project.summary, project.description, project.owner, ...(project.tags || [])
+        ].join(' ').toLowerCase();
+        return project.status !== 'closed' && filterMatch && (!query || text.includes(query));
+      });
+    }
+
+    function pinMarkup(project, index, owned = false) {
+      const boosted = project.boost_until && new Date(project.boost_until) > new Date();
+      return `
+        <article class="pin glass" data-od-id="${owned ? 'owned' : 'discover'}-project-${escapeHtml(project.id)}">
+          <div class="pin-cover" style="--cover-height:${170 + (index % 3) * 48}px">
+            <span class="badge">${boosted ? 'Boosted idea' : project.status === 'invite_only' ? 'Invite only' : 'Open project'}</span>
+            <h3>${escapeHtml(project.title)}</h3>
+          </div>
+          <div class="pin-body">
+            <p>${escapeHtml(project.summary)}</p>
+            <div class="tags">${(project.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
+            <div class="pin-foot">
+              <span class="owner">${escapeHtml(owned ? project.status.replace('_', ' ') : project.owner)}</span>
+              <button class="btn btn-small" data-view="${escapeHtml(project.id)}">View</button>
+            </div>
+            ${owned ? `
+              <div class="project-actions">
+                <button class="btn btn-small" data-edit="${escapeHtml(project.id)}">Edit</button>
+                <button class="btn btn-small" data-boost="${escapeHtml(project.id)}">${profile?.priority_match_active ? 'Use Plus boost' : 'Get Plus'}</button>
+              </div>
+            ` : ''}
+          </div>
+        </article>
+      `;
+    }
+
+    function bindProjectButtons() {
+      $$('[data-view]').forEach(button => button.onclick = () => openProjectDetail(button.dataset.view));
+      $$('[data-edit]').forEach(button => button.onclick = () => openProjectForm(
+        ownedProjects.find(project => String(project.id) === button.dataset.edit)
+      ));
+      $$('[data-boost]').forEach(button => button.onclick = () => activateBoost(button.dataset.boost));
+    }
+
+    function renderDiscovery() {
+      const items = filteredProjects();
+      $('#discovery-board').innerHTML = items.length
+        ? items.map((project, index) => pinMarkup(project, index)).join('')
+        : '<div class="empty">No open projects match this view yet.</div>';
+      bindProjectButtons();
+    }
+
+    function renderOwned() {
+      $('#owned-board').innerHTML = user
+        ? ownedProjects.length
+          ? ownedProjects.map((project, index) => pinMarkup(project, index, true)).join('')
+          : '<div class="empty">You have not shared a project yet.</div>'
+        : authWall('Sign in to manage your projects.');
+      bindProjectButtons();
+      bindSigninButtons();
+    }
+
+    function authWall(message) {
+      return `<div class="auth-wall"><h2>${escapeHtml(message)}</h2><p>Your work stays tied to your account.</p><button class="btn btn-primary" data-google-signin>Continue with Google</button></div>`;
+    }
+
+    function renderApplicants() {
+      if (!user) {
+        $('#applicant-list').innerHTML = authWall('Sign in to review applicants.');
+        bindSigninButtons();
+        return;
+      }
+      const ordered = [...applications].sort((a, b) =>
+        Number(Boolean(b.profiles?.priority_match_active)) -
+        Number(Boolean(a.profiles?.priority_match_active))
+      );
+      $('#applicant-list').innerHTML = ordered.length
+        ? ordered.map(application => {
+            const person = application.profiles || {};
+            const answers = Object.values(application.answers || {}).filter(Boolean);
+            return `
+              <article class="applicant glass" data-od-id="applicant-${escapeHtml(application.id)}">
+                <span class="avatar">${escapeHtml((person.display_name || 'cE').slice(0, 2).toUpperCase())}</span>
+                <div>
+                  <h3>
+                    ${escapeHtml(person.display_name || 'Applicant')}
+                    ${person.priority_match_active ? '<span class="badge priority">Priority</span>' : ''}
+                  </h3>
+                  <p>${escapeHtml(person.headline || 'No profile headline yet')}</p>
+                  <div class="tags">${(person.skills || []).map(skill => `<span class="tag">${escapeHtml(skill)}</span>`).join('')}</div>
+                  <p>${escapeHtml(application.message)}</p>
+                  ${answers.length ? `<div class="answer-list">${answers.map(answer => `<span>— ${escapeHtml(answer)}</span>`).join('')}</div>` : ''}
+                </div>
+                <div class="applicant-actions">
+                  <button class="btn btn-small" data-review="declined" data-id="${application.id}">Decline</button>
+                  <button class="btn btn-small" data-review="accepted" data-id="${application.id}">Accept</button>
+                  <button class="btn btn-small" data-interview="${application.id}">Interview</button>
+                </div>
+              </article>
+            `;
+          }).join('')
+        : '<div class="empty">No applications have reached your projects yet.</div>';
+
+      $$('[data-review]').forEach(button => {
+        button.onclick = () => reviewApplication(button.dataset.id, button.dataset.review);
+      });
+      $$('[data-interview]').forEach(button => {
+        button.onclick = () => openInterview(button.dataset.interview);
+      });
+    }
+
+    function renderProfile() {
+      $('#profile-wall').hidden = Boolean(user);
+      $('#profile-content').hidden = !user;
+      if (!user) {
+        bindSigninButtons();
+        return;
+      }
+      for (const key of ['display_name', 'headline', 'bio']) {
+        $(`#profile-form [name=${key}]`).value = profile?.[key] || '';
+      }
+      $('#profile-form [name=skills]').value = (profile?.skills || []).join(', ');
+      $('#membership-title').textContent = profile?.priority_match_active ? 'connectEd Plus' : 'Free member';
+      $('#membership-copy').textContent = profile?.priority_match_active
+        ? 'Priority applications are active. Choose one project in My projects to boost.'
+        : 'Applications and project sharing are free. Plus adds visibility in both roles.';
+      $('#membership-action').textContent = profile?.priority_match_active ? 'Choose project to boost' : 'Get connectEd Plus';
+    }
+
+    function bindSigninButtons() {
+      $$('[data-google-signin]').forEach(button => {
+        button.onclick = () => signInWithGoogle('/project-hub.html');
+      });
+    }
+
+    async function openProjectDetail(id) {
+      activeProject = projects.find(project => String(project.id) === String(id));
+      if (!activeProject) return;
+      $('#detail-title').textContent = activeProject.title;
+      $('#detail-owner').textContent = `Shared by ${activeProject.owner}`;
+      $('#detail-description').textContent = activeProject.description;
+      $('#detail-tags').innerHTML = (activeProject.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
+      $('#application-form').hidden = activeProject.owner_id === user?.id;
+
+      let questions = [];
+      if (isSupabaseConfigured && !String(id).startsWith('preview-')) {
+        const result = await supabase.from('project_questions')
+          .select('id,prompt,required,position').eq('project_id', id).order('position');
+        questions = result.error ? [] : result.data || [];
+      }
+      activeProject.questions = questions;
+      $('#application-questions').innerHTML = questions.map(question => `
+        <label>${escapeHtml(question.prompt)}
+          <textarea class="field" name="question-${question.id}" maxlength="2000" ${question.required ? 'required' : ''}></textarea>
+        </label>
+      `).join('');
+      openModal('project-detail');
+    }
+
+    async function openProjectForm(project = null) {
+      if (!(await requireUser())) return;
+      editingProjectId = project?.id || null;
+      editingQuestionId = null;
+      const form = $('#project-form');
+      form.reset();
+      $('#project-form-title').textContent = project ? 'Edit your project' : 'Share a project';
+      if (project) {
+        form.title.value = project.title;
+        form.summary.value = project.summary;
+        form.description.value = project.description;
+        form.tags.value = (project.tags || []).join(', ');
+        form.seats.value = project.seats_total;
+        form.status.value = project.status;
+        const result = await supabase.from('project_questions')
+          .select('id,prompt').eq('project_id', project.id).order('position').limit(1).maybeSingle();
+        if (result.data) {
+          editingQuestionId = result.data.id;
+          form.question.value = result.data.prompt;
+        }
+      }
+      openModal('project-form');
+    }
+
+    async function saveProject(form) {
+      if (!(await requireUser())) return;
+      const values = new FormData(form);
+      const payload = {
+        title: String(values.get('title')).trim(),
+        summary: String(values.get('summary')).trim(),
+        description: String(values.get('description')).trim(),
+        tags: normalizeTags(values.get('tags')),
+        seats_total: Number(values.get('seats')),
+        status: String(values.get('status'))
+      };
+      const result = editingProjectId
+        ? await supabase.from('projects').update(payload).eq('id', editingProjectId).select('id').single()
+        : await supabase.from('projects').insert({ ...payload, owner_id: user.id }).select('id').single();
+      if (result.error) return toast(result.error.message);
+
+      const projectId = result.data.id;
+      const question = String(values.get('question')).trim();
+      const questionResult = editingQuestionId
+        ? await supabase.from('project_questions').update({ prompt: question }).eq('id', editingQuestionId)
+        : await supabase.from('project_questions').insert({ project_id: projectId, prompt: question, position: 0, required: true });
+      if (questionResult.error) return toast(questionResult.error.message);
+
+      closeModal('project-form');
+      toast(editingProjectId ? 'Project updated.' : 'Project published.');
+      editingProjectId = null;
+      editingQuestionId = null;
+      await loadAll();
+    }
+
+    async function submitApplication(form) {
+      if (!(await requireUser())) return;
+      if (!activeProject || String(activeProject.id).startsWith('preview-')) return toast('Preview projects do not accept applications.');
+      if (activeProject.owner_id === user.id) return toast('You already own this project.');
+      const values = new FormData(form);
+      const answers = {};
+      for (const question of activeProject.questions || []) {
+        answers[question.id] = String(values.get(`question-${question.id}`) || '').trim();
+      }
+      const result = await supabase.from('applications').insert({
+        project_id: activeProject.id,
+        applicant_id: user.id,
+        message: String(values.get('message')).trim(),
+        answers
+      });
+      if (result.error) return toast(result.error.code === '23505' ? 'You already applied to this project.' : result.error.message);
+      form.reset();
+      closeModal('project-detail');
+      toast('Application sent.');
+    }
+
+    async function reviewApplication(id, status) {
+      const result = await supabase.from('applications').update({ status }).eq('id', id);
+      if (result.error) return toast(result.error.message);
+      toast(status === 'accepted' ? 'Applicant accepted.' : 'Application declined.');
+      await loadAll();
+    }
+
+    function openInterview(id) {
+      const application = applications.find(item => String(item.id) === String(id));
+      if (!application) return;
+      const form = $('#interview-form');
+      form.reset();
+      form.application_id.value = application.id;
+      form.project_id.value = application.project_id;
+      form.candidate_id.value = application.applicant_id;
+      form.title.value = `${application.projects?.title || 'connectEd'} interview`;
+      openModal('interview');
+    }
+
+    async function scheduleInterview(form) {
+      const values = new FormData(form);
+      const session = await getSession();
+      if (!session?.provider_token) {
+        toast('Reconnect Google to grant Calendar access.');
+        return signInWithGoogle('/project-hub.html');
+      }
+      const startsAt = new Date(String(values.get('starts')));
+      const endsAt = new Date(String(values.get('ends')));
+      const response = await fetch('/api/google-calendar', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({
+          googleAccessToken: session.provider_token,
+          applicationId: values.get('application_id'),
+          projectId: values.get('project_id'),
+          title: values.get('title'),
+          startsAt: startsAt.toISOString(),
+          endsAt: endsAt.toISOString(),
+          notes: values.get('notes'),
+          attendeeEmail: values.get('email')
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) return toast(data.error || 'Calendar event could not be created.');
+
+      const saved = await supabase.from('interviews').insert({
+        project_id: values.get('project_id'),
+        application_id: values.get('application_id'),
+        organizer_id: user.id,
+        candidate_id: values.get('candidate_id'),
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        title: String(values.get('title')).trim(),
+        notes: String(values.get('notes')).trim(),
+        google_event_id: data.eventId,
+        meet_url: data.meetUrl
+      });
+      if (saved.error) return toast(saved.error.message);
+      await supabase.from('applications').update({ status: 'interview' }).eq('id', values.get('application_id'));
+      closeModal('interview');
+      toast(data.meetUrl ? 'Interview scheduled with a Google Meet link.' : 'Interview added to Google Calendar.');
+      await loadAll();
+    }
+
+    async function startCheckout(projectId = '') {
+      if (!(await requireUser())) return;
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ plan: 'connected_plus', projectId })
+      });
+      const data = await response.json();
+      if (!response.ok) return toast(data.error || 'Checkout is unavailable.');
+      window.location.href = data.url;
+    }
+
+    async function activateBoost(projectId) {
+      if (!profile?.priority_match_active) return startCheckout(projectId);
+      const result = await supabase.rpc('activate_plus_boost', { target_project: projectId });
+      if (result.error) return toast(result.error.message);
+      toast('Your Plus boost is active on this project.');
+      await loadAll();
+    }
+
+    async function saveProfile(form) {
+      const values = new FormData(form);
+      const result = await supabase.from('profiles').update({
+        display_name: String(values.get('display_name')).trim(),
+        headline: String(values.get('headline')).trim(),
+        bio: String(values.get('bio')).trim(),
+        skills: normalizeTags(values.get('skills'))
+      }).eq('id', user.id);
+      if (result.error) return toast(result.error.message);
+      toast('Profile saved.');
+      await loadAll();
+    }
+
+    function switchPanel(name) {
+      $$('.panel').forEach(panel => panel.hidden = panel.id !== `panel-${name}`);
+      $$('[data-panel]').forEach(tab => tab.classList.toggle('active', tab.dataset.panel === name));
+      if (name === 'profile') renderProfile();
+    }
+
+    $('#board-search').oninput = renderDiscovery;
+    $('#new-project').onclick = () => openProjectForm();
+    $$('[data-create-project]').forEach(button => button.onclick = () => openProjectForm());
+    $('#project-form').onsubmit = event => { event.preventDefault(); saveProject(event.currentTarget); };
+    $('#application-form').onsubmit = event => { event.preventDefault(); submitApplication(event.currentTarget); };
+    $('#interview-form').onsubmit = event => { event.preventDefault(); scheduleInterview(event.currentTarget); };
+    $('#profile-form').onsubmit = event => { event.preventDefault(); saveProfile(event.currentTarget); };
+    $('#membership-action').onclick = () => profile?.priority_match_active
+      ? switchPanel('owned')
+      : startCheckout();
+
+    $$('[data-panel]').forEach(tab => tab.onclick = () => switchPanel(tab.dataset.panel));
+    $$('[data-filter]').forEach(button => {
+      button.onclick = () => {
+        activeFilter = button.dataset.filter;
+        $$('[data-filter]').forEach(item => item.classList.toggle('active', item === button));
+        renderDiscovery();
+      };
+    });
+    $$('[data-close]').forEach(button => button.onclick = () => closeModal(button.dataset.close));
+    $$('.modal-backdrop').forEach(backdrop => {
+      backdrop.onclick = event => {
+        if (event.target === backdrop) closeModal(backdrop.id.replace('modal-', ''));
+      };
+    });
+    bindSigninButtons();
+
+    const checkoutState = new URLSearchParams(window.location.search).get('checkout');
+    if (checkoutState === 'success') toast('Payment received. Plus activates after Stripe confirms it.');
+    if (checkoutState === 'cancelled') toast('Checkout cancelled. Nothing was charged.');
+
+    if (supabase) {
+      supabase.auth.onAuthStateChange(() => window.setTimeout(loadAll, 0));
+    }
+    await loadAll();
+  </script>
+</body>
+</html>

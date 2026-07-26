@@ -1,80 +1,133 @@
-# connectEd setup
+# connectEd production setup
 
-## 1. Supabase
+The public website is deployed at `https://cntd-projects.vercel.app`.
+Complete these steps in order.
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. Open **SQL Editor**, create a new query, paste the entire contents of `supabase-schema.sql`, and run it.
-3. Open **Project Settings → API** and copy:
-   - **Project URL**
-   - ** anon / public key**
-4. Put those two values in `app-config.js`:
+## 1. Apply the Supabase schema and security policies
+
+1. Open Supabase → SQL Editor.
+2. Open `supabase-schema.sql` in this repository.
+3. Copy the entire file into a new SQL query.
+4. Run it.
+
+The file is safe to rerun. It creates the tables, replaces the Row Level
+Security policies, hides billing identifiers, prevents members from granting
+themselves Plus status, and installs the protected project-boost function.
+
+## 2. Public Supabase browser configuration
+
+`app-config.js` contains only the public project URL and publishable key:
 
 ```js
 window.CONNECTED_CONFIG = {
   url: 'https://YOUR_PROJECT_REF.supabase.co',
-  anonKey: 'YOUR_SUPABASE_ANON_KEY'
+  anonKey: 'sb_publishable_...'
 };
 ```
 
-Never put the Supabase service-role key in `app-config.js` or in browser code.
+Never put an `sb_secret_...` key in this file.
 
-## 2. Supabase authentication
+## 3. Supabase Auth URL configuration
 
-In **Authentication → Providers**:
+Supabase → Authentication → URL Configuration:
 
-- Enable **Email**.
-- Enable **Google** after completing the Google Cloud steps below.
+```text
+Site URL
+https://cntd-projects.vercel.app
+```
 
-In **Authentication → URL Configuration**, set:
+Add these redirect URLs:
 
-- Site URL: `https://cntd-projects.vercel.app`
-- Redirect URLs:
-  - `https://cntd-projects.vercel.app/landing.html`
-  - `https://cntd-projects.vercel.app/project-hub.html`
-  - `http://localhost:3000/connected-app.html` for local testing
+```text
+https://cntd-projects.vercel.app/
+https://cntd-projects.vercel.app/landing.html
+https://cntd-projects.vercel.app/connected-app.html
+https://cntd-projects.vercel.app/project-hub.html
+https://cntd-projects.vercel.app/project-hub
+```
 
-## 3. Google sign-in, Calendar, and Meet
+Enable Email and Google under Authentication → Sign In / Providers.
 
-1. Open [Google Cloud Console](https://console.cloud.google.com), create or select a project, and enable **Google Calendar API**.
-2. Configure the OAuth consent screen. Add `cntd-projects.vercel.app` as an authorized domain.
-3. Create **Credentials → OAuth client ID → Web application**.
-4. In the OAuth client, add this authorized redirect URI, replacing `YOUR_PROJECT_REF` with the Supabase project reference:
+## 4. Google OAuth, Calendar, and Meet
 
-   `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`
+Google Auth Platform → Clients → Create Client → Web application.
 
-5. Copy the Google OAuth **Client ID** and **Client Secret** into Supabase under **Authentication → Providers → Google**.
-6. Save the provider. The app requests the Calendar Events scope during Google sign-in, which the project hub uses to create a Google Calendar event with a Google Meet link.
+Authorized JavaScript origin:
 
-Google OAuth credentials belong in Supabase’s provider settings. Do not commit the Google client secret or place it in `app-config.js`.
+```text
+https://cntd-projects.vercel.app
+```
 
-## 4. Vercel
+Authorized redirect URI:
 
-Add the values from `.env.example` to the Vercel project. At minimum, the server-side scheduling and billing endpoints need:
+```text
+https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback
+```
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRIORITY_PRICE_ID`
-- `STRIPE_BOOST_PRICE_ID`
-- `PUBLIC_SITE_URL=https://cntd-projects.vercel.app`
+Copy the Google Client ID and Client Secret into the Google provider in
+Supabase. Keep **Skip nonce checks** off.
 
-Redeploy after saving the variables. The public Supabase URL and anon key still belong in `app-config.js` because these static HTML pages load in the browser.
+In Google Cloud:
 
-## 5. Button and route map
+1. Enable Google Calendar API.
+2. Google Auth Platform → Data Access: add
+   `https://www.googleapis.com/auth/calendar.events`.
+3. While the app is in Testing, add each permitted account under
+   Google Auth Platform → Audience → Test users.
 
-- `/` → landing page
-- `/landing.html` → landing page
-- `/collaboration-landing` → landing page compatibility route
-- `/project-hub` → project hub
-- `/project-hub.html` → project hub
+Meet links are created through Calendar events; no separate Meet API is needed.
 
-The Vercel rewrites point to `connected-app.html`, which is the actual landing file in this project.
+## 5. Vercel environment variables
 
-## 6. Stripe plans
+Add these under Vercel → cntd → Settings → Environment Variables:
 
-- Free: browse, profile, applications, interviews.
-- connectEd Plus: `$6/month`, combining participant Priority Match with initiator project visibility benefits.
-- Project Boost: `$5` one-time project promotion.
+```text
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRIORITY_PRICE_ID=price_...
+PUBLIC_SITE_URL=https://cntd-projects.vercel.app
+```
 
-Create the products and prices in Stripe, set the corresponding Price IDs in Vercel, and register `/api/stripe-webhook` for checkout and subscription events.
+`SUPABASE_SERVICE_ROLE_KEY`, Stripe secrets, and the Google Client Secret are
+server-only. Never put them in HTML, `app-config.js`, GitHub, screenshots, or
+chat.
+
+## 6. Stripe subscription
+
+Create one recurring Stripe product:
+
+```text
+Name: connectEd Plus
+Price: $6 USD monthly
+```
+
+Copy its price ID to `STRIPE_PRIORITY_PRICE_ID`.
+
+Create a webhook endpoint:
+
+```text
+https://cntd-projects.vercel.app/api/stripe-webhook
+```
+
+Subscribe it to:
+
+```text
+checkout.session.completed
+customer.subscription.updated
+customer.subscription.deleted
+```
+
+Copy the signing secret to `STRIPE_WEBHOOK_SECRET`.
+
+## 7. Final test
+
+1. Sign in with a Google account listed as a test user.
+2. Save a skills profile.
+3. Publish a project with an application question.
+4. Sign in as a second test user and apply.
+5. Review that applicant from the project owner account.
+6. Schedule an interview and confirm both Calendar and Meet links.
+7. Complete a Stripe test subscription and activate the boost on one owned project.
