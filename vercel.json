@@ -1,8 +1,8 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/landing.html" },
-    { "source": "/landing.html", "destination": "/collaboration-landing.html" },
-    { "source": "/collaboration-landing", "destination": "/collaboration-landing.html" },
+    { "source": "/", "destination": "/connected-app.html" },
+    { "source": "/landing.html", "destination": "/connected-app.html" },
+    { "source": "/collaboration-landing", "destination": "/connected-app.html" },
     { "source": "/project-hub", "destination": "/project-hub.html" }
   ]
 }
