@@ -351,7 +351,57 @@
     .pin-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .owner { color: var(--muted); font-size: var(--text-xs); }
     .project-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--space-4); }
-    .applicants { display: grid; gap: var(--space-4); }
+    .applicants,
+    .applicant-groups { display: grid; gap: var(--space-4); }
+    .applicant-group {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: color-mix(in oklab, var(--surface), transparent 8%);
+    }
+    .applicant-group-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      padding: var(--space-5) var(--space-6);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .applicant-group-head h3 {
+      margin: 0 0 3px;
+      color: var(--fg);
+      font-size: var(--text-xl);
+      font-weight: 400;
+      letter-spacing: -.01em;
+    }
+    .applicant-group-head p { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+    .applicant-group-counts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .applicant-group-count {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      padding: 0 var(--space-3);
+      color: var(--muted);
+      font: 400 var(--text-xs)/1 var(--font-mono);
+      letter-spacing: .04em;
+    }
+    .applicant-group-count.pending {
+      border-color: color-mix(in oklab, var(--accent), transparent 68%);
+      color: var(--accent);
+    }
+    .applicant-group-list { display: grid; }
+    .applicant-group-list .applicant {
+      border: 0;
+      border-bottom: 1px solid var(--border-soft);
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .applicant-group-list .applicant:last-child { border-bottom: 0; }
+    .applicant-group-list .applicant:hover { background: color-mix(in oklab, var(--surface), var(--fg) 3%); }
     .applicant {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
@@ -369,7 +419,9 @@
       background: var(--fg);
       color: var(--bg);
       font-weight: 600;
+      overflow: hidden;
     }
+    .avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
     .applicant h3 { margin-bottom: 4px; font-size: var(--text-lg); }
     .applicant p { margin-bottom: 8px; color: var(--muted); font-size: var(--text-sm); }
     .applicant-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
@@ -836,6 +888,8 @@
       .notification-wrap .btn { padding-inline: var(--space-3); }
       .account-control .account-label { display: none; }
       .request-status { grid-column: 2; justify-self: start; }
+      .applicant-group-head { align-items: flex-start; padding: var(--space-4); }
+      .applicant-group-counts { justify-content: flex-end; }
       .board-head, .panel-head { align-items: stretch; flex-direction: column; }
       .tabs { top: 120px; width: 100%; }
       .masonry { columns: 1; }
@@ -1401,6 +1455,8 @@
       .board-shell > .container { padding: var(--space-6) var(--container-gutter-phone); }
       .board-status { align-self: flex-start; }
       .masonry { grid-template-columns: 1fr; }
+      .applicant-group-head { flex-direction: column; }
+      .applicant-group-counts { justify-content: flex-start; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -1491,7 +1547,7 @@
 
       <section id="panel-applicants" class="panel" data-od-id="applicant-review-panel" role="tabpanel" aria-labelledby="tab-applicants" tabindex="0" hidden>
         <div class="panel-head">
-          <div><h2>People who want to join</h2><p class="muted">Review what each person can contribute, then accept, decline, or schedule a conversation.</p></div>
+          <div><h2>People who want to join</h2><p class="muted">Requests are grouped by your projects. Review what each person can contribute, then accept, decline, or schedule a conversation.</p></div>
         </div>
         <div id="applicant-list" class="applicants"></div>
       </section>
@@ -2267,31 +2323,78 @@
       }
       const ordered = [...applications].sort((a, b) =>
         Number(Boolean(b.profiles?.priority_match_active)) -
-        Number(Boolean(a.profiles?.priority_match_active))
+        Number(Boolean(a.profiles?.priority_match_active)) ||
+        new Date(b.created_at) - new Date(a.created_at)
       );
-      $('#applicant-list').innerHTML = ordered.length
-        ? ordered.map(application => {
-            const person = application.profiles || {};
-            const answers = Object.values(application.answers || {}).filter(Boolean);
+      const groups = new Map();
+      for (const application of ordered) {
+        const projectId = String(application.project_id);
+        if (!groups.has(projectId)) {
+          const ownedProject = ownedProjects.find(project => String(project.id) === projectId);
+          groups.set(projectId, {
+            project: ownedProject || application.projects || { id: projectId, title: 'Project' },
+            applications: []
+          });
+        }
+        groups.get(projectId).applications.push(application);
+      }
+
+      const applicantMarkup = application => {
+        const person = application.profiles || {};
+        const answers = Object.values(application.answers || {}).filter(Boolean);
+        const avatar = person.avatar_url
+          ? `<span class="avatar"><img src="${escapeHtml(person.avatar_url)}" alt=""></span>`
+          : `<span class="avatar">${escapeHtml((person.display_name || 'cE').slice(0, 2).toUpperCase())}</span>`;
+        const pendingActions = application.status === 'pending'
+          ? `
+            <button class="btn btn-small" data-review="declined" data-id="${application.id}">Decline</button>
+            <button class="btn btn-small" data-review="accepted" data-id="${application.id}">Accept</button>
+            <button class="btn btn-small" data-interview="${application.id}">Interview</button>
+          `
+          : application.status === 'accepted'
+            ? `<button class="btn btn-small" data-interview="${application.id}">Schedule interview</button>`
+            : '';
+        return `
+          <article class="applicant" data-od-id="applicant-${escapeHtml(application.id)}">
+            ${avatar}
+            <div>
+              <h3>
+                ${escapeHtml(person.display_name || 'Applicant')}
+                ${person.priority_match_active ? '<span class="badge priority">Priority</span>' : ''}
+              </h3>
+              <p>${escapeHtml(person.headline || 'No profile headline yet')}</p>
+              <div class="tags">${(person.skills || []).map(skill => `<span class="tag">${escapeHtml(skill)}</span>`).join('')}</div>
+              <p>${escapeHtml(application.message)}</p>
+              ${answers.length ? `<div class="answer-list">${answers.map(answer => `<span>— ${escapeHtml(answer)}</span>`).join('')}</div>` : ''}
+            </div>
+            <div class="applicant-actions">
+              <span class="request-status" data-status="${escapeHtml(application.status)}">${escapeHtml(statusLabel(application.status))}</span>
+              ${pendingActions}
+            </div>
+          </article>
+        `;
+      };
+
+      $('#applicant-list').classList.toggle('applicant-groups', Boolean(groups.size));
+      $('#applicant-list').innerHTML = groups.size
+        ? [...groups.values()].map(group => {
+            const pending = group.applications.filter(application => application.status === 'pending').length;
             return `
-              <article class="applicant glass" data-od-id="applicant-${escapeHtml(application.id)}">
-                <span class="avatar">${escapeHtml((person.display_name || 'cE').slice(0, 2).toUpperCase())}</span>
-                <div>
-                  <h3>
-                    ${escapeHtml(person.display_name || 'Applicant')}
-                    ${person.priority_match_active ? '<span class="badge priority">Priority</span>' : ''}
-                  </h3>
-                  <p>${escapeHtml(person.headline || 'No profile headline yet')}</p>
-                  <div class="tags">${(person.skills || []).map(skill => `<span class="tag">${escapeHtml(skill)}</span>`).join('')}</div>
-                  <p>${escapeHtml(application.message)}</p>
-                  ${answers.length ? `<div class="answer-list">${answers.map(answer => `<span>— ${escapeHtml(answer)}</span>`).join('')}</div>` : ''}
+              <section class="applicant-group" data-od-id="project-request-group-${escapeHtml(group.project.id)}">
+                <div class="applicant-group-head">
+                  <div>
+                    <h3>${escapeHtml(group.project.title || 'Project')}</h3>
+                    <p>${escapeHtml(group.project.summary || 'Requests from people who want to contribute.')}</p>
+                  </div>
+                  <div class="applicant-group-counts" aria-label="Request counts">
+                    <span class="applicant-group-count">${group.applications.length} ${group.applications.length === 1 ? 'request' : 'requests'}</span>
+                    ${pending ? `<span class="applicant-group-count pending">${pending} pending</span>` : ''}
+                  </div>
                 </div>
-                <div class="applicant-actions">
-                  <button class="btn btn-small" data-review="declined" data-id="${application.id}">Decline</button>
-                  <button class="btn btn-small" data-review="accepted" data-id="${application.id}">Accept</button>
-                  <button class="btn btn-small" data-interview="${application.id}">Interview</button>
+                <div class="applicant-group-list">
+                  ${group.applications.map(applicantMarkup).join('')}
                 </div>
-              </article>
+              </section>
             `;
           }).join('')
         : '<div class="empty">No applications have reached your projects yet.</div>';
