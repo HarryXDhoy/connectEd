@@ -77,7 +77,7 @@
     .wordmark { display: flex; align-items: center; gap: 9px; font-weight: 600; letter-spacing: -0.02em; }
     .mark { width: 25px; height: 25px; display: grid; place-items: center; color: var(--accent-on); background: var(--fg); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 12px; }
     .nav-links { display: flex; align-items: center; gap: 22px; color: var(--muted); font-size: var(--text-sm); font-weight: 500; }
-    .nav-links button { border: 0; background: none; color: inherit; padding: 8px 0; }
+    .nav-links button, .nav-links a { border: 0; background: none; color: inherit; padding: 8px 0; }
     .nav-links button.active { color: var(--fg); }
     .nav-actions { display: flex; align-items: center; gap: 10px; }
     .btn { min-height: 44px; border: 0; border-radius: var(--radius-sm); padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: var(--text-sm); font-weight: 600; transition: transform var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard); }
@@ -218,7 +218,7 @@
       <button class="wordmark" data-view="discover" aria-label="Go to discover"><span class="mark">cE</span><span>connectEd</span></button>
       <nav class="nav-links" aria-label="Primary navigation">
         <button class="active" data-view="discover">Discover</button>
-        <button data-view="dashboard">Dashboard</button>
+        <a href="project-hub.html">Project hub</a>
       </nav>
       <div class="nav-actions">
         <button class="btn btn-secondary btn-small" data-modal="auth">Sign in</button>
@@ -237,7 +237,7 @@
             <h1><span class="hero-word">connectEd</span> helps the right project find the right people.</h1>
             <p class="hero-copy">connectEd makes it easier to discover serious projects, understand where you can help, and start with a clear request—not a cold pitch.</p>
             <div class="hero-actions">
-              <button class="btn btn-primary" data-focus-search>Explore projects <span aria-hidden="true">→</span></button>
+              <a class="btn btn-primary" href="project-hub.html">Explore projects <span aria-hidden="true">→</span></a>
               <button class="btn btn-secondary" data-modal="create">Share a project</button>
             </div>
           </div>
