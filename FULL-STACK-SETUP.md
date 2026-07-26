@@ -95,6 +95,10 @@ PUBLIC_SITE_URL=https://cntd-projects.vercel.app
 server-only. Never put them in HTML, `app-config.js`, GitHub, screenshots, or
 chat.
 
+Project cover images are resized and compressed in the browser before they are
+saved with the authenticated project record. No external image host or
+additional storage bucket is required.
+
 ## 6. Stripe subscription
 
 Create one recurring Stripe product:
