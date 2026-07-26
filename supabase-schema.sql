@@ -16,6 +16,13 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+-- Earth view: opt-in approximate member location (rounded to ~1 km on the
+-- client before it is ever sent). Null means the member has not shared one.
+alter table public.profiles
+  add column if not exists location_label text,
+  add column if not exists location_latitude double precision,
+  add column if not exists location_longitude double precision;
+
 create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.profiles(id) on delete cascade,

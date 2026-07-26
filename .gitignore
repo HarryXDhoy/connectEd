@@ -1,0 +1,10 @@
+# Open Design workspace clutter — not part of the deployed site.
+.file-versions/
+.od-skills/
+plugin-source/
+*.artifact.json
+image*.png
+drawing-*.png
+Startup-presentation.pdf
+connected-app-visual-asset-plan.md
+.env

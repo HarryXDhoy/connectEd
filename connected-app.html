@@ -948,6 +948,15 @@
       color: var(--fg);
       text-transform: none;
     }
+    /* While a node is hovered, the card rides beside the cursor. */
+    .network-focus.is-tooltip {
+      right: auto;
+      bottom: auto;
+      left: var(--tooltip-x, 0px);
+      top: var(--tooltip-y, 0px);
+      border-color: color-mix(in oklab, var(--accent), transparent 60%);
+      transition: none;
+    }
     .network-focus span {
       display: block;
       margin-top: var(--space-1);
@@ -971,8 +980,25 @@
     }
     .network-step {
       position: static;
+      pointer-events: auto;
       border-radius: var(--radius-pill);
       padding: 6px 10px;
+      cursor: pointer;
+      text-decoration: none;
+      transition:
+        transform var(--motion-fast) var(--ease-standard),
+        border-color var(--motion-fast) var(--ease-standard),
+        color var(--motion-fast) var(--ease-standard);
+    }
+    .network-step:hover {
+      border-color: color-mix(in oklab, var(--fg), transparent 62%);
+      color: var(--fg);
+      transform: translateY(-1px);
+    }
+    .network-step:active { transform: translateY(1px); }
+    .network-step:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
     }
     .network-step:first-child {
       border-color: color-mix(in oklab, var(--accent), transparent 55%);
@@ -985,9 +1011,10 @@
       display: grid;
       place-items: center;
       opacity: 1;
+      pointer-events: none;
       transition: opacity var(--motion-base) var(--ease-standard);
     }
-    .stage.webgl-ready .network-fallback { opacity: 0; }
+    .stage.webgl-ready .network-fallback { opacity: 0; visibility: hidden; }
     .fallback-globe {
       position: relative;
       width: min(78%, 340px);
@@ -1251,57 +1278,105 @@
     }
     .hero::after {
       position: absolute;
-      inset: 0 0 0 44%;
-      z-index: -1;
+      inset: 0;
+      z-index: 2;
       content: "";
-      background: radial-gradient(circle at 58% 50%, color-mix(in oklab, var(--accent), transparent 89%), transparent 58%);
+      background:
+        radial-gradient(ellipse 60% 52% at 66% 50%, color-mix(in oklab, var(--accent), transparent 91%), transparent 70%),
+        linear-gradient(color-mix(in oklab, var(--bg), transparent 30%), transparent 22% 74%, color-mix(in oklab, var(--bg), transparent 8%)),
+        linear-gradient(90deg, color-mix(in oklab, var(--bg), transparent 22%), transparent 46%);
       pointer-events: none;
     }
     .hero-grid {
       min-height: calc(100svh - 64px);
-      grid-template-columns: minmax(0, .78fr) minmax(520px, 1.22fr);
-      gap: 0;
+      display: flex;
       align-items: center;
     }
     .hero-copy {
       position: relative;
       z-index: 4;
-      padding-block: 80px;
+      max-width: 560px;
+      padding-block: 96px 140px;
+      pointer-events: none;
     }
+    .hero-copy a,
+    .hero-copy button { pointer-events: auto; }
     .hero h1 {
       max-width: 9ch;
       margin-bottom: var(--space-6);
-      font-size: clamp(52px, 6vw, var(--text-4xl));
+      font-size: clamp(52px, 6.4vw, var(--text-4xl));
       line-height: var(--leading-tight);
       letter-spacing: -.025em;
     }
     .lede {
-      max-width: 54ch;
+      max-width: 46ch;
       color: var(--fg-2);
     }
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-8);
+      color: var(--muted);
+      font: var(--text-xs)/1.35 var(--font-mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .hero-meta::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px color-mix(in oklab, var(--accent), transparent 30%);
+      animation: live-pulse 2.4s var(--ease-standard) infinite;
+    }
+    .hero-scroll-cue {
+      position: absolute;
+      bottom: var(--space-6);
+      left: 50%;
+      z-index: 5;
+      display: grid;
+      justify-items: center;
+      gap: var(--space-2);
+      transform: translateX(-50%);
+      color: var(--muted);
+      font: var(--text-xs)/1 var(--font-mono);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: color var(--motion-fast) var(--ease-standard);
+    }
+    .hero-scroll-cue::after {
+      content: "";
+      width: 1px;
+      height: 34px;
+      background: linear-gradient(var(--muted), transparent);
+      animation: scroll-cue 2.2s var(--ease-standard) infinite;
+    }
+    .hero-scroll-cue:hover { color: var(--fg); }
     .stage {
-      min-height: min(780px, calc(100svh - 64px));
-      overflow: visible;
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      min-height: 0;
+      overflow: hidden;
       border: 0;
       border-radius: 0;
       background: transparent;
       box-shadow: none;
     }
-    .stage::before {
-      position: absolute;
-      inset: 12% 6% 12% 2%;
-      content: "";
-      border: 1px solid color-mix(in oklab, var(--accent), transparent 88%);
-      border-radius: 50%;
-      opacity: .52;
-      pointer-events: none;
-    }
+    .stage::before { display: none; }
     .project-network-canvas {
-      inset: -8% -12% -8% -5%;
-      width: auto;
-      height: auto;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      touch-action: pan-y;
     }
-    .stage-hud { inset: var(--space-6); }
+    .stage-hud {
+      z-index: 3;
+      inset: var(--space-6) max(var(--space-6), calc((100vw - var(--container-max)) / 2)) var(--space-6);
+    }
     .network-kicker,
     .network-motion-toggle,
     .network-focus {
@@ -1362,16 +1437,107 @@
     .pin {
       min-height: 404px;
       border-radius: var(--radius-md);
+      transition:
+        transform var(--motion-base) var(--ease-standard),
+        border-color var(--motion-base) var(--ease-standard),
+        box-shadow var(--motion-base) var(--ease-standard);
+    }
+    .pin:hover {
+      border-color: color-mix(in oklab, var(--fg), transparent 58%);
+      box-shadow: var(--elev-raised);
+      transform: translateY(-3px);
     }
     .pin-cover {
       min-height: 188px;
       height: 188px;
+      overflow: hidden;
+      padding: 0;
     }
+    .pin-cover::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        color-mix(in oklab, var(--bg), transparent 78%),
+        transparent 34% 60%,
+        color-mix(in oklab, var(--bg), transparent 62%));
+      pointer-events: none;
+    }
+    .pin-cover img {
+      transition: transform 480ms var(--ease-standard);
+      will-change: transform;
+    }
+    .pin:hover .pin-cover img { transform: scale(1.045); }
+    .pin-status {
+      position: absolute;
+      top: var(--space-3);
+      left: var(--space-3);
+      z-index: 1;
+      min-height: 26px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      padding: 0 10px;
+      background: color-mix(in oklab, var(--bg), transparent 10%);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: var(--fg-2);
+      font: 400 10px/1 var(--font-mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .pin-status.is-boosted {
+      border-color: color-mix(in oklab, var(--accent), transparent 45%);
+      color: var(--accent);
+    }
+    .pin-status.is-invite { color: var(--muted); }
     .pin-body { padding: var(--space-6); }
     section:not(.hero) .pin .pin-title {
-      margin-top: var(--space-4);
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      margin-top: 0;
       color: var(--fg);
       font-size: var(--text-xl);
+      line-height: 1.3;
+      letter-spacing: -.16px;
+    }
+    .pin-body > p {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
+    .pin .tag {
+      border: 1px solid var(--border-soft);
+      background: transparent;
+      padding: 4px 8px;
+      color: var(--muted);
+      font: 400 10px/1.3 var(--font-mono);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .pin .owner {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: .04em;
+    }
+    .btn:focus-visible,
+    .chip:focus-visible,
+    .tab:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+    .section-head .eyebrow,
+    .membership-head .eyebrow {
+      margin-bottom: var(--space-3);
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: .1em;
+      text-transform: uppercase;
     }
     .membership-compare { border-color: var(--border); }
     .membership-tier { padding-block: var(--space-12); }
@@ -1381,6 +1547,8 @@
       border-top: 1px solid var(--border);
       background: var(--bg);
     }
+    /* Guard: nothing may introduce sideways scroll at any viewport. */
+    html, body { overflow-x: clip; }
 
     /* Motion language: quick state feedback, restrained one-shot reveals. */
     @view-transition { navigation: auto; }
@@ -1442,6 +1610,15 @@
       from { opacity: 0; transform: translateY(16px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes live-pulse {
+      0%, 100% { box-shadow: 0 0 10px color-mix(in oklab, var(--accent), transparent 30%); }
+      50% { box-shadow: 0 0 3px color-mix(in oklab, var(--accent), transparent 72%); }
+    }
+    @keyframes scroll-cue {
+      0% { transform: scaleY(0); transform-origin: top; opacity: 0; }
+      35% { transform: scaleY(1); transform-origin: top; opacity: 1; }
+      70%, 100% { transform: scaleY(1); transform-origin: top; opacity: 0; }
+    }
     @keyframes modal-in {
       from { opacity: 0; transform: translateY(12px) scale(.985); }
       to { opacity: 1; transform: translateY(0) scale(1); }
@@ -1471,7 +1648,18 @@
       .topbar { top: 0; width: 100%; }
       main { margin-top: 0; }
       .hero { min-height: auto; }
-      .stage { min-height: 560px; overflow: hidden; transform: none; }
+      .stage {
+        position: relative;
+        inset: auto;
+        min-height: 560px;
+        overflow: hidden;
+        transform: none;
+      }
+      .hero::after {
+        background:
+          radial-gradient(ellipse 70% 40% at 50% 68%, color-mix(in oklab, var(--accent), transparent 91%), transparent 70%),
+          linear-gradient(color-mix(in oklab, var(--bg), transparent 30%), transparent 30% 78%, color-mix(in oklab, var(--bg), transparent 8%));
+      }
       .hero-grid {
         min-height: auto;
         width: min(calc(100% - var(--container-gutter-tablet) * 2), var(--container-max));
@@ -1482,9 +1670,11 @@
         grid-template-columns: minmax(130px, .4fr) 1fr;
       }
       .tier-benefits { grid-column: 2; }
-      .hero-grid { grid-template-columns: 1fr; gap: var(--space-4); }
-      .hero-copy { padding: 80px 0 24px; }
+      .hero-grid { display: block; }
+      .hero-copy { max-width: none; padding: 80px 0 24px; }
+      .hero-scroll-cue { display: none; }
       .stage { max-width: none; }
+      .stage-hud { inset: var(--space-4); }
       .section-head,
       .membership-head {
         grid-template-columns: 1fr;
@@ -1526,7 +1716,7 @@
       .hero { min-height: auto; padding-block: 0 var(--space-8); }
       .hero-copy { padding: 64px 0 16px; }
       .stage { min-height: 460px; }
-      .project-network-canvas { inset: -2% -14% -4%; }
+      .project-network-canvas { inset: 0; }
       .hero h1 { max-width: 9ch; }
       .board-tools { align-items: stretch; }
       .membership-tier {
@@ -1598,6 +1788,7 @@
             <a class="btn btn-primary" href="#discover" data-od-id="hero-explore-cta">Browse projects</a>
             <button class="btn" data-open="create" data-od-id="hero-share-cta">Share a project</button>
           </div>
+          <p class="hero-meta" id="hero-live-meta" data-od-id="hero-live-meta">Connecting to the live board</p>
         </div>
         <div class="stage" id="stage" role="group" aria-label="Interactive three-dimensional Earth showing project collaboration routes around the world">
           <canvas id="project-network-canvas" class="project-network-canvas" aria-hidden="true"></canvas>
@@ -1621,10 +1812,10 @@
             <button class="network-motion-toggle" id="network-motion-toggle" type="button" aria-pressed="false" aria-controls="project-network-canvas" hidden>
               Pause motion
             </button>
-            <div class="network-steps" aria-hidden="true">
-              <span class="network-step">Discover</span>
-              <span class="network-step">Connect</span>
-              <span class="network-step">Build</span>
+            <div class="network-steps" role="group" aria-label="Get started">
+              <a class="network-step" href="#discover" data-od-id="network-step-discover">Discover</a>
+              <a class="network-step" href="project-hub.html" data-od-id="network-step-connect">Connect</a>
+              <button class="network-step" type="button" data-open="create" data-od-id="network-step-build">Build</button>
             </div>
             <div class="network-focus" id="network-focus" aria-hidden="true">
               Loading project network
@@ -1633,12 +1824,16 @@
           </div>
         </div>
       </div>
+      <a class="hero-scroll-cue" href="#discover" data-od-id="hero-scroll-cue">Scroll</a>
     </section>
 
     <section id="discover" data-od-id="project-discovery">
       <div class="container">
         <div class="section-head">
-          <h2>Browse projects with context.</h2>
+          <div>
+            <p class="eyebrow">Live board</p>
+            <h2>Browse projects with context.</h2>
+          </div>
           <p class="section-copy">
             Search by project, discipline, or skill. Boosted work appears first;
             every open project remains discoverable.
@@ -1661,7 +1856,10 @@
     <section data-od-id="membership">
       <div class="container">
         <div class="membership-head">
-          <h2>Be seen as a builder and an initiator.</h2>
+          <div>
+            <p class="eyebrow">Membership</p>
+            <h2>Be seen as a builder and an initiator.</h2>
+          </div>
           <p class="section-copy">
             Use one profile to join projects, publish your own, and manage every application.
           </p>
@@ -1742,6 +1940,10 @@
         <button class="btn btn-ghost auth-switch" type="button" id="auth-mode">
           New here? Create an account
         </button>
+        <p class="field-help" id="auth-preview-note" hidden>
+          Google sign-in needs a full browser tab, so it finishes on the live site.
+          Email and password work right here in the preview.
+        </p>
       </form>
     </div>
   </div>
@@ -1812,7 +2014,8 @@
       signInWithGoogle,
       signInWithPassword,
       signUpWithPassword,
-      signOut
+      signOut,
+      isEmbeddedPreview
     } from './supabase-client.js';
 
     const $ = selector => document.querySelector(selector);
@@ -2036,8 +2239,10 @@
       }
     });
 
+    let accountUser = null;
     async function refreshAccount() {
       const user = await currentUser();
+      accountUser = user;
       const button = $('#account-button');
       const avatar = $('#account-avatar');
       const label = $('#account-label');
@@ -2125,22 +2330,26 @@
       $('#project-pins').innerHTML = filtered.length
         ? filtered.map((project, index) => {
             const boosted = project.boost_until && new Date(project.boost_until) > new Date();
+            const statusClass = boosted ? 'is-boosted' : project.status === 'invite_only' ? 'is-invite' : 'is-open';
+            const statusLabel = boosted ? 'Boosted idea' : project.status === 'invite_only' ? 'Invite only' : 'Open project';
+            const seatCount = Number(project.seats_total) || 0;
+            const seatSuffix = seatCount ? ` · ${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}` : '';
             return `
               <article class="pin glass" data-od-id="project-card-${escapeHtml(project.id)}">
                 <div class="pin-cover">
                   <img src="${projectImageData(project) || projectCover(project)}" alt="" loading="lazy" decoding="async"
                     onerror="this.onerror=null;this.src='${projectCover(project)}'">
+                  <span class="pin-status ${statusClass}">${statusLabel}</span>
                 </div>
                 <div class="pin-body">
-                  <span class="badge">${boosted ? 'Boosted idea' : 'Open project'}</span>
                   <h3 class="pin-title">${escapeHtml(project.title)}</h3>
                   <p>${escapeHtml(project.summary)}</p>
                   <div class="tags">
                     ${projectTags(project).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
                   </div>
                   <div class="pin-foot">
-                    <span class="owner">${escapeHtml(project.owner)}</span>
-                    <button class="btn btn-small" data-project="${escapeHtml(project.id)}" aria-label="View ${escapeHtml(project.title)}">View</button>
+                    <span class="owner">${escapeHtml(`By ${project.owner}${seatSuffix}`)}</span>
+                    <button class="btn btn-small" data-project="${escapeHtml(project.id)}" aria-label="View ${escapeHtml(project.title)}">View project</button>
                   </div>
                 </div>
               </article>
@@ -2444,7 +2653,7 @@
       try {
         const result = await signInWithGoogle('/project-hub.html');
         if (result.previewHandoff) {
-          toast('Google sign-in opened on the live site in a new tab.');
+          toast('Google needs a full browser tab, so sign-in continues on the live site. In this preview, use email and password instead.');
         }
       } catch (error) {
         toast(error.message || 'Google sign-in is unavailable.');
@@ -2532,9 +2741,15 @@
         .filter(project => project.status !== 'closed')
         .slice(0, 24);
       const defaultFocusMarkup = networkProjects.length
-        ? `Live project network<span>Hover a node to inspect ${networkProjects.length} open ${networkProjects.length === 1 ? 'project' : 'projects'} from the board.</span>`
-        : 'Live project network<span>No open projects are currently available. Share the first idea to place a node.</span>';
+        ? `Live project network<span>Drag the Earth to explore. Hover a node to inspect ${networkProjects.length} open ${networkProjects.length === 1 ? 'project' : 'projects'} from the board.</span>`
+        : 'Live project network<span>Drag the Earth to explore. Share the first idea to place a node.</span>';
       focus.innerHTML = defaultFocusMarkup;
+      const heroMeta = $('#hero-live-meta');
+      if (heroMeta) {
+        heroMeta.textContent = networkProjects.length
+          ? `${networkProjects.length} open ${networkProjects.length === 1 ? 'project' : 'projects'} on the live board`
+          : 'Live board · share the first project';
+      }
 
       try {
         const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js');
@@ -2573,21 +2788,39 @@
           globeGeometry,
           new THREE.MeshStandardMaterial({
             color: color('--surface'),
-            roughness: 1,
-            metalness: 0,
-            transparent: true,
-            opacity: .96
+            roughness: .92,
+            metalness: 0
           })
         );
         earth.add(globeSurface);
 
+        // Fresnel halo — emerald rim light that follows the camera, replacing
+        // the flat translucent shell.
         const atmosphere = new THREE.Mesh(
-          new THREE.SphereGeometry(globeRadius + .1, 72, 54),
-          new THREE.MeshBasicMaterial({
-            color: color('--accent'),
+          new THREE.SphereGeometry(globeRadius + .55, 72, 54),
+          new THREE.ShaderMaterial({
             transparent: true,
-            opacity: .065,
-            side: THREE.BackSide
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            uniforms: {
+              glowColor: { value: new THREE.Color(color('--accent')) }
+            },
+            vertexShader: `
+              varying vec3 vNormal;
+              void main() {
+                vNormal = normalize(normalMatrix * normal);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+            `,
+            fragmentShader: `
+              uniform vec3 glowColor;
+              varying vec3 vNormal;
+              void main() {
+                float intensity = pow(0.66 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.2);
+                gl_FragColor = vec4(glowColor, 1.0) * max(intensity, 0.0) * 0.68;
+              }
+            `
           })
         );
         earth.add(atmosphere);
@@ -2628,11 +2861,10 @@
           ));
         }
 
-        const continentMaterial = new THREE.LineBasicMaterial({
-          color: color('--fg-2'),
-          transparent: true,
-          opacity: .44
-        });
+        // Dot-matrix landmasses: fibonacci-sample the sphere, keep points that
+        // fall on land. Land comes from Natural Earth 110m coastlines,
+        // rasterized once into a 0.5-degree mask; the stylized hulls below are
+        // only the offline fallback.
         const continentShapes = [
           [[-168, 71], [-140, 60], [-125, 49], [-117, 32], [-98, 18], [-82, 25], [-65, 45], [-82, 59], [-108, 72], [-140, 70], [-168, 71]],
           [[-81, 12], [-66, 9], [-51, -5], [-42, -23], [-57, -55], [-72, -40], [-79, -10], [-81, 12]],
@@ -2641,18 +2873,96 @@
           [[112, -11], [153, -10], [154, -38], [131, -44], [113, -28], [112, -11]],
           [[-53, 83], [-22, 78], [-18, 63], [-43, 58], [-61, 70], [-53, 83]]
         ];
-        continentShapes.forEach(shape => {
-          const points = shape.map(([longitude, latitude]) => latLonToVector(latitude, longitude));
-          earth.add(new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints(points),
-            continentMaterial
-          ));
-        });
+        function pointInShape(latitude, longitude, shape) {
+          let inside = false;
+          for (let i = 0, j = shape.length - 1; i < shape.length; j = i++) {
+            const [lonA, latA] = shape[i];
+            const [lonB, latB] = shape[j];
+            if (
+              (latA > latitude) !== (latB > latitude) &&
+              longitude < ((lonB - lonA) * (latitude - latA)) / (latB - latA) + lonA
+            ) inside = !inside;
+          }
+          return inside;
+        }
+        let isLand = (latitude, longitude) =>
+          continentShapes.some(shape => pointInShape(latitude, longitude, shape));
+        try {
+          const [{ feature }, world] = await Promise.all([
+            import('https://cdn.jsdelivr.net/npm/topojson-client@3/+esm'),
+            fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json').then(response => response.json())
+          ]);
+          const geometry = feature(world, world.objects.land).geometry;
+          const rings = [];
+          (geometry.type === 'MultiPolygon' ? geometry.coordinates : [geometry.coordinates])
+            .forEach(polygon => polygon.forEach(ring => rings.push(ring)));
+          const maskWidth = 720;
+          const maskHeight = 360;
+          const mask = new Uint8Array(maskWidth * maskHeight);
+          for (let row = 0; row < maskHeight; row += 1) {
+            const rowLatitude = 90 - ((row + .5) * 180) / maskHeight;
+            const crossings = [];
+            rings.forEach(ring => {
+              for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+                const [lonA, latA] = ring[i];
+                const [lonB, latB] = ring[j];
+                if ((latA > rowLatitude) !== (latB > rowLatitude)) {
+                  crossings.push(lonA + ((rowLatitude - latA) * (lonB - lonA)) / (latB - latA));
+                }
+              }
+            });
+            crossings.sort((a, b) => a - b);
+            for (let pair = 0; pair + 1 < crossings.length; pair += 2) {
+              const startColumn = Math.max(0, Math.ceil(((crossings[pair] + 180) * maskWidth) / 360 - .5));
+              const endColumn = Math.min(maskWidth - 1, Math.floor(((crossings[pair + 1] + 180) * maskWidth) / 360 - .5));
+              for (let column = startColumn; column <= endColumn; column += 1) {
+                mask[row * maskWidth + column] = 1;
+              }
+            }
+          }
+          isLand = (latitude, longitude) => {
+            const row = Math.min(maskHeight - 1, Math.max(0, Math.floor(((90 - latitude) * maskHeight) / 180)));
+            const column = Math.min(maskWidth - 1, Math.max(0, Math.floor(((longitude + 180) * maskWidth) / 360)));
+            return mask[row * maskWidth + column] === 1;
+          };
+        } catch (_) {
+          // Offline or CDN unavailable — the stylized hulls still render.
+        }
+
+        const landDotPositions = [];
+        const dotSamples = 30000;
+        const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+        for (let index = 0; index < dotSamples; index += 1) {
+          const unitY = 1 - (index / (dotSamples - 1)) * 2;
+          const latitude = THREE.MathUtils.radToDeg(Math.asin(unitY));
+          const longitude = (((index * goldenAngle) % (Math.PI * 2)) / Math.PI) * 180 - 180;
+          if (isLand(latitude, longitude)) {
+            const dot = latLonToVector(latitude, longitude, globeRadius + .016);
+            landDotPositions.push(dot.x, dot.y, dot.z);
+          }
+        }
+        const landGeometry = new THREE.BufferGeometry();
+        landGeometry.setAttribute('position', new THREE.Float32BufferAttribute(landDotPositions, 3));
+        earth.add(new THREE.Points(
+          landGeometry,
+          new THREE.PointsMaterial({
+            color: color('--fg'),
+            size: .03,
+            transparent: true,
+            opacity: .72,
+            depthWrite: false
+          })
+        ));
 
         const routeMaterial = new THREE.LineBasicMaterial({
           color: color('--accent'),
           transparent: true,
-          opacity: .34
+          opacity: .18
+        });
+        const participantRouteMaterial = new THREE.LineBasicMaterial({
+          color: color('--accent'),
+          transparent: true,
+          opacity: .58
         });
         const nodePositions = [
           [32, 88], [-12, 112], [57, 142], [-42, 68],
@@ -2670,23 +2980,42 @@
           const longitude = sharedLocation?.longitude ?? fallbackPosition[1];
           const seatCount = Number(project.seats_total) || 0;
           const tagLabel = tags.slice(0, 2).join(' + ') || 'Open collaboration';
-          const locationLabel = sharedLocation?.label ? `${sharedLocation.label} · ` : '';
+          const locationLabel = sharedLocation
+            ? `${sharedLocation.label || 'Shared location'} · `
+            : 'Location not shared · ';
           return {
             projectId: String(project.id),
             name: project.title,
             meta: `${locationLabel}${tagLabel} · ${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}`,
-            detail: `${project.summary || project.description} Shared by ${project.owner}.`,
+            detail: `${project.summary || project.description} Shared by ${project.owner}.${sharedLocation ? '' : ' Placed at an approximate spot until the owner shares a location.'}`,
             latitude,
             longitude,
             active: index === 0
           };
         });
 
+        // The signed-in viewer joins the map at their real shared location.
+        const viewerLocation = userLocation(accountUser);
+        if (viewerLocation) {
+          locations.push({
+            projectId: '',
+            name: 'You are here',
+            meta: viewerLocation.label || 'Your shared location',
+            detail: 'Your approximate location from your connectEd profile, rounded to about one kilometre.',
+            latitude: viewerLocation.latitude,
+            longitude: viewerLocation.longitude,
+            active: false,
+            viewer: true
+          });
+        }
+
+        const routeCurves = [];
         function addRoute(from, to) {
           const start = latLonToVector(from.latitude, from.longitude, globeRadius + .07);
           const end = latLonToVector(to.latitude, to.longitude, globeRadius + .07);
           const midpoint = start.clone().add(end).normalize().multiplyScalar(globeRadius + .62);
           const curve = new THREE.QuadraticBezierCurve3(start, midpoint, end);
+          routeCurves.push(curve);
           earth.add(new THREE.Line(
             new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),
             routeMaterial
@@ -2701,27 +3030,93 @@
         }
         routePairs.forEach(([from, to]) => addRoute(locations[from], locations[to]));
 
+        // Real collaboration arcs: accepted participants → the project they
+        // joined, drawn from opt-in profile locations. Row-level security
+        // scopes the query — each viewer sees only the teams they belong to
+        // or run; signed-out visitors keep the ambient network alone.
+        if (accountUser && isSupabaseConfigured) {
+          try {
+            const { data: teamLinks, error: teamError } = await supabase
+              .from('applications')
+              .select('project_id,applicant_id,status,profiles:applicant_id(location_latitude,location_longitude)')
+              .eq('status', 'accepted');
+            if (!teamError) {
+              const viewerShared = userLocation(accountUser);
+              (teamLinks || []).forEach(link => {
+                const projectNode = locations.find(entry => entry.projectId === String(link.project_id));
+                if (!projectNode) return;
+                let participantLatitude = link.profiles?.location_latitude;
+                let participantLongitude = link.profiles?.location_longitude;
+                if (
+                  (!Number.isFinite(participantLatitude) || !Number.isFinite(participantLongitude)) &&
+                  String(link.applicant_id) === String(accountUser.id) &&
+                  viewerShared
+                ) {
+                  participantLatitude = viewerShared.latitude;
+                  participantLongitude = viewerShared.longitude;
+                }
+                if (!Number.isFinite(participantLatitude) || !Number.isFinite(participantLongitude)) return;
+                const start = latLonToVector(participantLatitude, participantLongitude, globeRadius + .07);
+                const end = latLonToVector(projectNode.latitude, projectNode.longitude, globeRadius + .07);
+                const midpoint = start.clone().add(end).normalize().multiplyScalar(globeRadius + .62);
+                const curve = new THREE.QuadraticBezierCurve3(start, midpoint, end);
+                routeCurves.push(curve);
+                earth.add(new THREE.Line(
+                  new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),
+                  participantRouteMaterial
+                ));
+              });
+            }
+          } catch (_) {
+            // Location columns not migrated yet or query unavailable — the
+            // ambient network still renders.
+          }
+        }
+
+        // Data packets travelling the routes — the "live network" signal.
+        const pulseMaterial = new THREE.MeshBasicMaterial({
+          color: color('--accent'),
+          transparent: true,
+          opacity: .9,
+          depthWrite: false
+        });
+        const pulseGeometry = new THREE.SphereGeometry(.035, 12, 10);
+        const pulses = routeCurves.map((curve, index) => {
+          const pulse = new THREE.Mesh(pulseGeometry, pulseMaterial);
+          pulse.userData = { curve, offset: routeCurves.length ? index / routeCurves.length : 0 };
+          earth.add(pulse);
+          return pulse;
+        });
+        function updatePulses(time) {
+          pulses.forEach(pulse => {
+            const progress = (time * .00005 + pulse.userData.offset) % 1;
+            pulse.position.copy(pulse.userData.curve.getPoint(progress));
+            pulse.scale.setScalar(.5 + Math.sin(progress * Math.PI) * .9);
+          });
+        }
+
         const markerGeometry = new THREE.SphereGeometry(.052, 24, 18);
-        const markerHitGeometry = new THREE.SphereGeometry(.13, 16, 12);
+        const markerHitGeometry = new THREE.SphereGeometry(.19, 16, 12);
         const haloGeometry = new THREE.RingGeometry(.082, .125, 32);
         const markerTargets = [];
         const markers = locations.map(location => {
+          const highlighted = location.active || location.viewer;
           const marker = new THREE.Group();
           const core = new THREE.Mesh(
             markerGeometry,
             new THREE.MeshStandardMaterial({
-              color: color(location.active ? '--accent' : '--fg'),
-              emissive: color(location.active ? '--accent' : '--fg-2'),
-              emissiveIntensity: location.active ? .72 : .28,
+              color: color(highlighted ? '--accent' : '--fg'),
+              emissive: color(highlighted ? '--accent' : '--fg-2'),
+              emissiveIntensity: highlighted ? .72 : .28,
               roughness: .5
             })
           );
           const halo = new THREE.Mesh(
             haloGeometry,
             new THREE.MeshBasicMaterial({
-              color: color(location.active ? '--accent' : '--fg-2'),
+              color: color(highlighted ? '--accent' : '--fg-2'),
               transparent: true,
-              opacity: location.active ? .38 : .18,
+              opacity: highlighted ? .38 : .18,
               side: THREE.DoubleSide,
               depthWrite: false
             })
@@ -2744,35 +3139,56 @@
           return marker;
         });
 
-        const starPositions = [];
-        for (let index = 0; index < 48; index += 1) {
-          const angle = index * 2.399963;
-          const radius = 3.1 + (index % 9) * .22;
-          starPositions.push(
-            Math.cos(angle) * radius,
-            Math.sin(angle) * radius * .72,
-            -2.8 - (index % 6) * .25
-          );
-        }
-        const stars = new THREE.BufferGeometry();
-        stars.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
-        scene.add(new THREE.Points(
-          stars,
-          new THREE.PointsMaterial({
-            color: color('--muted'),
-            size: .025,
-            transparent: true,
-            opacity: .22
-          })
-        ));
+        // Deep starfield behind the Earth: two layers of deterministic stars
+        // scattered on a far shell for parallax depth.
+        let starSeed = 7;
+        const seededRandom = () => {
+          starSeed = (starSeed * 16807) % 2147483647;
+          return (starSeed - 1) / 2147483646;
+        };
+        [
+          { count: 260, size: .022, opacity: .26, token: '--muted' },
+          { count: 90, size: .05, opacity: .48, token: '--fg-2' }
+        ].forEach(layer => {
+          const starPositions = [];
+          for (let index = 0; index < layer.count; index += 1) {
+            const theta = seededRandom() * Math.PI * 2;
+            const phi = Math.acos(seededRandom() * 2 - 1);
+            const shellRadius = 8 + seededRandom() * 7;
+            starPositions.push(
+              shellRadius * Math.sin(phi) * Math.cos(theta) * 1.4,
+              shellRadius * Math.sin(phi) * Math.sin(theta) * .8,
+              -Math.abs(shellRadius * Math.cos(phi)) - 2.2
+            );
+          }
+          const stars = new THREE.BufferGeometry();
+          stars.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+          scene.add(new THREE.Points(
+            stars,
+            new THREE.PointsMaterial({
+              color: color(layer.token),
+              size: layer.size,
+              transparent: true,
+              opacity: layer.opacity,
+              depthWrite: false
+            })
+          ));
+        });
 
         const raycaster = new THREE.Raycaster();
         const pointer = new THREE.Vector2(4, 4);
-        const pointerTilt = new THREE.Vector2();
         let visible = true;
         let userPaused = false;
         let frame = 0;
         let spin = -1.9;
+        let pitch = .12;
+        let dragging = false;
+        let dragMoved = 0;
+        let hoverPaused = false;
+        let inertia = 0;
+        let lastPointerX = 0;
+        let lastPointerY = 0;
+        let lastDragTime = 0;
         let previousTime = performance.now();
 
         function resize() {
@@ -2781,17 +3197,38 @@
           renderer.setSize(width, height, false);
           camera.aspect = width / height;
           camera.updateProjectionMatrix();
+          // Full-bleed framing: on wide viewports the Earth sits right of the
+          // hero copy; on stacked layouts it re-centers and scales down.
+          const stacked = window.matchMedia('(max-width: 900px)').matches;
+          if (!stacked && camera.aspect > 1.15) {
+            earth.position.set(
+              Math.min(2.1, .28 * Math.tan(THREE.MathUtils.degToRad(19)) * camera.position.z * camera.aspect),
+              0,
+              0
+            );
+            earth.scale.setScalar(1);
+          } else {
+            earth.position.set(0, .08, 0);
+            earth.scale.setScalar(stacked ? .72 : .85);
+          }
           render(performance.now());
         }
 
         function render(time) {
-          if (!reducedMotion && !userPaused) {
-            const elapsed = Math.min(32, Math.max(0, time - previousTime));
+          const elapsed = Math.min(48, Math.max(0, time - previousTime));
+          previousTime = time;
+          if (!reducedMotion && !userPaused && !dragging && !hoverPaused) {
             spin += elapsed * .00007;
           }
-          previousTime = time;
-          earth.rotation.y += (spin + pointerTilt.x * .18 - earth.rotation.y) * .045;
-          earth.rotation.x += (.12 - pointerTilt.y * .08 - earth.rotation.x) * .045;
+          if (!dragging && inertia) {
+            spin += inertia * elapsed;
+            inertia *= Math.pow(.9, elapsed / 16.7);
+            if (Math.abs(inertia) < .000004) inertia = 0;
+          }
+          const ease = dragging ? .3 : .045;
+          earth.rotation.y += (spin - earth.rotation.y) * ease;
+          earth.rotation.x += (pitch - earth.rotation.x) * ease;
+          updatePulses(time);
           renderer.render(scene, camera);
         }
 
@@ -2812,12 +3249,14 @@
           const rect = canvas.getBoundingClientRect();
           pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
           pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-          pointerTilt.set(pointer.x, pointer.y);
           raycaster.setFromCamera(pointer, camera);
           const hit = raycaster.intersectObjects([globeSurface, ...markerTargets], false)[0];
+          // Freeze the auto-spin while the pointer studies the planet so
+          // markers hold still under the cursor.
+          hoverPaused = Boolean(hit);
           markers.forEach(marker => {
             marker.scale.setScalar(1);
-            marker.children[1].material.opacity = marker.userData.active ? .38 : .18;
+            marker.children[1].material.opacity = (marker.userData.active || marker.userData.viewer) ? .38 : .18;
           });
           if (hit && markerTargets.includes(hit.object)) {
             const { location, marker, halo } = hit.object.userData;
@@ -2825,26 +3264,83 @@
             halo.material.opacity = .72;
             canvas.style.cursor = 'pointer';
             focus.innerHTML = `<small>${escapeHtml(location.meta)}</small>${escapeHtml(location.name)}<span>${escapeHtml(location.detail)}</span>`;
+            // Ride beside the cursor, clamped inside the HUD bounds and
+            // flipped to the opposite side near an edge.
+            const hudRect = focus.parentElement.getBoundingClientRect();
+            const cardWidth = focus.offsetWidth;
+            const cardHeight = focus.offsetHeight;
+            let tooltipX = event.clientX - hudRect.left + 18;
+            let tooltipY = event.clientY - hudRect.top + 18;
+            if (tooltipX + cardWidth > hudRect.width) tooltipX = event.clientX - hudRect.left - cardWidth - 18;
+            if (tooltipY + cardHeight > hudRect.height) tooltipY = event.clientY - hudRect.top - cardHeight - 18;
+            focus.style.setProperty('--tooltip-x', `${Math.max(0, tooltipX)}px`);
+            focus.style.setProperty('--tooltip-y', `${Math.max(0, tooltipY)}px`);
+            focus.classList.add('is-tooltip');
           } else {
             canvas.style.cursor = 'grab';
+            focus.classList.remove('is-tooltip');
             focus.innerHTML = defaultFocusMarkup;
           }
-          if (reducedMotion) render(performance.now());
+          if (reducedMotion || userPaused || !visible) render(performance.now());
         }
 
-        canvas.addEventListener('pointermove', inspect);
-        canvas.addEventListener('pointerleave', () => {
-          pointer.set(4, 4);
-          pointerTilt.set(0, 0);
+        canvas.addEventListener('pointerdown', event => {
+          if (event.pointerType === 'mouse' && event.button !== 0) return;
+          dragging = true;
+          dragMoved = 0;
+          inertia = 0;
+          lastPointerX = event.clientX;
+          lastPointerY = event.clientY;
+          lastDragTime = performance.now();
+          spin = earth.rotation.y;
+          pitch = earth.rotation.x;
+          try { canvas.setPointerCapture(event.pointerId); } catch (_) {}
+          canvas.style.cursor = 'grabbing';
+          focus.classList.remove('is-tooltip');
+          focus.innerHTML = defaultFocusMarkup;
+        });
+        canvas.addEventListener('pointermove', event => {
+          if (dragging) {
+            const deltaX = event.clientX - lastPointerX;
+            const deltaY = event.clientY - lastPointerY;
+            lastPointerX = event.clientX;
+            lastPointerY = event.clientY;
+            dragMoved += Math.abs(deltaX) + Math.abs(deltaY);
+            spin += deltaX * .0052;
+            pitch = Math.max(-.7, Math.min(.85, pitch + deltaY * .0034));
+            const now = performance.now();
+            const elapsedDrag = Math.max(8, now - lastDragTime);
+            lastDragTime = now;
+            inertia = Math.max(-.008, Math.min(.008, (deltaX * .0052) / elapsedDrag));
+            if (reducedMotion || userPaused || !visible) render(now);
+            return;
+          }
+          inspect(event);
+        });
+        function endDrag(event) {
+          if (!dragging) return;
+          dragging = false;
+          try { canvas.releasePointerCapture(event.pointerId); } catch (_) {}
           canvas.style.cursor = 'grab';
+          if (dragMoved < 6 || reducedMotion) inertia = 0;
+        }
+        canvas.addEventListener('pointerup', endDrag);
+        canvas.addEventListener('pointercancel', endDrag);
+        canvas.addEventListener('pointerleave', () => {
+          if (dragging) return;
+          pointer.set(4, 4);
+          hoverPaused = false;
+          canvas.style.cursor = 'grab';
+          focus.classList.remove('is-tooltip');
           focus.innerHTML = defaultFocusMarkup;
           markers.forEach(marker => {
             marker.scale.setScalar(1);
-            marker.children[1].material.opacity = marker.userData.active ? .38 : .18;
+            marker.children[1].material.opacity = (marker.userData.active || marker.userData.viewer) ? .38 : .18;
           });
-          if (reducedMotion) render(performance.now());
+          if (reducedMotion || userPaused || !visible) render(performance.now());
         });
         canvas.addEventListener('click', event => {
+          if (dragMoved >= 6) return;
           const rect = canvas.getBoundingClientRect();
           pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
           pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -2889,6 +3385,7 @@
     if (supabase) {
       supabase.auth.onAuthStateChange(() => refreshAccount());
     }
+    $('#auth-preview-note').hidden = !isEmbeddedPreview();
     await Promise.all([refreshAccount(), loadProjects()]);
     initProjectNetwork();
   </script>

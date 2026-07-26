@@ -1599,6 +1599,119 @@
     .applicant,
     .profile-card,
     .membership-card { border-radius: var(--radius-md); }
+
+    /* Guard: nothing may introduce sideways scroll at any viewport. */
+    html, body { overflow-x: clip; }
+
+    /* Live-board signal + keyboard focus polish. */
+    .board-status { gap: var(--space-2); }
+    .board-status.is-live::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px color-mix(in oklab, var(--accent), transparent 40%);
+    }
+    .btn:focus-visible,
+    .chip:focus-visible,
+    .tab:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    /* Board card system — console-density covers, one corner status chip,
+       disciplined hover. Depth stays in the border hierarchy. */
+    .pin {
+      transition:
+        transform var(--motion-base) var(--ease-standard),
+        border-color var(--motion-base) var(--ease-standard),
+        box-shadow var(--motion-base) var(--ease-standard);
+    }
+    .pin:hover {
+      border-color: color-mix(in oklab, var(--fg), transparent 58%);
+      box-shadow: var(--elev-raised);
+      transform: translateY(-3px);
+    }
+    .pin-cover { overflow: hidden; padding: 0; }
+    .pin-cover::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        color-mix(in oklab, var(--bg), transparent 78%),
+        transparent 34% 60%,
+        color-mix(in oklab, var(--bg), transparent 62%));
+      pointer-events: none;
+    }
+    .pin-cover img {
+      transition: transform 480ms var(--ease-standard);
+      will-change: transform;
+    }
+    .pin:hover .pin-cover img { transform: scale(1.045); }
+    .pin-status {
+      position: absolute;
+      top: var(--space-3);
+      left: var(--space-3);
+      z-index: 1;
+      min-height: 26px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      padding: 0 10px;
+      background: color-mix(in oklab, var(--bg), transparent 10%);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: var(--fg-2);
+      font: 400 10px/1 var(--font-mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .pin-status.is-boosted {
+      border-color: color-mix(in oklab, var(--accent), transparent 45%);
+      color: var(--accent);
+    }
+    .pin-status.is-paused,
+    .pin-status.is-invite { color: var(--muted); }
+    .pin .pin-title {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      margin-top: 0;
+      font-size: var(--text-xl);
+      line-height: 1.3;
+      letter-spacing: -.16px;
+    }
+    .pin-body > p {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
+    .pin .tag {
+      border: 1px solid var(--border-soft);
+      background: transparent;
+      padding: 4px 8px;
+      color: var(--muted);
+      font: 400 10px/1.3 var(--font-mono);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .pin .owner {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: .04em;
+    }
+    .skeleton::after {
+      animation: skeleton-sweep 1.6s var(--ease-standard) infinite;
+    }
+    @keyframes skeleton-sweep {
+      0% { opacity: .4; }
+      50% { opacity: 1; }
+      100% { opacity: .4; }
+    }
     @media (max-width: 900px) {
       body { padding: 0; }
       .topbar { top: 0; width: 100%; }
@@ -1799,6 +1912,43 @@
     </div>
   </main>
 
+  <div id="modal-auth" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="auth-title" tabindex="-1">
+    <div class="modal glass">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Your account</p>
+          <h2 id="auth-title">Sign in to continue</h2>
+        </div>
+        <button class="close" data-close="auth" aria-label="Close">×</button>
+      </div>
+      <form id="auth-form" class="form">
+        <label id="name-field" hidden>
+          Display name
+          <input class="field" name="name" maxlength="80" autocomplete="name">
+        </label>
+        <label>
+          Email
+          <input class="field" name="email" type="email" required autocomplete="email">
+        </label>
+        <label>
+          Password
+          <input class="field" name="password" type="password" minlength="8" required autocomplete="current-password">
+        </label>
+        <div class="form-actions">
+          <button class="btn" type="button" id="google-auth">Continue with Google</button>
+          <button class="btn btn-primary" type="submit" id="email-auth">Sign in</button>
+        </div>
+        <button class="btn btn-ghost auth-switch" type="button" id="auth-mode">
+          New here? Create an account
+        </button>
+        <p class="field-help" id="auth-preview-note" hidden>
+          Google sign-in needs a full browser tab, so it finishes on the live site.
+          Email and password work right here in the preview.
+        </p>
+      </form>
+    </div>
+  </div>
+
   <div id="modal-project-form" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="project-form-title" tabindex="-1">
     <div class="modal glass">
       <div class="modal-head">
@@ -1823,7 +1973,8 @@
         <label>Skills and topics<input class="field" name="tags" maxlength="240" placeholder="design, mobile, education"></label>
         <div class="field-row">
           <label>Open seats<input class="field" name="seats" type="number" min="1" max="50" value="3" required></label>
-          <label>Status<select class="field" name="status"><option value="open">Open</option><option value="invite_only">Invite only</option><option value="closed">Closed</option></select></label>
+          <!-- Archived for later: <option value="invite_only">Invite only</option> — restore when invitations ship. -->
+          <label>Status<select class="field" name="status"><option value="open">Open</option><option value="closed">Closed</option></select></label>
         </div>
         <label>Application question<input class="field" name="question" minlength="8" maxlength="500" required></label>
         <div class="form-actions">
@@ -1949,7 +2100,10 @@
       getSession,
       authHeaders,
       signInWithGoogle,
-      signOut
+      signInWithPassword,
+      signUpWithPassword,
+      signOut,
+      isEmbeddedPreview
     } from './supabase-client.js';
 
     const $ = selector => document.querySelector(selector);
@@ -2244,7 +2398,7 @@
       try {
         const result = await signInWithGoogle('/project-hub.html');
         if (result.previewHandoff) {
-          toast('Google sign-in opened on the live site in a new tab.');
+          toast('Google needs a full browser tab, so sign-in continues on the live site. In this preview, use email and password instead.');
         }
       } catch (error) {
         toast(error.message || 'Google sign-in is unavailable.');
@@ -2256,10 +2410,61 @@
       }
     }
 
+    let authMode = 'signin';
+    function setAuthMode(mode) {
+      authMode = mode;
+      const signup = mode === 'signup';
+      $('#name-field').hidden = !signup;
+      $('#auth-title').textContent = signup ? 'Create your account' : 'Sign in to continue';
+      $('#email-auth').textContent = signup ? 'Create account' : 'Sign in';
+      $('#auth-mode').textContent = signup
+        ? 'Already have an account? Sign in'
+        : 'New here? Create an account';
+      $('#auth-form [name=password]').autocomplete = signup ? 'new-password' : 'current-password';
+    }
+    function openAuthModal() {
+      $('#auth-preview-note').hidden = !isEmbeddedPreview();
+      openModal('auth');
+    }
+    $('#auth-form').onsubmit = async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const submit = $('#email-auth');
+      const originalLabel = submit.textContent;
+      form.setAttribute('aria-busy', 'true');
+      submit.disabled = true;
+      submit.textContent = authMode === 'signup' ? 'Creating…' : 'Signing in…';
+      const values = new FormData(form);
+      try {
+        const result = authMode === 'signup'
+          ? await signUpWithPassword(
+              String(values.get('email')).trim(),
+              String(values.get('password')),
+              String(values.get('name')).trim()
+            )
+          : await signInWithPassword(
+              String(values.get('email')).trim(),
+              String(values.get('password'))
+            );
+        if (result.error) throw result.error;
+        closeModal('auth');
+        toast(authMode === 'signup' ? 'Check your email to confirm your account.' : 'Signed in.');
+        await loadAll();
+      } catch (error) {
+        toast(error.message);
+      } finally {
+        form.setAttribute('aria-busy', 'false');
+        submit.disabled = false;
+        submit.textContent = originalLabel;
+      }
+    };
+    $('#google-auth').onclick = event => beginGoogleSignIn(event.currentTarget);
+    $('#auth-mode').onclick = () => setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+
     async function requireUser() {
       if (user) return user;
       toast('Sign in to continue.');
-      await beginGoogleSignIn();
+      openAuthModal();
       return null;
     }
 
@@ -2380,6 +2585,8 @@
       if (user) {
         label.textContent = 'Sign out';
         const avatarUrl = googleAvatarUrl();
+        photo.referrerPolicy = 'no-referrer';
+        photo.onerror = () => { photo.hidden = true; };
         photo.hidden = !avatarUrl;
         if (avatarUrl) photo.src = avatarUrl;
         photo.alt = avatarUrl ? `${user.user_metadata?.full_name || profile?.display_name || 'Account'} profile photo` : '';
@@ -2394,7 +2601,7 @@
         photo.hidden = true;
         photo.removeAttribute('src');
         photo.alt = '';
-        button.onclick = event => beginGoogleSignIn(event.currentTarget);
+        button.onclick = () => openAuthModal();
       }
     }
 
@@ -2405,6 +2612,7 @@
         : isSupabaseConfigured
         ? `${liveProjects.length} open ${liveProjects.length === 1 ? 'project' : 'projects'}`
         : 'Preview board';
+      $('#board-status').classList.toggle('is-live', !loadError && isSupabaseConfigured);
       $('#owned-count').textContent = ownedProjects.length;
       $('#request-count').textContent = sentApplications.length;
       $('#applicant-count').textContent = applications.filter(item => item.status === 'pending').length;
@@ -2477,19 +2685,36 @@
     function pinMarkup(project, index, owned = false) {
       const boosted = project.boost_until && new Date(project.boost_until) > new Date();
       const acceptingApplications = isAcceptingApplications(project);
+      const statusClass = boosted
+        ? 'is-boosted'
+        : !acceptingApplications && project.status === 'open'
+        ? 'is-paused'
+        : project.status === 'invite_only'
+        ? 'is-invite'
+        : 'is-open';
+      const statusLabel = boosted
+        ? 'Boosted idea'
+        : !acceptingApplications && project.status === 'open'
+        ? 'Applications paused'
+        : project.status === 'invite_only'
+        ? 'Invite only'
+        : 'Open project';
+      const seatCount = Number(project.seats_total) || 0;
+      const ownerLine = owned ? project.status.replace('_', ' ') : `By ${project.owner}`;
+      const seatSuffix = seatCount ? ` · ${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}` : '';
       return `
         <article class="pin glass" data-od-id="${owned ? 'owned' : 'discover'}-project-${escapeHtml(project.id)}">
           <div class="pin-cover">
             <img src="${projectImageData(project) || projectCover(project)}" alt="" loading="lazy" decoding="async"
               onerror="this.onerror=null;this.src='${projectCover(project)}'">
+            <span class="pin-status ${statusClass}">${statusLabel}</span>
           </div>
           <div class="pin-body">
-            <span class="badge">${boosted ? 'Boosted idea' : !acceptingApplications && project.status === 'open' ? 'Applications paused' : project.status === 'invite_only' ? 'Invite only' : 'Open project'}</span>
             <h3 class="pin-title">${escapeHtml(project.title)}</h3>
             <p>${escapeHtml(project.summary)}</p>
             <div class="tags">${projectTags(project).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
             <div class="pin-foot">
-              <span class="owner">${escapeHtml(owned ? project.status.replace('_', ' ') : `By ${project.owner}`)}</span>
+              <span class="owner">${escapeHtml(ownerLine)}${escapeHtml(seatSuffix)}</span>
               <div class="pin-card-actions">
                 ${owned ? '' : `<button class="btn btn-small" data-save="${escapeHtml(project.id)}" aria-pressed="${savedProjectIds.has(String(project.id))}" aria-label="${savedProjectIds.has(String(project.id)) ? 'Remove' : 'Save'} ${escapeHtml(project.title)}">${savedProjectIds.has(String(project.id)) ? 'Saved' : 'Save'}</button>`}
                 <button class="btn btn-small" data-view="${escapeHtml(project.id)}" aria-label="View ${escapeHtml(project.title)}">View project</button>
@@ -2773,6 +2998,11 @@
       const profilePhoto = $('#profile-photo');
       const profileFallback = $('#profile-photo-fallback');
       const displayName = profile?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'connectEd member';
+      profilePhoto.referrerPolicy = 'no-referrer';
+      profilePhoto.onerror = () => {
+        profilePhoto.hidden = true;
+        profileFallback.hidden = false;
+      };
       profilePhoto.hidden = !avatarUrl;
       profileFallback.hidden = Boolean(avatarUrl);
       if (avatarUrl) profilePhoto.src = avatarUrl;
@@ -2816,7 +3046,7 @@
 
     function bindSigninButtons() {
       $$('[data-google-signin]').forEach(button => {
-        button.onclick = event => beginGoogleSignIn(event.currentTarget);
+        button.onclick = () => openAuthModal();
       });
     }
 
@@ -2968,6 +3198,7 @@
       editingQuestionId = null;
       const form = $('#project-form');
       form.reset();
+      form.status.querySelector('option[value="invite_only"]')?.remove();
       resetProjectImagePreview();
       $('#project-form-title').textContent = project ? 'Edit your project' : 'Post a project';
       if (project) {
@@ -2976,6 +3207,14 @@
         form.description.value = project.description;
         form.tags.value = projectTags(project).join(', ');
         form.seats.value = project.seats_total;
+        // Legacy invite-only projects keep their status until the owner changes it;
+        // the option itself is archived from the picker.
+        if (project.status === 'invite_only') {
+          const legacyOption = document.createElement('option');
+          legacyOption.value = 'invite_only';
+          legacyOption.textContent = 'Invite only (archived)';
+          form.status.append(legacyOption);
+        }
         form.status.value = project.status;
         const result = await supabase.from('project_questions')
           .select('id,prompt').eq('project_id', project.id).order('position').limit(1).maybeSingle();
@@ -3273,12 +3512,23 @@
             longitude: Number(longitude.toFixed(2))
           }
         : null;
-      const result = await supabase.from('profiles').update({
+      const profileBase = {
         display_name: String(values.get('display_name')).trim(),
         headline: String(values.get('headline')).trim(),
         bio: String(values.get('bio')).trim(),
         skills: normalizeTags(values.get('skills'))
+      };
+      let result = await supabase.from('profiles').update({
+        ...profileBase,
+        location_label: location?.label || null,
+        location_latitude: location?.latitude ?? null,
+        location_longitude: location?.longitude ?? null
       }).eq('id', user.id);
+      if (result.error && /location_/.test(result.error.message)) {
+        // The location columns migration has not been applied yet — save the
+        // rest of the profile and keep location in auth metadata only.
+        result = await supabase.from('profiles').update(profileBase).eq('id', user.id);
+      }
       if (result.error) return toast(result.error.message);
 
       const authResult = await supabase.auth.updateUser({
