@@ -666,6 +666,44 @@
       display: grid;
       gap: var(--space-3);
     }
+    .thumbnail-upload {
+      display: grid;
+      gap: var(--space-3);
+      min-height: 132px;
+      padding: var(--space-5);
+      align-content: center;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-md);
+      background: color-mix(in oklab, var(--surface), var(--bg) 34%);
+      cursor: pointer;
+      transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+    }
+    .thumbnail-upload:hover,
+    .thumbnail-upload:focus-within {
+      border-color: var(--fg-2);
+      background: var(--surface);
+    }
+    .thumbnail-upload-title {
+      color: var(--fg);
+      font-size: var(--text-base);
+      font-weight: 500;
+    }
+    .thumbnail-upload .field {
+      min-height: 44px;
+      padding: 7px;
+      cursor: pointer;
+    }
+    .thumbnail-upload .field::file-selector-button {
+      min-height: 30px;
+      margin-right: var(--space-3);
+      padding: 0 var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--fg);
+      font: 500 var(--text-sm)/1 var(--font-body);
+      cursor: pointer;
+    }
     .field-help {
       color: var(--muted);
       font-size: var(--text-xs);
@@ -1697,13 +1735,14 @@
         <label>Short summary<input class="field" name="summary" minlength="12" maxlength="240" required></label>
         <label>Description<textarea class="field" name="description" minlength="40" maxlength="8000" required></textarea></label>
         <div class="project-image-picker">
-          <label>Project image
+          <label class="thumbnail-upload" for="hub-project-image">
+            <span class="thumbnail-upload-title">Choose your project thumbnail</span>
             <input class="field" id="hub-project-image" name="image" type="file" accept="image/jpeg,image/png,image/webp">
-            <span class="field-help">Optional · JPEG, PNG, or WebP · maximum 8 MB; optimized before publishing</span>
+            <span class="field-help">Upload your own cover image · JPEG, PNG, or WebP · up to 8 MB. We optimize it before publishing.</span>
           </label>
           <div class="image-preview" id="hub-image-preview" hidden>
-            <img id="hub-image-preview-img" alt="Selected project image preview">
-            <p class="image-preview-copy">This image will become the project cover. Uploading a new image replaces the current one.</p>
+            <img id="hub-image-preview-img" alt="Selected project thumbnail preview">
+            <p class="image-preview-copy"><strong>Thumbnail ready.</strong><br>This image will appear on your project card. Uploading another image replaces it.</p>
           </div>
         </div>
         <label>Skills and topics<input class="field" name="tags" maxlength="240" placeholder="design, mobile, education"></label>
