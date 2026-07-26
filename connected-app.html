@@ -1536,11 +1536,8 @@
           <input id="mobile-project-search" type="search" placeholder="Search projects, roles, and skills">
         </label>
         <div class="board-tools">
-          <div class="filter-row" role="group" aria-label="Project filters">
+          <div class="filter-row" id="landing-project-filters" role="group" aria-label="Project filters">
             <button class="chip active" data-filter="all" aria-pressed="true">All ideas</button>
-            <button class="chip" data-filter="design" aria-pressed="false">Design</button>
-            <button class="chip" data-filter="engineering" aria-pressed="false">Engineering</button>
-            <button class="chip" data-filter="research" aria-pressed="false">Research</button>
           </div>
           <a class="btn btn-small" href="project-hub.html">Browse projects</a>
         </div>
@@ -1920,6 +1917,7 @@
       if (!isSupabaseConfigured) {
         projects = previewProjects;
         $('#preview-note').hidden = false;
+        renderProjectFilters();
         renderProjects();
         board.setAttribute('aria-busy', 'false');
         return;
@@ -1945,6 +1943,7 @@
           owner: project.profiles?.display_name || 'connectEd member'
         }));
       }
+      renderProjectFilters();
       renderProjects();
       board.setAttribute('aria-busy', 'false');
     }
@@ -2021,6 +2020,34 @@
       const shareEmpty = $('#share-empty-project');
       if (shareEmpty) shareEmpty.onclick = () => openModal('create');
       animateProjectCards();
+    }
+
+    function renderProjectFilters() {
+      const counts = new Map();
+      projects.forEach(project => {
+        new Set(projectTags(project)).forEach(tag => {
+          counts.set(tag, (counts.get(tag) || 0) + 1);
+        });
+      });
+      const tags = [...counts]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([tag]) => tag);
+      if (activeFilter !== 'all' && !tags.includes(activeFilter)) activeFilter = 'all';
+      $('#landing-project-filters').innerHTML = [
+        `<button class="chip${activeFilter === 'all' ? ' active' : ''}" data-filter="all" aria-pressed="${activeFilter === 'all'}">All ideas</button>`,
+        ...tags.map(tag => `
+          <button class="chip${activeFilter === tag ? ' active' : ''}" data-filter="${escapeHtml(tag)}" aria-pressed="${activeFilter === tag}">
+            ${escapeHtml(tag.replace(/\b\w/g, character => character.toUpperCase()))}
+          </button>
+        `)
+      ].join('');
+      $$('[data-filter]').forEach(button => {
+        button.onclick = () => {
+          activeFilter = button.dataset.filter;
+          renderProjectFilters();
+          renderProjects();
+        };
+      });
     }
 
     function projectCover(project) {
@@ -2300,17 +2327,6 @@
       };
     });
 
-    $$('[data-filter]').forEach(button => {
-      button.onclick = () => {
-        activeFilter = button.dataset.filter;
-        $$('[data-filter]').forEach(item => {
-          const selected = item === button;
-          item.classList.toggle('active', selected);
-          item.setAttribute('aria-pressed', String(selected));
-        });
-        renderProjects();
-      };
-    });
     $$('[data-open]:not(#account-button)').forEach(button => {
       if (button.dataset.open) button.addEventListener('click', () => openModal(button.dataset.open));
     });

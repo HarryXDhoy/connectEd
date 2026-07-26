@@ -1097,10 +1097,17 @@
     .brand-mark {
       width: 28px;
       height: 28px;
+      overflow: hidden;
       border-radius: var(--radius-sm);
+      background: transparent;
       font-family: var(--font-mono);
       font-weight: 500;
       letter-spacing: -.04em;
+    }
+    .brand-mark img {
+      width: 100%;
+      height: 100%;
+      display: block;
     }
     .search input {
       min-height: 40px;
@@ -1253,7 +1260,7 @@
   <header class="topbar" data-od-id="board-header">
     <div class="container nav">
       <a class="brand" href="connected-app.html" aria-label="connectEd landing page">
-        <span class="brand-mark">cE</span><span>connectEd</span>
+        <span class="brand-mark"><img src="assets/connected-favicon.svg" alt=""></span><span>connectEd</span>
       </a>
       <label class="search" aria-label="Search project board">
         <input id="board-search" type="search" placeholder="Search ideas, people, and skills">
@@ -1291,12 +1298,9 @@
             <h2>Projects looking for collaborators</h2>
             <p class="muted">Use search or a skill filter, then open a project to see the role and application question.</p>
           </div>
-          <div class="filter-row" role="group" aria-label="Project filters">
+          <div class="filter-row" id="hub-project-filters" role="group" aria-label="Project filters">
             <button class="chip active" data-filter="all" aria-pressed="true">All</button>
-            <button class="chip" data-filter="design" aria-pressed="false">Design</button>
-            <button class="chip" data-filter="engineering" aria-pressed="false">Engineering</button>
-            <button class="chip" data-filter="research" aria-pressed="false">Research</button>
-            <button class="chip" data-filter="saved" aria-pressed="false">Saved <span class="saved-count" id="saved-count">0</span></button>
+            <button class="chip" data-filter="saved" aria-pressed="false">Saved <span class="saved-count">0</span></button>
           </div>
         </div>
         <div id="discovery-board" class="masonry" aria-live="polite" aria-busy="true"></div>
@@ -1703,11 +1707,45 @@
         : 'Preview board';
       $('#owned-count').textContent = ownedProjects.length;
       $('#applicant-count').textContent = applications.filter(item => item.status === 'pending').length;
+      renderProjectFilters();
       $('#saved-count').textContent = savedProjectIds.size;
       renderDiscovery();
       renderOwned();
       renderApplicants();
       renderProfile();
+    }
+
+    function renderProjectFilters() {
+      const counts = new Map();
+      projects
+        .filter(project => project.status !== 'closed')
+        .forEach(project => {
+          new Set(projectTags(project)).forEach(tag => {
+            counts.set(tag, (counts.get(tag) || 0) + 1);
+          });
+        });
+      const tags = [...counts]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([tag]) => tag);
+      if (!['all', 'saved'].includes(activeFilter) && !tags.includes(activeFilter)) activeFilter = 'all';
+      $('#hub-project-filters').innerHTML = [
+        `<button class="chip${activeFilter === 'all' ? ' active' : ''}" data-filter="all" aria-pressed="${activeFilter === 'all'}">All</button>`,
+        ...tags.map(tag => `
+          <button class="chip${activeFilter === tag ? ' active' : ''}" data-filter="${escapeHtml(tag)}" aria-pressed="${activeFilter === tag}">
+            ${escapeHtml(tag.replace(/\b\w/g, character => character.toUpperCase()))}
+          </button>
+        `),
+        `<button class="chip${activeFilter === 'saved' ? ' active' : ''}" data-filter="saved" aria-pressed="${activeFilter === 'saved'}">
+          Saved <span class="saved-count" id="saved-count">${savedProjectIds.size}</span>
+        </button>`
+      ].join('');
+      $$('[data-filter]').forEach(button => {
+        button.onclick = () => {
+          activeFilter = button.dataset.filter;
+          renderProjectFilters();
+          renderDiscovery();
+        };
+      });
     }
 
     function filteredProjects() {
@@ -2229,17 +2267,6 @@
         const nextTab = panelTabs[nextIndex];
         switchPanel(nextTab.dataset.panel);
         nextTab.focus();
-      };
-    });
-    $$('[data-filter]').forEach(button => {
-      button.onclick = () => {
-        activeFilter = button.dataset.filter;
-        $$('[data-filter]').forEach(item => {
-          const selected = item === button;
-          item.classList.toggle('active', selected);
-          item.setAttribute('aria-pressed', String(selected));
-        });
-        renderDiscovery();
       };
     });
     $$('[data-close]').forEach(button => button.onclick = () => closeModal(button.dataset.close));
