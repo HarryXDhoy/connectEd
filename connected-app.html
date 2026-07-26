@@ -1827,15 +1827,56 @@
       .filter(Boolean)
       .slice(0, 8);
     const PROJECT_IMAGE_PREFIX = '__image__:';
+    const PROJECT_LOCATION_PREFIX = '__location__:';
     const APPLICATIONS_PAUSED_TAG = '__applications_paused__';
     const projectTags = project => (project?.tags || [])
       .filter(tag =>
         !String(tag).startsWith(PROJECT_IMAGE_PREFIX) &&
+        !String(tag).startsWith(PROJECT_LOCATION_PREFIX) &&
         String(tag) !== APPLICATIONS_PAUSED_TAG
       );
     const projectImageData = project => {
       const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_IMAGE_PREFIX));
       return marker ? String(marker).slice(PROJECT_IMAGE_PREFIX.length) : '';
+    };
+    const userLocation = targetUser => {
+      const location = targetUser?.user_metadata?.connected_location;
+      const latitude = Number(location?.latitude);
+      const longitude = Number(location?.longitude);
+      if (
+        !location?.shared ||
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 || latitude > 90 ||
+        longitude < -180 || longitude > 180
+      ) return null;
+      return {
+        shared: true,
+        label: String(location.label || '').trim().slice(0, 100),
+        latitude,
+        longitude
+      };
+    };
+    const locationTag = location => location
+      ? `${PROJECT_LOCATION_PREFIX}${location.latitude.toFixed(2)}|${location.longitude.toFixed(2)}|${encodeURIComponent(location.label)}`
+      : '';
+    const projectLocationData = project => {
+      const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_LOCATION_PREFIX));
+      if (!marker) return null;
+      const [latitudeValue, longitudeValue, labelValue = ''] = String(marker)
+        .slice(PROJECT_LOCATION_PREFIX.length)
+        .split('|');
+      const latitude = Number(latitudeValue);
+      const longitude = Number(longitudeValue);
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 || latitude > 90 ||
+        longitude < -180 || longitude > 180
+      ) return null;
+      let label = '';
+      try { label = decodeURIComponent(labelValue); } catch (_) {}
+      return { latitude, longitude, label: label.slice(0, 100) };
     };
     const fileToDataUrl = file => new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -2238,6 +2279,8 @@
       const image = values.get('image');
       const tags = safeTags(values.get('tags'));
       if (image instanceof File && image.size) tags.push(await optimizeProjectImage(image));
+      const sharedLocationTag = locationTag(userLocation(user));
+      if (sharedLocationTag) tags.push(sharedLocationTag);
       const { data, error } = await supabase.from('projects').insert({
         owner_id: user.id,
         title: String(values.get('title')).trim(),
@@ -2621,13 +2664,17 @@
         ];
         const locations = networkProjects.map((project, index) => {
           const tags = projectTags(project);
-          const [latitude, longitude] = nodePositions[index];
+          const fallbackPosition = nodePositions[index];
+          const sharedLocation = projectLocationData(project);
+          const latitude = sharedLocation?.latitude ?? fallbackPosition[0];
+          const longitude = sharedLocation?.longitude ?? fallbackPosition[1];
           const seatCount = Number(project.seats_total) || 0;
           const tagLabel = tags.slice(0, 2).join(' + ') || 'Open collaboration';
+          const locationLabel = sharedLocation?.label ? `${sharedLocation.label} · ` : '';
           return {
             projectId: String(project.id),
             name: project.title,
-            meta: `${tagLabel} · ${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}`,
+            meta: `${locationLabel}${tagLabel} · ${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}`,
             detail: `${project.summary || project.description} Shared by ${project.owner}.`,
             latitude,
             longitude,

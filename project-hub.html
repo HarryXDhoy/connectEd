@@ -1270,6 +1270,39 @@
       flex-direction: column;
       overflow: hidden;
     }
+    .location-panel {
+      display: grid;
+      gap: var(--space-3);
+      padding: var(--space-5);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+    }
+    .location-panel legend {
+      padding: 0 var(--space-2);
+      color: var(--fg);
+      font-weight: 500;
+    }
+    .location-consent {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: var(--space-3);
+      align-items: start;
+      color: var(--fg-2);
+      font-size: var(--text-sm);
+    }
+    .location-consent input {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: var(--accent);
+    }
+    .location-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-3);
+    }
     .pin:hover,
     .applicant:hover {
       border-color: color-mix(in oklab, var(--fg), transparent 68%);
@@ -1729,6 +1762,21 @@
               <label>Headline<input class="field" name="headline" maxlength="160" placeholder="Product designer · Community builder"></label>
               <label>Bio<textarea class="field" name="bio" maxlength="1200" placeholder="What do you care about building?"></textarea></label>
               <label>Skills<input class="field" name="skills" maxlength="400" placeholder="research, React, storytelling"></label>
+              <fieldset class="location-panel">
+                <legend>Approximate location · optional</legend>
+                <p class="field-help">Location is collected only after you choose to share it. Coordinates are rounded to roughly one kilometre and used to position your projects on the Earth view.</p>
+                <label>City or region<input class="field" name="location_label" maxlength="100" placeholder="Seoul, South Korea"></label>
+                <input name="location_latitude" type="hidden">
+                <input name="location_longitude" type="hidden">
+                <label class="location-consent">
+                  <input id="location-shared" name="location_shared" type="checkbox">
+                  <span>Share my approximate location on projects I publish. Turning this off removes the stored project-location markers.</span>
+                </label>
+                <div class="location-actions">
+                  <button class="btn btn-small" id="use-current-location" type="button">Use my current location</button>
+                  <span class="field-help" id="location-status">No location collected.</span>
+                </div>
+              </fieldset>
               <div class="form-actions"><button class="btn btn-primary" type="submit">Save profile</button></div>
             </form>
           </article>
@@ -1916,10 +1964,12 @@
       .filter(Boolean)
       .slice(0, 8);
     const PROJECT_IMAGE_PREFIX = '__image__:';
+    const PROJECT_LOCATION_PREFIX = '__location__:';
     const APPLICATIONS_PAUSED_TAG = '__applications_paused__';
     const projectTags = project => (project?.tags || [])
       .filter(tag =>
         !String(tag).startsWith(PROJECT_IMAGE_PREFIX) &&
+        !String(tag).startsWith(PROJECT_LOCATION_PREFIX) &&
         String(tag) !== APPLICATIONS_PAUSED_TAG
       );
     const isAcceptingApplications = project =>
@@ -1929,6 +1979,27 @@
       const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_IMAGE_PREFIX));
       return marker ? String(marker).slice(PROJECT_IMAGE_PREFIX.length) : '';
     };
+    const userLocation = targetUser => {
+      const location = targetUser?.user_metadata?.connected_location;
+      const latitude = Number(location?.latitude);
+      const longitude = Number(location?.longitude);
+      if (
+        !location?.shared ||
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 || latitude > 90 ||
+        longitude < -180 || longitude > 180
+      ) return null;
+      return {
+        shared: true,
+        label: String(location.label || '').trim().slice(0, 100),
+        latitude,
+        longitude
+      };
+    };
+    const locationTag = location => location
+      ? `${PROJECT_LOCATION_PREFIX}${location.latitude.toFixed(2)}|${location.longitude.toFixed(2)}|${encodeURIComponent(location.label)}`
+      : '';
     const fileToDataUrl = file => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result || ''));
@@ -2713,6 +2784,14 @@
         $(`#profile-form [name=${key}]`).value = profile?.[key] || '';
       }
       $('#profile-form [name=skills]').value = (profile?.skills || []).join(', ');
+      const location = userLocation(user);
+      $('#profile-form [name=location_label]').value = location?.label || '';
+      $('#profile-form [name=location_latitude]').value = location?.latitude ?? '';
+      $('#profile-form [name=location_longitude]').value = location?.longitude ?? '';
+      $('#location-shared').checked = Boolean(location);
+      $('#location-status').textContent = location
+        ? `Approximate location shared${location.label ? ` · ${location.label}` : ''}.`
+        : 'No location collected.';
       $('#membership-title').textContent = profile?.priority_match_active ? 'connectEd Plus' : 'Free member';
       $('#membership-copy').textContent = profile?.priority_match_active
         ? 'Priority applications are active. Choose one project in My projects to boost.'
@@ -2925,6 +3004,8 @@
       if ((existingProject?.tags || []).includes(APPLICATIONS_PAUSED_TAG)) {
         tags.push(APPLICATIONS_PAUSED_TAG);
       }
+      const sharedLocationTag = locationTag(userLocation(user));
+      if (sharedLocationTag) tags.push(sharedLocationTag);
       const payload = {
         title: String(values.get('title')).trim(),
         summary: String(values.get('summary')).trim(),
@@ -3168,6 +3249,30 @@
 
     async function saveProfile(form) {
       const values = new FormData(form);
+      const shareLocation = values.get('location_shared') === 'on';
+      const latitudeValue = String(values.get('location_latitude') || '').trim();
+      const longitudeValue = String(values.get('location_longitude') || '').trim();
+      const latitude = Number(latitudeValue);
+      const longitude = Number(longitudeValue);
+      if (
+        shareLocation &&
+        (
+          !latitudeValue ||
+          !longitudeValue ||
+          !Number.isFinite(latitude) ||
+          !Number.isFinite(longitude)
+        )
+      ) {
+        return toast('Use the location button before enabling location sharing.');
+      }
+      const location = shareLocation
+        ? {
+            shared: true,
+            label: String(values.get('location_label') || '').trim().slice(0, 100),
+            latitude: Number(latitude.toFixed(2)),
+            longitude: Number(longitude.toFixed(2))
+          }
+        : null;
       const result = await supabase.from('profiles').update({
         display_name: String(values.get('display_name')).trim(),
         headline: String(values.get('headline')).trim(),
@@ -3175,9 +3280,59 @@
         skills: normalizeTags(values.get('skills'))
       }).eq('id', user.id);
       if (result.error) return toast(result.error.message);
+
+      const authResult = await supabase.auth.updateUser({
+        data: { connected_location: location }
+      });
+      if (authResult.error) return toast(authResult.error.message);
+      user = authResult.data.user || user;
+
+      const marker = locationTag(location);
+      const locationUpdates = await Promise.all(ownedProjects.map(project => {
+        const tags = (project.tags || [])
+          .filter(tag => !String(tag).startsWith(PROJECT_LOCATION_PREFIX));
+        if (marker) tags.push(marker);
+        return supabase.from('projects').update({ tags }).eq('id', project.id);
+      }));
+      const locationError = locationUpdates.find(update => update.error)?.error;
+      if (locationError) return toast(locationError.message);
       toast('Profile saved.');
       await loadAll();
     }
+
+    $('#use-current-location').onclick = event => {
+      const button = event.currentTarget;
+      if (!navigator.geolocation) return toast('Location is not supported by this browser.');
+      button.disabled = true;
+      button.textContent = 'Locating…';
+      $('#location-status').textContent = 'Waiting for browser permission…';
+      navigator.geolocation.getCurrentPosition(position => {
+        const latitude = Number(position.coords.latitude.toFixed(2));
+        const longitude = Number(position.coords.longitude.toFixed(2));
+        $('#profile-form [name=location_latitude]').value = latitude;
+        $('#profile-form [name=location_longitude]').value = longitude;
+        $('#location-shared').checked = true;
+        $('#location-status').textContent = 'Approximate location ready. Save your profile to share it.';
+        button.disabled = false;
+        button.textContent = 'Update current location';
+      }, error => {
+        $('#location-status').textContent = 'No location collected.';
+        button.disabled = false;
+        button.textContent = 'Use my current location';
+        toast(error.code === 1 ? 'Location permission was not granted.' : 'Your location could not be determined.');
+      }, {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 300000
+      });
+    };
+
+    $('#location-shared').onchange = event => {
+      if (event.currentTarget.checked) return;
+      $('#profile-form [name=location_latitude]').value = '';
+      $('#profile-form [name=location_longitude]').value = '';
+      $('#location-status').textContent = 'Location will be removed when you save your profile.';
+    };
 
     function switchPanel(name) {
       $$('.panel').forEach(panel => panel.hidden = panel.id !== `panel-${name}`);
