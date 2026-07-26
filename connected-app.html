@@ -4,7 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Discover projects, show what you can contribute, and build with people who care.">
-  <title>connectEd — Find your next project</title>
+  <meta name="theme-color" content="#171717">
+  <meta property="og:title" content="connectEd — Find your next project">
+  <meta property="og:description" content="Discover projects, show what you can contribute, and build with people who care.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/connected-og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="connectEd — Find your next project">
+  <meta name="twitter:description" content="Discover projects, show what you can contribute, and build with people who care.">
+  <meta name="twitter:image" content="/assets/connected-og.png">
+  <link rel="icon" href="assets/connected-favicon.svg" type="image/svg+xml">
+  <title>connectEd - Find your next project</title>
   <style>
     :root {
       --bg: #171717;
@@ -70,9 +80,7 @@
     body {
       margin: 0;
       overflow-x: hidden;
-      background:
-        radial-gradient(circle at 88% 6%, color-mix(in oklab, var(--surface-warm), transparent 18%), transparent 28%),
-        var(--bg);
+      background: var(--bg);
       color: var(--fg);
       font: 400 var(--text-base)/var(--leading-body) var(--font-body);
     }
@@ -86,6 +94,30 @@
       box-shadow: var(--focus-ring);
     }
     [hidden] { display: none !important; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .skip-link {
+      position: fixed;
+      top: var(--space-3);
+      left: var(--space-3);
+      z-index: 100;
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-sm);
+      background: var(--fg);
+      color: var(--bg);
+      transform: translateY(-160%);
+      transition: transform var(--motion-fast) var(--ease-standard);
+    }
+    .skip-link:focus { transform: translateY(0); }
     .container {
       width: min(calc(100% - var(--container-gutter-desktop) * 2), var(--container-max));
       margin-inline: auto;
@@ -245,59 +277,6 @@
       perspective: 1300px;
       transform-style: preserve-3d;
     }
-    .stage-card {
-      position: absolute;
-      width: min(74%, 400px);
-      overflow: hidden;
-      border-radius: var(--radius-lg);
-      transform-style: preserve-3d;
-      transition: transform 180ms var(--ease-standard);
-    }
-    .stage-card:nth-child(1) {
-      top: 0;
-      left: 1%;
-      transform:
-        translate3d(var(--x1, 0px), calc(var(--y1, 0px) + var(--s1, 0px)), -70px)
-        rotateX(calc(8deg + var(--rx, 0deg))) rotateY(calc(-12deg + var(--ry, 0deg)));
-    }
-    .stage-card:nth-child(2) {
-      top: 31%;
-      right: 0;
-      transform:
-        translate3d(var(--x2, 0px), calc(var(--y2, 0px) + var(--s2, 0px)), 45px)
-        rotateX(calc(-3deg + var(--rx, 0deg))) rotateY(calc(8deg + var(--ry, 0deg)));
-    }
-    .stage-card:nth-child(3) {
-      left: 8%;
-      bottom: 0;
-      transform:
-        translate3d(var(--x3, 0px), calc(var(--y3, 0px) + var(--s3, 0px)), 110px)
-        rotateX(calc(2deg + var(--rx, 0deg))) rotateY(calc(-3deg + var(--ry, 0deg)));
-    }
-    .stage-cover {
-      min-height: 128px;
-      padding: var(--space-5);
-      display: flex;
-      align-items: flex-end;
-      background: var(--fg);
-      color: var(--bg);
-    }
-    .stage-cover strong {
-      max-width: 13ch;
-      font-size: var(--text-xl);
-      line-height: 1.05;
-      letter-spacing: -0.02em;
-    }
-    .stage-body { padding: var(--space-4); }
-    .stage-body p { margin: 6px 0 0; color: var(--muted); font-size: var(--text-sm); }
-    .stage-meta {
-      margin-top: var(--space-2);
-      display: flex;
-      justify-content: space-between;
-      gap: var(--space-3);
-      color: var(--meta);
-      font-size: var(--text-xs);
-    }
     section { padding: var(--section-y-desktop) 0; }
     .section-head {
       max-width: 760px;
@@ -315,9 +294,24 @@
       gap: var(--space-4);
       margin-bottom: var(--space-6);
     }
+    .mobile-project-search {
+      position: relative;
+      display: none;
+      margin-bottom: var(--space-4);
+    }
+    .mobile-project-search input {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0 var(--space-4);
+      background: var(--surface);
+      color: var(--fg);
+    }
+    .mobile-project-search input::placeholder { color: var(--muted); }
     .filter-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
     .chip {
-      min-height: 40px;
+      min-height: 44px;
       border: 0;
       border-radius: var(--radius-md);
       padding: 0 14px;
@@ -385,29 +379,60 @@
       color: var(--muted);
       text-align: center;
     }
+    .empty p { margin-bottom: var(--space-4); }
+    .empty .btn { margin-inline: auto; }
     .masonry > .empty { column-span: all; }
-    .plan {
+    .membership-head {
+      max-width: 760px;
+      margin-bottom: var(--space-12);
+    }
+    .membership-compare {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .membership-tier {
       display: grid;
-      grid-template-columns: 0.7fr 1.3fr;
-      gap: var(--space-4);
-      align-items: stretch;
+      grid-template-columns: minmax(140px, .42fr) minmax(220px, .9fr) minmax(280px, 1.2fr);
+      gap: clamp(24px, 4vw, 64px);
+      align-items: start;
+      padding: clamp(28px, 4vw, 48px) 0;
     }
-    .plan-card {
-      min-height: 340px;
-      padding: clamp(28px, 4vw, 52px);
-      border-radius: var(--radius-lg);
+    .membership-tier + .membership-tier { border-top: 1px solid var(--border-soft); }
+    .tier-summary { display: grid; gap: var(--space-3); }
+    .tier-name {
+      color: var(--muted);
+      font: var(--text-xs)/1.4 var(--font-mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
     }
-    .plan-card.featured { background: var(--fg); color: var(--bg); }
-    .plan-card h3 {
-      margin: var(--space-6) 0 var(--space-4);
-      font-size: var(--text-3xl);
-      line-height: 1;
-      letter-spacing: -0.03em;
+    .tier-price {
+      color: var(--fg);
+      font: 400 clamp(32px, 4vw, 52px)/1 var(--font-display);
+      letter-spacing: -.03em;
     }
-    .plan-card p { color: var(--muted); }
-    .plan-card.featured p { color: var(--border); }
-    .plan-list { display: grid; gap: 10px; margin: var(--space-6) 0; padding: 0; list-style: none; }
-    .plan-list li::before { content: "—"; margin-right: 8px; }
+    .tier-description { margin: 0; color: var(--fg-2); }
+    .tier-benefits { display: grid; gap: var(--space-6); }
+    .plan-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .plan-list li {
+      display: grid;
+      grid-template-columns: 12px 1fr;
+      gap: var(--space-3);
+      color: var(--fg-2);
+    }
+    .plan-list li::before {
+      content: "";
+      width: 12px;
+      height: 1px;
+      margin-top: .72em;
+      background: var(--muted);
+    }
+    .tier-benefits .btn { justify-self: start; }
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -479,7 +504,7 @@
     /* Reference-led spatial glass direction */
     html { background: var(--fg); }
     body {
-      min-height: 100vh;
+      min-height: 100dvh;
       padding: 24px;
       background:
         linear-gradient(
@@ -575,8 +600,6 @@
     .eyebrow,
     .lede,
     .section-copy,
-    .stage-body p,
-    .stage-meta,
     .owner,
     footer { color: color-mix(in oklab, var(--bg), transparent 26%); }
     .stage {
@@ -594,18 +617,6 @@
       backdrop-filter: blur(18px);
       transform: translateZ(-90px);
     }
-    .stage-card {
-      width: min(76%, 430px);
-      border-color: color-mix(in oklab, var(--bg), transparent 58%);
-    }
-    .stage-card:nth-child(1) { left: 0; }
-    .stage-card:nth-child(2) { right: 2%; }
-    .stage-card:nth-child(3) { left: 10%; }
-    .stage-cover {
-      background: color-mix(in oklab, var(--fg), transparent 12%);
-      color: var(--bg);
-    }
-    .stage-body { background: color-mix(in oklab, var(--bg), transparent 82%); }
     section:not(.hero) {
       margin-top: 20px;
       padding-inline: clamp(24px, 5vw, 72px);
@@ -627,12 +638,6 @@
     .pin-body { background: color-mix(in oklab, var(--fg), transparent 76%); }
     .pin-body p { color: color-mix(in oklab, var(--bg), transparent 30%); }
     .badge { background: color-mix(in oklab, var(--bg), transparent 78%); color: var(--bg); }
-    .plan-card.featured {
-      border: 1px solid color-mix(in oklab, var(--bg), transparent 72%);
-      background: color-mix(in oklab, var(--fg), transparent 20%);
-    }
-    .plan-card p,
-    .plan-card.featured p { color: color-mix(in oklab, var(--bg), transparent 30%); }
     .modal { color: var(--fg); background: color-mix(in oklab, var(--bg), transparent 12%); }
     .modal .eyebrow { color: var(--muted); }
     .modal .btn:not(.btn-primary) { color: var(--fg); background: var(--surface-warm); }
@@ -645,7 +650,6 @@
       .hero { min-height: auto; }
       .hero-grid { grid-template-columns: 1fr; }
       .stage { min-height: 540px; max-width: 650px; }
-      .plan { grid-template-columns: 1fr; }
       body { padding: 14px; }
       .topbar { top: 14px; width: calc(100% - 28px); }
       main { margin-top: 10px; }
@@ -660,12 +664,9 @@
       .hero { padding: var(--section-y-tablet) 0; }
       h1 { font-size: clamp(44px, 14vw, 62px); }
       .stage { min-height: 460px; margin-inline: -8px; }
-      .stage-card { width: 86%; }
-      .stage-cover { min-height: 128px; }
       section { padding: var(--section-y-tablet) 0; }
       .board-tools, .footer-row { align-items: stretch; flex-direction: column; }
       .masonry { columns: 1; }
-      .plan-card { min-height: auto; }
       .form-actions .btn { flex: 1; }
       body { padding: 8px; }
       .topbar { top: 8px; width: calc(100% - 16px); border-radius: 20px 20px 10px 10px; }
@@ -677,24 +678,12 @@
     /* Supabase ship override */
     html { background: var(--bg); }
     body {
-      min-height: 100vh;
+      min-height: 100dvh;
       padding: 0;
       background: var(--bg);
       color: var(--fg);
     }
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      pointer-events: none;
-      background-image:
-        linear-gradient(var(--border-soft) 1px, transparent 1px),
-        linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
-      background-size: 48px 48px;
-      opacity: .34;
-      mask-image: linear-gradient(to bottom, black, transparent 82%);
-    }
+    body::before { display: none; }
     .glass {
       border: 1px solid var(--border);
       background: var(--surface);
@@ -775,7 +764,8 @@
     }
     main { margin-top: 0; }
     .hero {
-      min-height: 720px;
+      min-height: calc(100dvh - 72px);
+      padding: var(--section-y-tablet) 0;
       border: 0;
       border-bottom: 1px solid var(--border);
       border-radius: 0;
@@ -805,8 +795,7 @@
     h2 { letter-spacing: -.02em; }
     .lede,
     .section-copy,
-    .pin-body p,
-    .plan-card p { color: var(--fg-2); }
+    .pin-body p { color: var(--fg-2); }
     .stage {
       min-height: 560px;
       overflow: hidden;
@@ -816,6 +805,10 @@
       box-shadow: var(--elev-ring);
       transform: none;
       isolation: isolate;
+    }
+    .hero-grid {
+      width: min(calc(100% - var(--container-gutter-desktop) * 2), var(--container-max));
+      margin-inline: auto;
     }
     .stage::before { display: none; }
     .project-network-canvas {
@@ -944,24 +937,12 @@
       background: color-mix(in oklab, var(--surface), var(--fg) 3%);
       color: var(--fg);
     }
-    .stage-card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: color-mix(in oklab, var(--surface), var(--fg) 2%);
-      box-shadow: var(--elev-raised);
-    }
-    .stage-card:nth-child(1) { transform: translate3d(-28px, -12px, 70px) rotate(-3deg); }
-    .stage-card:nth-child(2) { transform: translate3d(72px, 112px, 110px) rotate(3deg); }
-    .stage-card:nth-child(3) { transform: translate3d(-14px, 272px, 34px) rotate(-1deg); }
-    .stage-cover,
     .pin-cover,
     .pin:nth-child(3n + 2) .pin-cover,
     .pin:nth-child(3n) .pin-cover {
       background: color-mix(in oklab, var(--surface), var(--fg) 3%);
       color: var(--fg);
     }
-    .stage-cover { border-bottom: 1px solid var(--border-soft); }
-    .stage-meta { color: var(--muted); font-family: var(--font-mono); }
     section:not(.hero) {
       border: 0;
       border-bottom: 1px solid var(--border);
@@ -993,12 +974,29 @@
       min-height: 176px;
       height: 176px;
       border-bottom: 1px solid var(--border-soft);
+      padding: 0;
+      overflow: hidden;
+    }
+    .pin-cover img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      filter: saturate(.82) contrast(1.04);
     }
     .pin-body {
       display: flex;
       flex: 1;
       flex-direction: column;
       background: var(--surface);
+    }
+    .pin-title {
+      margin: var(--space-3) 0 var(--space-2);
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 400;
+      line-height: 1.25;
+      letter-spacing: -.01em;
     }
     .pin .pin-body p { color: var(--fg-2); }
     .pin .owner { color: var(--muted); }
@@ -1010,17 +1008,6 @@
       letter-spacing: .06em;
       text-transform: uppercase;
     }
-    .plan-card,
-    .plan-card.featured {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: var(--surface);
-      color: var(--fg);
-      box-shadow: none;
-    }
-    .plan-card.featured { border-color: color-mix(in oklab, var(--accent), transparent 45%); }
-    .plan-card p,
-    .plan-card.featured p { color: var(--fg-2); }
     .modal,
     .toast {
       border: 1px solid var(--border);
@@ -1037,14 +1024,173 @@
       color: var(--muted);
     }
     .skeleton {
+      position: relative;
+      overflow: hidden;
       min-height: 390px;
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      background: linear-gradient(100deg, var(--surface) 35%, color-mix(in oklab, var(--surface), var(--fg) 5%) 50%, var(--surface) 65%);
-      background-size: 220% 100%;
-      animation: skeleton-shift 1.2s var(--ease-standard) infinite;
+      background: var(--surface);
     }
-    @keyframes skeleton-shift { to { background-position-x: -220%; } }
+    .skeleton::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 176px;
+      background: color-mix(in oklab, var(--surface), var(--fg) 4%);
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .skeleton::after {
+      content: "";
+      position: absolute;
+      top: 210px;
+      right: 20px;
+      left: 20px;
+      height: 12px;
+      border-radius: var(--radius-pill);
+      background: var(--border);
+      box-shadow:
+        0 28px 0 color-mix(in oklab, var(--border), transparent 18%),
+        0 84px 0 -2px color-mix(in oklab, var(--border), transparent 28%);
+    }
+
+    /* Supabase fidelity pass: compact chrome, technical rhythm, border-led depth. */
+    .topbar {
+      background: color-mix(in oklab, var(--bg), transparent 4%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .nav { min-height: 64px; }
+    .brand,
+    .btn,
+    .chip,
+    .form label { font-weight: 500; }
+    .btn:not(.btn-primary) {
+      border-color: var(--border);
+      background: var(--surface);
+      color: var(--fg);
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .brand { letter-spacing: -.01em; }
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-weight: 500;
+      letter-spacing: -.04em;
+    }
+    .nav-search input {
+      min-height: 40px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+    }
+    .nav-search:focus-within input {
+      border-color: color-mix(in oklab, var(--accent), transparent 45%);
+      box-shadow: var(--focus-ring);
+    }
+    .hero {
+      min-height: 720px;
+      padding-block: 104px;
+    }
+    .hero-grid {
+      grid-template-columns: minmax(0, .95fr) minmax(440px, 1.05fr);
+      gap: clamp(48px, 6vw, 88px);
+    }
+    .hero h1 {
+      max-width: 10ch;
+      margin-bottom: var(--space-6);
+      font-size: clamp(52px, 6vw, var(--text-4xl));
+      line-height: var(--leading-tight);
+      letter-spacing: -.025em;
+    }
+    .lede {
+      max-width: 54ch;
+      color: var(--fg-2);
+    }
+    .stage {
+      min-height: 520px;
+      border-radius: var(--radius-md);
+      background-color: var(--surface);
+      background-image:
+        linear-gradient(var(--border-soft) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .network-kicker,
+    .network-motion-toggle,
+    .network-step {
+      background: var(--bg);
+    }
+    section:not(.hero) { padding-block: var(--section-y-desktop); }
+    .section-head,
+    .membership-head {
+      max-width: none;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, .7fr);
+      gap: var(--space-12);
+      align-items: end;
+      margin-bottom: var(--space-12);
+    }
+    section:not(.hero) .section-head h2,
+    section:not(.hero) .membership-head h2 {
+      max-width: 13ch;
+      margin-bottom: 0;
+      color: var(--fg);
+      font-size: var(--text-3xl);
+      line-height: 1.15;
+      letter-spacing: -.02em;
+    }
+    .section-copy { margin: 0; }
+    .board-tools {
+      align-items: center;
+      margin-bottom: var(--space-6);
+      padding-block: var(--space-3);
+      border-top: 1px solid var(--border-soft);
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .chip {
+      min-height: 38px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      background: var(--bg);
+      color: var(--muted);
+    }
+    .chip:hover {
+      border-color: color-mix(in oklab, var(--fg), transparent 68%);
+      background: var(--surface);
+      color: var(--fg);
+    }
+    .chip.active {
+      border-color: var(--fg);
+      background: var(--fg);
+      color: var(--bg);
+    }
+    .masonry { gap: var(--space-4); }
+    .pin {
+      min-height: 404px;
+      border-radius: var(--radius-md);
+    }
+    .pin-cover {
+      min-height: 188px;
+      height: 188px;
+    }
+    .pin-body { padding: var(--space-6); }
+    section:not(.hero) .pin .pin-title {
+      margin-top: var(--space-4);
+      color: var(--fg);
+      font-size: var(--text-xl);
+    }
+    .membership-compare { border-color: var(--border); }
+    .membership-tier { padding-block: var(--space-12); }
+    .membership-tier + .membership-tier { border-color: var(--border); }
+    .tier-name { color: var(--muted); }
+    footer {
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
 
     /* Motion language: quick state feedback, restrained one-shot reveals. */
     @view-transition { navigation: auto; }
@@ -1135,7 +1281,22 @@
       .topbar { top: 0; width: 100%; }
       main { margin-top: 0; }
       .stage { transform: none; }
+      .hero-grid {
+        width: min(calc(100% - var(--container-gutter-tablet) * 2), var(--container-max));
+      }
       .masonry { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .mobile-project-search { display: block; }
+      .membership-tier {
+        grid-template-columns: minmax(130px, .4fr) 1fr;
+      }
+      .tier-benefits { grid-column: 2; }
+      .hero-grid { grid-template-columns: 1fr; }
+      .stage { max-width: none; }
+      .section-head,
+      .membership-head {
+        grid-template-columns: 1fr;
+        gap: var(--space-4);
+      }
     }
     @media (max-width: 600px) {
       body { padding: 0; }
@@ -1145,6 +1306,9 @@
         border-radius: 0;
       }
       .topbar .container { width: min(calc(100% - 32px), var(--container-max)); }
+      .hero-grid {
+        width: min(calc(100% - var(--container-gutter-phone) * 2), var(--container-max));
+      }
       .hero,
       section:not(.hero) {
         padding-inline: 0;
@@ -1154,6 +1318,15 @@
       .stage { margin-inline: 0; }
       .network-steps { display: none; }
       .network-focus { max-width: 180px; }
+      .hero { min-height: auto; padding-block: var(--section-y-tablet); }
+      .hero h1 { max-width: 9ch; }
+      .board-tools { align-items: stretch; }
+      .membership-tier {
+        grid-template-columns: 1fr;
+        gap: var(--space-5);
+      }
+      .tier-benefits { grid-column: auto; }
+      .tier-benefits .btn { width: 100%; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -1161,7 +1334,6 @@
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
       }
-      .stage-card { transform: none !important; }
       .stage { transform: none !important; }
       .skeleton { animation: none !important; }
       .project-network-canvas,
@@ -1181,6 +1353,7 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
   <div id="preview-note" class="preview-note" hidden>
     Preview examples are shown because shared data is not connected.
   </div>
@@ -1194,32 +1367,32 @@
         <span>⌕</span>
       </label>
       <div class="nav-actions">
-        <a class="btn btn-ghost btn-small" href="project-hub.html">Project board</a>
+        <a class="btn btn-ghost btn-small" href="project-hub.html">Browse projects</a>
         <button id="account-button" class="btn btn-primary btn-small" data-open="auth">Sign in</button>
       </div>
     </div>
   </header>
 
-  <main>
+  <main id="main-content">
     <section class="hero" data-od-id="landing-hero">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow">Ideas become teams here</p>
+          <p class="eyebrow">Projects looking for collaborators</p>
           <h1 data-od-id="hero-heading">Find work worth joining.</h1>
           <p class="lede">
-            A visual project board for people who want to build, not just network.
-            Share an idea, show what you bring, and move from interest to interview.
+            Publish an idea, find the right collaborators, and move from shared interest
+            to a scheduled conversation.
           </p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="#discover" data-od-id="hero-explore-cta">Explore projects</a>
-            <button class="btn" data-open="create" data-od-id="hero-share-cta">Share your idea</button>
+            <a class="btn btn-primary" href="#discover" data-od-id="hero-explore-cta">Browse projects</a>
+            <button class="btn" data-open="create" data-od-id="hero-share-cta">Share a project</button>
           </div>
         </div>
-        <div class="stage" id="stage" aria-label="Interactive project network: an idea connects with design, engineering, and research collaborators before an interview">
+        <div class="stage" id="stage" role="group" aria-label="Interactive project network: an idea connects with design, engineering, and research collaborators before an interview">
           <canvas id="project-network-canvas" class="project-network-canvas" aria-hidden="true"></canvas>
           <div class="network-fallback" aria-hidden="true">
             <div class="fallback-node">Open idea</div>
-            <div class="fallback-node">Design · Engineering · Research</div>
+            <div class="fallback-node">Design / Engineering / Research</div>
             <div class="fallback-node">Interview ready</div>
           </div>
           <div class="stage-hud">
@@ -1228,11 +1401,11 @@
               Pause motion
             </button>
             <div class="network-steps" aria-hidden="true">
-              <span class="network-step">01 Idea</span>
-              <span class="network-step">02 Team</span>
-              <span class="network-step">03 Interview</span>
+              <span class="network-step">Publish</span>
+              <span class="network-step">Collaborate</span>
+              <span class="network-step">Interview</span>
             </div>
-            <div class="network-focus" id="network-focus" aria-live="polite">
+            <div class="network-focus" id="network-focus" aria-hidden="true">
               Project network
               <span>Move across a node to inspect the path.</span>
             </div>
@@ -1244,21 +1417,24 @@
     <section id="discover" data-od-id="project-discovery">
       <div class="container">
         <div class="section-head">
-          <p class="eyebrow">Project discovery</p>
           <h2>Browse projects with context.</h2>
           <p class="section-copy">
-            Search the board by project, discipline, or skill. Boosted projects appear first,
-            but every open idea stays discoverable.
+            Search by project, discipline, or skill. Boosted work appears first;
+            every open project remains discoverable.
           </p>
         </div>
+        <label class="mobile-project-search">
+          <span class="sr-only">Search projects</span>
+          <input id="mobile-project-search" type="search" placeholder="Search projects, roles, and skills">
+        </label>
         <div class="board-tools">
-          <div class="filter-row" aria-label="Project filters">
+          <div class="filter-row" role="group" aria-label="Project filters">
             <button class="chip active" data-filter="all" aria-pressed="true">All ideas</button>
             <button class="chip" data-filter="design" aria-pressed="false">Design</button>
             <button class="chip" data-filter="engineering" aria-pressed="false">Engineering</button>
             <button class="chip" data-filter="research" aria-pressed="false">Research</button>
           </div>
-          <a class="btn btn-small" href="project-hub.html">Open full board</a>
+          <a class="btn btn-small" href="project-hub.html">Browse projects</a>
         </div>
         <div id="project-pins" class="masonry" aria-live="polite" aria-busy="true"></div>
       </div>
@@ -1266,34 +1442,46 @@
 
     <section data-od-id="membership">
       <div class="container">
-        <div class="section-head">
-          <p class="eyebrow">One membership, both roles</p>
+        <div class="membership-head">
           <h2>Be seen as a builder and an initiator.</h2>
+          <p class="section-copy">
+            Use one profile to join projects, publish your own, and manage every application.
+          </p>
         </div>
-        <div class="plan">
-          <article class="plan-card glass">
-            <span class="badge">Free</span>
-            <h3>$0</h3>
-            <p>Profiles, project sharing, applications, reviews, and interviews stay open.</p>
-            <ul class="plan-list">
-              <li>Build a skills profile</li>
-              <li>Apply with project-specific answers</li>
-              <li>Publish and manage ideas</li>
-            </ul>
+        <div class="membership-compare" data-od-id="membership-comparison">
+          <article class="membership-tier" data-od-id="membership-tier-free">
+            <div class="tier-summary">
+              <span class="tier-name">Free</span>
+              <strong class="tier-price">$0</strong>
+            </div>
+            <p class="tier-description">
+              Profiles, project sharing, applications, reviews, and interviews stay open.
+            </p>
+            <div class="tier-benefits">
+              <ul class="plan-list">
+                <li>Build a skills profile</li>
+                <li>Apply with project-specific answers</li>
+                <li>Publish and manage ideas</li>
+              </ul>
+            </div>
           </article>
-          <article class="plan-card featured">
-            <span class="badge">connectEd Plus</span>
-            <h3>$6 monthly</h3>
-            <p>
+          <article class="membership-tier" data-od-id="membership-tier-plus">
+            <div class="tier-summary">
+              <span class="tier-name">connectEd Plus</span>
+              <strong class="tier-price">$6 monthly</strong>
+            </div>
+            <p class="tier-description">
               Your applications are reviewed earlier, and you can boost one of your own
               active projects on the same subscription.
             </p>
-            <ul class="plan-list">
-              <li>Priority placement in applicant review</li>
-              <li>One active project boosted on discovery</li>
-              <li>Benefits follow you across both roles</li>
-            </ul>
-            <button class="btn btn-primary" id="plus-checkout">Get connectEd Plus</button>
+            <div class="tier-benefits">
+              <ul class="plan-list">
+                <li>Priority placement in applicant review</li>
+                <li>One active project boosted on discovery</li>
+                <li>Benefits follow you across both roles</li>
+              </ul>
+              <button class="btn btn-primary" id="plus-checkout">Get connectEd Plus</button>
+            </div>
           </article>
         </div>
       </div>
@@ -1303,7 +1491,7 @@
   <footer>
     <div class="container footer-row">
       <span>connectEd</span>
-      <span>Useful ideas. Thoughtful teams.</span>
+      <span>Projects worth building. Teams ready to build them.</span>
     </div>
   </footer>
 
@@ -1343,7 +1531,7 @@
   <div id="modal-create" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="create-title" tabindex="-1">
     <div class="modal glass">
       <div class="modal-head">
-        <div><p class="eyebrow">Publish thoughtfully</p><h2 id="create-title">Share a project idea</h2></div>
+        <div><p class="eyebrow">Project details</p><h2 id="create-title">Share a project</h2></div>
         <button class="close" data-close="create" aria-label="Close">×</button>
       </div>
       <form id="create-form" class="form">
@@ -1355,7 +1543,7 @@
         <label>Open seats<input class="field" name="seats" type="number" min="1" max="50" value="3" required></label>
         <div class="form-actions">
           <button class="btn" type="button" data-close="create">Cancel</button>
-          <button class="btn btn-primary" type="submit">Publish idea</button>
+          <button class="btn btn-primary" type="submit">Share project</button>
         </div>
       </form>
     </div>
@@ -1458,6 +1646,7 @@
 
     let activeModal = null;
     let modalReturnFocus = null;
+    const modalBackground = [document.querySelector('header'), document.querySelector('main'), $('#preview-note')].filter(Boolean);
 
     function openModal(name) {
       const modal = $(`#modal-${name}`);
@@ -1467,6 +1656,7 @@
       activeModal = modal;
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
+      modalBackground.forEach(region => region.inert = true);
       document.body.classList.add('modal-open');
       window.requestAnimationFrame(() => {
         const target = modal.querySelector('input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])');
@@ -1481,6 +1671,7 @@
       const finish = () => {
         modal.classList.remove('open', 'closing');
         modal.setAttribute('aria-hidden', 'true');
+        modalBackground.forEach(region => region.inert = false);
         document.body.classList.remove('modal-open');
         if (activeModal === modal) activeModal = null;
         if (returnTarget && document.contains(returnTarget)) returnTarget.focus();
@@ -1538,7 +1729,7 @@
     async function loadProjects() {
       const board = $('#project-pins');
       board.setAttribute('aria-busy', 'true');
-      board.innerHTML = '<div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';
+      board.innerHTML = '<span class="sr-only">Loading projects</span><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';
       if (!isSupabaseConfigured) {
         projects = previewProjects;
         $('#preview-note').hidden = false;
@@ -1590,29 +1781,67 @@
             const boosted = project.boost_until && new Date(project.boost_until) > new Date();
             return `
               <article class="pin glass" data-od-id="project-card-${escapeHtml(project.id)}">
-                <div class="pin-cover" style="--cover-height:${170 + (index % 3) * 44}px">
-                  <span class="badge">${boosted ? 'Boosted idea' : 'Open project'}</span>
-                  <h3>${escapeHtml(project.title)}</h3>
+                <div class="pin-cover">
+                  <img src="${projectCover(project)}" alt="" loading="lazy" decoding="async">
                 </div>
                 <div class="pin-body">
+                  <span class="badge">${boosted ? 'Boosted idea' : 'Open project'}</span>
+                  <h3 class="pin-title">${escapeHtml(project.title)}</h3>
                   <p>${escapeHtml(project.summary)}</p>
                   <div class="tags">
                     ${(project.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
                   </div>
                   <div class="pin-foot">
                     <span class="owner">${escapeHtml(project.owner)}</span>
-                    <button class="btn btn-small" data-project="${escapeHtml(project.id)}">View</button>
+                    <button class="btn btn-small" data-project="${escapeHtml(project.id)}" aria-label="View ${escapeHtml(project.title)}">View</button>
                   </div>
                 </div>
               </article>
             `;
           }).join('')
-        : '<div class="empty">No open projects match this view yet.</div>';
+        : `<div class="empty">
+            <p>${query || activeFilter !== 'all'
+              ? 'No projects match the current search and filters.'
+              : 'No open projects have been shared yet.'}</p>
+            <button class="btn btn-small" id="${query || activeFilter !== 'all' ? 'clear-project-view' : 'share-empty-project'}" type="button">
+              ${query || activeFilter !== 'all' ? 'Clear search and filters' : 'Share a project'}
+            </button>
+          </div>`;
 
       $$('[data-project]').forEach(button => {
         button.onclick = () => showProject(button.dataset.project);
       });
+      const clearView = $('#clear-project-view');
+      if (clearView) {
+        clearView.onclick = () => {
+          activeFilter = 'all';
+          $('#nav-search').value = '';
+          $('#mobile-project-search').value = '';
+          $$('[data-filter]').forEach(item => {
+            const selected = item.dataset.filter === 'all';
+            item.classList.toggle('active', selected);
+            item.setAttribute('aria-pressed', String(selected));
+          });
+          renderProjects();
+          const searchTarget = $('#mobile-project-search').offsetParent
+            ? $('#mobile-project-search')
+            : $('#nav-search');
+          searchTarget.focus();
+        };
+      }
+      const shareEmpty = $('#share-empty-project');
+      if (shareEmpty) shareEmpty.onclick = () => openModal('create');
       animateProjectCards();
+    }
+
+    function projectCover(project) {
+      const tags = (project.tags || []).map(tag => String(tag).toLowerCase());
+      if (tags.includes('education')) return 'assets/project-cover-education.png';
+      if (tags.includes('community')) return 'assets/project-cover-community.png';
+      if (tags.includes('design')) return 'assets/project-cover-design.png';
+      if (tags.includes('engineering')) return 'assets/project-cover-engineering.png';
+      if (tags.includes('research')) return 'assets/project-cover-research.png';
+      return 'assets/project-cover-general.png';
     }
 
     function animateProjectCards() {
@@ -1729,19 +1958,32 @@
     }
 
     async function startCheckout() {
-      const user = await currentUser();
-      if (!user) {
-        openModal('auth');
-        return toast('Sign in before starting connectEd Plus.');
+      const button = $('#plus-checkout');
+      if (button.disabled) return;
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Opening checkout…';
+      try {
+        const user = await currentUser();
+        if (!user) {
+          openModal('auth');
+          toast('Sign in before starting connectEd Plus.');
+          return;
+        }
+        const response = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: await authHeaders(),
+          body: JSON.stringify({ plan: 'connected_plus' })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Checkout is unavailable.');
+        window.location.href = data.url;
+      } catch (error) {
+        toast(error.message || 'Checkout is unavailable.');
+      } finally {
+        button.disabled = false;
+        button.textContent = originalLabel;
       }
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify({ plan: 'connected_plus' })
-      });
-      const data = await response.json();
-      if (!response.ok) return toast(data.error || 'Checkout is unavailable.');
-      window.location.href = data.url;
     }
 
     function setAuthMode(mode) {
@@ -1789,9 +2031,19 @@
       }
     };
 
-    $('#google-auth').onclick = async () => {
-      try { await signInWithGoogle('/project-hub.html'); }
-      catch (error) { toast(error.message); }
+    $('#google-auth').onclick = async event => {
+      const button = event.currentTarget;
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Connecting…';
+      try {
+        await signInWithGoogle('/project-hub.html');
+      } catch (error) {
+        toast(error.message || 'Google sign-in is unavailable.');
+      } finally {
+        button.disabled = false;
+        button.textContent = originalLabel;
+      }
     };
     $('#auth-mode').onclick = () => setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
     function bindAsyncForm(selector, handler, pendingLabel) {
@@ -1807,6 +2059,8 @@
         }
         try {
           await handler(form);
+        } catch (error) {
+          toast(error.message || 'Something went wrong. Please try again.');
         } finally {
           form.setAttribute('aria-busy', 'false');
           if (submit) {
@@ -1819,7 +2073,15 @@
     bindAsyncForm('#create-form', createProject, 'Publishing…');
     bindAsyncForm('#join-form', submitApplication, 'Sending…');
     $('#plus-checkout').onclick = startCheckout;
-    $('#nav-search').oninput = renderProjects;
+    const projectSearchInputs = [$('#nav-search'), $('#mobile-project-search')];
+    projectSearchInputs.forEach(input => {
+      input.oninput = () => {
+        projectSearchInputs.forEach(peer => {
+          if (peer !== input) peer.value = input.value;
+        });
+        renderProjects();
+      };
+    });
 
     $$('[data-filter]').forEach(button => {
       button.onclick = () => {

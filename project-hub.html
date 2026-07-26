@@ -4,6 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Discover, publish, and manage collaborative projects on connectEd.">
+  <meta name="theme-color" content="#171717">
+  <meta property="og:title" content="connectEd — Find work worth joining">
+  <meta property="og:description" content="Discover projects, save the ones that fit, and build with collaborators who care.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/connected-og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="connectEd — Find work worth joining">
+  <meta name="twitter:description" content="Discover projects, save the ones that fit, and build with collaborators who care.">
+  <meta name="twitter:image" content="/assets/connected-og.png">
+  <link rel="icon" href="assets/connected-favicon.svg" type="image/svg+xml">
   <title>connectEd — Project board</title>
   <style>
     :root {
@@ -87,6 +97,30 @@
       box-shadow: var(--focus-ring);
     }
     [hidden] { display: none !important; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .skip-link {
+      position: fixed;
+      top: var(--space-3);
+      left: var(--space-3);
+      z-index: 100;
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-sm);
+      background: var(--fg);
+      color: var(--bg);
+      transform: translateY(-160%);
+      transition: transform var(--motion-fast) var(--ease-standard);
+    }
+    .skip-link:focus { transform: translateY(0); }
     .container {
       width: min(calc(100% - var(--container-gutter-desktop) * 2), var(--container-max));
       margin-inline: auto;
@@ -255,7 +289,7 @@
     }
     .filter-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
     .chip {
-      min-height: 40px;
+      min-height: 44px;
       border: 0;
       border-radius: var(--radius-md);
       padding: 0 14px;
@@ -380,6 +414,8 @@
       color: var(--muted);
       text-align: center;
     }
+    .empty p { margin-bottom: var(--space-4); }
+    .empty .btn { margin-inline: auto; }
     .masonry > .empty, .masonry > .auth-wall { column-span: all; }
     .auth-wall h2 { color: var(--fg); }
     .auth-wall .btn { margin-top: var(--space-4); }
@@ -722,6 +758,12 @@
       letter-spacing: .02em;
       box-shadow: none;
     }
+    .btn:not(.btn-primary) {
+      border-color: var(--border);
+      background: var(--surface);
+      color: var(--fg);
+      backdrop-filter: none;
+    }
     .btn:hover {
       border-color: color-mix(in oklab, var(--fg), transparent 68%);
       background: color-mix(in oklab, var(--surface), var(--fg) 4%);
@@ -752,8 +794,8 @@
       box-shadow: none;
     }
     .board-shell > .container {
-      grid-template-columns: 196px minmax(0, 1fr);
-      padding-block: var(--space-12);
+      grid-template-columns: 216px minmax(0, 1fr);
+      padding-block: 40px var(--space-12);
       gap: var(--space-8);
     }
     .board-head {
@@ -762,6 +804,8 @@
     }
     .board-head h1 {
       color: var(--fg);
+      max-width: 17ch;
+      font-size: clamp(42px, 4.5vw, 56px);
       text-shadow: none;
     }
     .board-head .muted,
@@ -793,6 +837,24 @@
     .pin-body p,
     .profile-card p,
     .membership-card p { color: var(--fg-2); }
+    .board-intro {
+      max-width: 58ch;
+      margin: var(--space-4) 0 0;
+      color: var(--fg-2);
+    }
+    .board-status {
+      flex: 0 0 auto;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      background: var(--surface);
+      color: var(--fg-2);
+      font: 400 var(--text-sm)/1 var(--font-mono);
+      letter-spacing: .02em;
+    }
     .tabs {
       top: 96px;
       padding: var(--space-2);
@@ -847,7 +909,7 @@
     }
     .pin {
       display: flex;
-      min-height: 374px;
+      min-height: 390px;
       margin: 0;
       flex-direction: column;
       overflow: hidden;
@@ -860,11 +922,19 @@
     .pin-cover,
     .pin:nth-child(3n + 2) .pin-cover,
     .pin:nth-child(3n) .pin-cover {
-      min-height: 164px;
-      height: 164px;
+      position: relative;
+      min-height: 148px;
+      height: 148px;
       border-bottom: 1px solid var(--border-soft);
-      background: color-mix(in oklab, var(--surface), var(--fg) 3%);
+      background: var(--bg);
       color: var(--fg);
+    }
+    .pin-cover img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      filter: saturate(.82) contrast(1.04);
     }
     .pin-body {
       display: flex;
@@ -872,19 +942,54 @@
       flex-direction: column;
       background: var(--surface);
     }
+    .pin-title {
+      margin: var(--space-3) 0 var(--space-2);
+      font-size: var(--text-xl);
+      line-height: 1.25;
+      letter-spacing: -.01em;
+    }
     .pin .pin-body p { color: var(--fg-2); }
-    .pin .owner { color: var(--muted); }
+    .pin .owner {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--muted);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .pin-foot { margin-top: auto; }
+    .pin-foot .btn { flex: 0 0 auto; }
+    .pin-card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: var(--space-2);
+      margin-left: auto;
+    }
+    .saved-count {
+      margin-left: var(--space-1);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+    }
     .badge,
-    .priority {
+    .priority,
+    .tag {
       width: fit-content;
       border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg-2);
+    }
+    .badge,
+    .priority {
       border-radius: var(--radius-pill);
       background: var(--bg);
       color: var(--fg-2);
       font-family: var(--font-mono);
       letter-spacing: .06em;
       text-transform: uppercase;
+    }
+    .tag {
+      border-radius: var(--radius-sm);
+      backdrop-filter: none;
     }
     .priority {
       border-color: color-mix(in oklab, var(--accent), transparent 50%);
@@ -918,14 +1023,157 @@
     }
     .modal .btn:not(.btn-primary) { background: var(--surface); color: var(--fg); }
     .skeleton {
+      position: relative;
+      overflow: hidden;
       min-height: 374px;
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      background: linear-gradient(100deg, var(--surface) 35%, color-mix(in oklab, var(--surface), var(--fg) 5%) 50%, var(--surface) 65%);
-      background-size: 220% 100%;
-      animation: skeleton-shift 1.2s var(--ease-standard) infinite;
+      background: var(--surface);
     }
-    @keyframes skeleton-shift { to { background-position-x: -220%; } }
+    .skeleton::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 148px;
+      background: color-mix(in oklab, var(--surface), var(--fg) 4%);
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .skeleton::after {
+      content: "";
+      position: absolute;
+      top: 184px;
+      right: 20px;
+      left: 20px;
+      height: 12px;
+      border-radius: var(--radius-pill);
+      background: var(--border);
+      box-shadow:
+        0 28px 0 color-mix(in oklab, var(--border), transparent 18%),
+        0 84px 0 -2px color-mix(in oklab, var(--border), transparent 28%);
+    }
+
+    /* Supabase fidelity pass: editor-like navigation and denser project tooling. */
+    .topbar {
+      background: color-mix(in oklab, var(--bg), transparent 4%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .nav { min-height: 64px; }
+    .brand,
+    .btn,
+    .chip,
+    .tab,
+    .form label { font-weight: 500; }
+    .brand { letter-spacing: -.01em; }
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-weight: 500;
+      letter-spacing: -.04em;
+    }
+    .search input {
+      min-height: 40px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+    }
+    .search:focus-within input {
+      border-color: color-mix(in oklab, var(--accent), transparent 45%);
+      box-shadow: var(--focus-ring);
+    }
+    .board-shell > .container {
+      grid-template-columns: 192px minmax(0, 1fr);
+      gap: var(--space-8);
+      padding-block: var(--space-12);
+    }
+    .board-head h1 {
+      max-width: 14ch;
+      font-size: clamp(42px, 4vw, 52px);
+      letter-spacing: -.025em;
+    }
+    .board-intro { max-width: 62ch; }
+    .tabs {
+      top: 88px;
+      min-height: 420px;
+      align-self: start;
+      padding: 0 var(--space-6) 0 0;
+      border: 0;
+      border-right: 1px solid var(--border);
+      border-radius: 0;
+      background: transparent;
+    }
+    .tab {
+      min-height: 44px;
+      padding-inline: var(--space-3);
+      border-radius: var(--radius-sm);
+    }
+    .tab.active {
+      border-color: var(--border);
+      background: var(--surface);
+      color: var(--fg);
+    }
+    .panel { padding-top: var(--space-8); }
+    .panel-head {
+      align-items: center;
+      padding-bottom: var(--space-4);
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .panel-head h2 {
+      margin-bottom: var(--space-2);
+      font-size: var(--text-2xl);
+    }
+    .filter-row { justify-content: flex-end; }
+    .chip {
+      min-height: 38px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      background: var(--bg);
+      color: var(--muted);
+    }
+    .chip:hover {
+      border-color: color-mix(in oklab, var(--fg), transparent 68%);
+      background: var(--surface);
+      color: var(--fg);
+    }
+    .chip.active {
+      border-color: var(--fg);
+      background: var(--fg);
+      color: var(--bg);
+    }
+    .masonry {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--space-4);
+    }
+    .pin {
+      min-height: 390px;
+      border-radius: var(--radius-md);
+    }
+    .pin-cover {
+      min-height: 160px;
+      height: 160px;
+    }
+    .pin-body { padding: var(--space-5); }
+    .pin-title {
+      margin-top: var(--space-4);
+      font-size: var(--text-lg);
+      line-height: 1.35;
+    }
+    .pin-foot {
+      align-items: flex-end;
+      flex-wrap: wrap;
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-soft);
+    }
+    .pin-card-actions { gap: var(--space-1); }
+    .pin-card-actions .btn {
+      min-height: 36px;
+      padding-inline: var(--space-3);
+    }
+    .applicant,
+    .profile-card,
+    .membership-card { border-radius: var(--radius-md); }
     @media (max-width: 900px) {
       body { padding: 0; }
       .topbar { top: 0; width: 100%; }
@@ -939,6 +1187,10 @@
         top: 122px;
         flex-direction: row;
         overflow-x: auto;
+        min-height: 0;
+        padding: 0 0 var(--space-4);
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
       }
       .masonry { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
@@ -952,6 +1204,7 @@
       .topbar .container { width: min(calc(100% - 32px), var(--container-max)); }
       .board-shell { border-radius: 0; }
       .board-shell > .container { padding: var(--space-6) var(--container-gutter-phone); }
+      .board-status { align-self: flex-start; }
       .masonry { grid-template-columns: 1fr; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -964,6 +1217,7 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
   <div id="preview-note" class="preview-note" hidden>
     Preview examples are shown because shared data is not connected.
   </div>
@@ -977,41 +1231,43 @@
         <span>⌕</span>
       </label>
       <div class="nav-actions">
-        <a class="btn btn-ghost btn-small" href="connected-app.html">Landing</a>
-        <button class="btn btn-primary btn-small" id="new-project">Share idea</button>
+        <a class="btn btn-ghost btn-small" href="connected-app.html">Home</a>
+        <button class="btn btn-primary btn-small" id="new-project">Post a project</button>
         <button class="btn btn-small" id="account-action">Sign in</button>
       </div>
     </div>
   </header>
 
-  <main class="board-shell">
+  <main class="board-shell" id="main-content">
     <div class="container">
       <div class="board-head">
         <div>
           <p class="eyebrow">The project board</p>
-          <h1 data-od-id="board-heading">Find your place to build.</h1>
+          <h1 data-od-id="board-heading">Find work worth joining.</h1>
+          <p class="board-intro">Browse projects by skill, open one to learn what the team needs, or post your own idea when you are ready to find collaborators.</p>
         </div>
-        <p class="muted" id="board-status">Loading the shared board…</p>
+        <p class="board-status" id="board-status" role="status" aria-live="polite">Loading projects…</p>
       </div>
 
       <nav class="tabs glass" aria-label="Project board sections" role="tablist">
-        <button id="tab-discover" class="tab active" data-panel="discover" role="tab" aria-selected="true" aria-controls="panel-discover">Discover</button>
+        <button id="tab-discover" class="tab active" data-panel="discover" role="tab" aria-selected="true" aria-controls="panel-discover">Find projects</button>
         <button id="tab-owned" class="tab" data-panel="owned" role="tab" aria-selected="false" aria-controls="panel-owned" tabindex="-1">My projects <span class="tab-count" id="owned-count">0</span></button>
-        <button id="tab-applicants" class="tab" data-panel="applicants" role="tab" aria-selected="false" aria-controls="panel-applicants" tabindex="-1">Applicants <span class="tab-count" id="applicant-count">0</span></button>
-        <button id="tab-profile" class="tab" data-panel="profile" role="tab" aria-selected="false" aria-controls="panel-profile" tabindex="-1">Profile</button>
+        <button id="tab-applicants" class="tab" data-panel="applicants" role="tab" aria-selected="false" aria-controls="panel-applicants" tabindex="-1">Review applicants <span class="tab-count" id="applicant-count">0</span></button>
+        <button id="tab-profile" class="tab" data-panel="profile" role="tab" aria-selected="false" aria-controls="panel-profile" tabindex="-1">My profile</button>
       </nav>
 
       <section id="panel-discover" class="panel" data-od-id="discover-panel" role="tabpanel" aria-labelledby="tab-discover" tabindex="0">
         <div class="panel-head">
           <div>
-            <h2>Open ideas</h2>
-            <p class="muted">Boosted projects lead the board. Every open project remains visible.</p>
+            <h2>Projects looking for collaborators</h2>
+            <p class="muted">Use search or a skill filter, then open a project to see the role and application question.</p>
           </div>
-          <div class="filter-row">
-            <button class="chip active" data-filter="all">All</button>
-            <button class="chip" data-filter="design">Design</button>
-            <button class="chip" data-filter="engineering">Engineering</button>
-            <button class="chip" data-filter="research">Research</button>
+          <div class="filter-row" role="group" aria-label="Project filters">
+            <button class="chip active" data-filter="all" aria-pressed="true">All</button>
+            <button class="chip" data-filter="design" aria-pressed="false">Design</button>
+            <button class="chip" data-filter="engineering" aria-pressed="false">Engineering</button>
+            <button class="chip" data-filter="research" aria-pressed="false">Research</button>
+            <button class="chip" data-filter="saved" aria-pressed="false">Saved <span class="saved-count" id="saved-count">0</span></button>
           </div>
         </div>
         <div id="discovery-board" class="masonry" aria-live="polite" aria-busy="true"></div>
@@ -1019,15 +1275,15 @@
 
       <section id="panel-owned" class="panel" data-od-id="owned-projects-panel" role="tabpanel" aria-labelledby="tab-owned" tabindex="0" hidden>
         <div class="panel-head">
-          <div><h2>Your projects</h2><p class="muted">Edit recruiting details and choose which project receives your Plus boost.</p></div>
-          <button class="btn btn-primary" data-create-project>Share a project</button>
+          <div><h2>Your projects</h2><p class="muted">Update what you need, review interest, and manage each project from one place.</p></div>
+          <button class="btn btn-primary" data-create-project>Post a project</button>
         </div>
         <div id="owned-board" class="masonry"></div>
       </section>
 
       <section id="panel-applicants" class="panel" data-od-id="applicant-review-panel" role="tabpanel" aria-labelledby="tab-applicants" tabindex="0" hidden>
         <div class="panel-head">
-          <div><h2>Applicant review</h2><p class="muted">Priority members appear first. Review the profile and contribution, not only the badge.</p></div>
+          <div><h2>People who want to join</h2><p class="muted">Review what each person can contribute, then accept, decline, or schedule a conversation.</p></div>
         </div>
         <div id="applicant-list" class="applicants"></div>
       </section>
@@ -1064,7 +1320,7 @@
   <div id="modal-project-form" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="project-form-title" tabindex="-1">
     <div class="modal glass">
       <div class="modal-head">
-        <div><p class="eyebrow">Project setup</p><h2 id="project-form-title">Share a project</h2></div>
+        <div><p class="eyebrow">Project setup</p><h2 id="project-form-title">Post a project</h2></div>
         <button class="close" data-close="project-form" aria-label="Close">×</button>
       </div>
       <form id="project-form" class="form">
@@ -1171,6 +1427,16 @@
     let editingProjectId = null;
     let editingQuestionId = null;
     let loadError = '';
+    const savedProjectsKey = 'connected:saved-projects';
+    let savedProjectIds = new Set();
+    try {
+      const storedSavedProjects = JSON.parse(localStorage.getItem(savedProjectsKey) || '[]');
+      if (Array.isArray(storedSavedProjects)) {
+        savedProjectIds = new Set(storedSavedProjects.map(String));
+      }
+    } catch (_) {
+      savedProjectIds = new Set();
+    }
 
     function toast(message) {
       const element = $('#toast');
@@ -1182,6 +1448,7 @@
 
     let activeModal = null;
     let modalReturnFocus = null;
+    const modalBackground = [document.querySelector('header'), document.querySelector('main'), $('#preview-note')].filter(Boolean);
 
     function openModal(name) {
       const modal = $(`#modal-${name}`);
@@ -1189,6 +1456,7 @@
       activeModal = modal;
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
+      modalBackground.forEach(region => region.inert = true);
       document.body.classList.add('modal-open');
       window.requestAnimationFrame(() => {
         const target = modal.querySelector('input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])');
@@ -1200,6 +1468,7 @@
       const modal = $(`#modal-${name}`);
       modal.classList.remove('open');
       modal.setAttribute('aria-hidden', 'true');
+      modalBackground.forEach(region => region.inert = false);
       document.body.classList.remove('modal-open');
       activeModal = null;
       if (modalReturnFocus && document.contains(modalReturnFocus)) modalReturnFocus.focus();
@@ -1232,10 +1501,28 @@
       }
     });
 
+    async function beginGoogleSignIn(button = null) {
+      const originalLabel = button?.textContent;
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Connecting…';
+      }
+      try {
+        await signInWithGoogle('/project-hub.html');
+      } catch (error) {
+        toast(error.message || 'Google sign-in is unavailable.');
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = originalLabel;
+        }
+      }
+    }
+
     async function requireUser() {
       if (user) return user;
       toast('Sign in to continue.');
-      await signInWithGoogle('/project-hub.html');
+      await beginGoogleSignIn();
       return null;
     }
 
@@ -1243,7 +1530,7 @@
       const discoveryBoard = $('#discovery-board');
       loadError = '';
       discoveryBoard.setAttribute('aria-busy', 'true');
-      discoveryBoard.innerHTML = '<div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';
+      discoveryBoard.innerHTML = '<span class="sr-only">Loading projects</span><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';
       user = await currentUser();
       await updateAccount();
       if (!isSupabaseConfigured) {
@@ -1313,7 +1600,7 @@
         };
       } else {
         button.textContent = 'Sign in';
-        button.onclick = () => signInWithGoogle('/project-hub.html');
+        button.onclick = event => beginGoogleSignIn(event.currentTarget);
       }
     }
 
@@ -1322,10 +1609,11 @@
       $('#board-status').textContent = loadError
         ? 'Board unavailable'
         : isSupabaseConfigured
-        ? `${liveProjects.length} open ${liveProjects.length === 1 ? 'idea' : 'ideas'}`
+        ? `${liveProjects.length} open ${liveProjects.length === 1 ? 'project' : 'projects'}`
         : 'Preview board';
       $('#owned-count').textContent = ownedProjects.length;
       $('#applicant-count').textContent = applications.filter(item => item.status === 'pending').length;
+      $('#saved-count').textContent = savedProjectIds.size;
       renderDiscovery();
       renderOwned();
       renderApplicants();
@@ -1335,7 +1623,9 @@
     function filteredProjects() {
       const query = $('#board-search').value.toLowerCase().trim();
       return projects.filter(project => {
-        const filterMatch = activeFilter === 'all' || project.tags?.includes(activeFilter);
+        const filterMatch = activeFilter === 'all'
+          || (activeFilter === 'saved' && savedProjectIds.has(String(project.id)))
+          || project.tags?.includes(activeFilter);
         const text = [
           project.title, project.summary, project.description, project.owner, ...(project.tags || [])
         ].join(' ').toLowerCase();
@@ -1343,20 +1633,34 @@
       });
     }
 
+    function projectCover(project) {
+      const tags = (project.tags || []).map(tag => String(tag).toLowerCase());
+      if (tags.includes('education')) return 'assets/project-cover-education.png';
+      if (tags.includes('community')) return 'assets/project-cover-community.png';
+      if (tags.includes('design')) return 'assets/project-cover-design.png';
+      if (tags.includes('engineering')) return 'assets/project-cover-engineering.png';
+      if (tags.includes('research')) return 'assets/project-cover-research.png';
+      return 'assets/project-cover-general.png';
+    }
+
     function pinMarkup(project, index, owned = false) {
       const boosted = project.boost_until && new Date(project.boost_until) > new Date();
       return `
         <article class="pin glass" data-od-id="${owned ? 'owned' : 'discover'}-project-${escapeHtml(project.id)}">
-          <div class="pin-cover" style="--cover-height:${170 + (index % 3) * 48}px">
-            <span class="badge">${boosted ? 'Boosted idea' : project.status === 'invite_only' ? 'Invite only' : 'Open project'}</span>
-            <h3>${escapeHtml(project.title)}</h3>
+          <div class="pin-cover">
+            <img src="${projectCover(project)}" alt="" loading="lazy" decoding="async">
           </div>
           <div class="pin-body">
+            <span class="badge">${boosted ? 'Boosted idea' : project.status === 'invite_only' ? 'Invite only' : 'Open project'}</span>
+            <h3 class="pin-title">${escapeHtml(project.title)}</h3>
             <p>${escapeHtml(project.summary)}</p>
             <div class="tags">${(project.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
             <div class="pin-foot">
-              <span class="owner">${escapeHtml(owned ? project.status.replace('_', ' ') : project.owner)}</span>
-              <button class="btn btn-small" data-view="${escapeHtml(project.id)}">View</button>
+              <span class="owner">${escapeHtml(owned ? project.status.replace('_', ' ') : `By ${project.owner}`)}</span>
+              <div class="pin-card-actions">
+                ${owned ? '' : `<button class="btn btn-small" data-save="${escapeHtml(project.id)}" aria-pressed="${savedProjectIds.has(String(project.id))}" aria-label="${savedProjectIds.has(String(project.id)) ? 'Remove' : 'Save'} ${escapeHtml(project.title)}">${savedProjectIds.has(String(project.id)) ? 'Saved' : 'Save'}</button>`}
+                <button class="btn btn-small" data-view="${escapeHtml(project.id)}" aria-label="View ${escapeHtml(project.title)}">View project</button>
+              </div>
             </div>
             ${owned ? `
               <div class="project-actions">
@@ -1371,6 +1675,26 @@
 
     function bindProjectButtons() {
       $$('[data-view]').forEach(button => button.onclick = () => openProjectDetail(button.dataset.view));
+      $$('[data-save]').forEach(button => button.onclick = () => {
+        const projectId = String(button.dataset.save);
+        const project = projects.find(item => String(item.id) === projectId);
+        if (savedProjectIds.has(projectId)) {
+          savedProjectIds.delete(projectId);
+          toast('Removed from saved projects.');
+        } else {
+          savedProjectIds.add(projectId);
+          toast('Project saved.');
+        }
+        try {
+          localStorage.setItem(savedProjectsKey, JSON.stringify([...savedProjectIds]));
+        } catch (_) {}
+        $('#saved-count').textContent = savedProjectIds.size;
+        renderDiscovery();
+        if (project && activeFilter !== 'saved') {
+          const restoredButton = $(`[data-save="${CSS.escape(projectId)}"]`);
+          if (restoredButton) restoredButton.focus();
+        }
+      });
       $$('[data-edit]').forEach(button => button.onclick = () => openProjectForm(
         ownedProjects.find(project => String(project.id) === button.dataset.edit)
       ));
@@ -1384,9 +1708,36 @@
         return;
       }
       const items = filteredProjects();
+      const filteredEmpty = activeFilter !== 'all' || $('#board-search').value.trim();
+      const emptyMessage = activeFilter === 'saved' && !$('#board-search').value.trim()
+        ? 'No saved projects yet. Save a project to keep it close for later.'
+        : filteredEmpty
+          ? 'No projects match the current search and filters.'
+          : 'No open projects have been shared yet.';
       $('#discovery-board').innerHTML = items.length
         ? items.map((project, index) => pinMarkup(project, index)).join('')
-        : '<div class="empty">No open projects match this view yet.</div>';
+        : `<div class="empty">
+            <p>${emptyMessage}</p>
+            <button class="btn btn-small" id="${filteredEmpty ? 'clear-board-view' : 'share-board-empty'}" type="button">
+              ${activeFilter === 'saved' && !$('#board-search').value.trim() ? 'Browse all projects' : filteredEmpty ? 'Clear search and filters' : 'Post a project'}
+            </button>
+          </div>`;
+      const clearView = $('#clear-board-view');
+      if (clearView) {
+        clearView.onclick = () => {
+          activeFilter = 'all';
+          $('#board-search').value = '';
+          $$('[data-filter]').forEach(item => {
+            const selected = item.dataset.filter === 'all';
+            item.classList.toggle('active', selected);
+            item.setAttribute('aria-pressed', String(selected));
+          });
+          renderDiscovery();
+          $('#board-search').focus();
+        };
+      }
+      const shareEmpty = $('#share-board-empty');
+      if (shareEmpty) shareEmpty.onclick = () => openProjectForm();
       bindProjectButtons();
     }
 
@@ -1394,10 +1745,11 @@
       $('#owned-board').innerHTML = user
         ? ownedProjects.length
           ? ownedProjects.map((project, index) => pinMarkup(project, index, true)).join('')
-          : '<div class="empty">You have not shared a project yet.</div>'
+          : '<div class="empty"><p>You have not posted a project yet.</p><button class="btn btn-primary" type="button" data-create-project>Post a project</button></div>'
         : authWall('Sign in to manage your projects.');
       bindProjectButtons();
       bindSigninButtons();
+      $$('[data-create-project]').forEach(button => button.onclick = () => openProjectForm());
     }
 
     function authWall(message) {
@@ -1469,7 +1821,7 @@
 
     function bindSigninButtons() {
       $$('[data-google-signin]').forEach(button => {
-        button.onclick = () => signInWithGoogle('/project-hub.html');
+        button.onclick = event => beginGoogleSignIn(event.currentTarget);
       });
     }
 
@@ -1503,7 +1855,7 @@
       editingQuestionId = null;
       const form = $('#project-form');
       form.reset();
-      $('#project-form-title').textContent = project ? 'Edit your project' : 'Share a project';
+      $('#project-form-title').textContent = project ? 'Edit your project' : 'Post a project';
       if (project) {
         form.title.value = project.title;
         form.summary.value = project.summary;
@@ -1596,10 +1948,16 @@
       const session = await getSession();
       if (!session?.provider_token) {
         toast('Reconnect Google to grant Calendar access.');
-        return signInWithGoogle('/project-hub.html');
+        return beginGoogleSignIn();
       }
       const startsAt = new Date(String(values.get('starts')));
       const endsAt = new Date(String(values.get('ends')));
+      if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+        return toast('Choose valid interview start and end times.');
+      }
+      if (endsAt <= startsAt) {
+        return toast('Interview end time must be after the start time.');
+      }
       const response = await fetch('/api/google-calendar', {
         method: 'POST',
         headers: await authHeaders(),
@@ -1636,16 +1994,29 @@
       await loadAll();
     }
 
+    let checkoutPending = false;
+
     async function startCheckout(projectId = '') {
+      if (checkoutPending) return;
       if (!(await requireUser())) return;
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify({ plan: 'connected_plus', projectId })
-      });
-      const data = await response.json();
-      if (!response.ok) return toast(data.error || 'Checkout is unavailable.');
-      window.location.href = data.url;
+      checkoutPending = true;
+      const controls = $$('#membership-action, [data-boost]');
+      controls.forEach(button => button.disabled = true);
+      try {
+        const response = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: await authHeaders(),
+          body: JSON.stringify({ plan: 'connected_plus', projectId })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Checkout is unavailable.');
+        window.location.href = data.url;
+      } catch (error) {
+        toast(error.message || 'Checkout is unavailable.');
+      } finally {
+        checkoutPending = false;
+        controls.forEach(button => button.disabled = false);
+      }
     }
 
     async function activateBoost(projectId) {
@@ -1693,6 +2064,8 @@
         }
         try {
           await handler(form);
+        } catch (error) {
+          toast(error.message || 'Something went wrong. Please try again.');
         } finally {
           form.setAttribute('aria-busy', 'false');
           if (submit) {
@@ -1714,11 +2087,31 @@
       ? switchPanel('owned')
       : startCheckout();
 
-    $$('[data-panel]').forEach(tab => tab.onclick = () => switchPanel(tab.dataset.panel));
+    const panelTabs = $$('[data-panel]');
+    panelTabs.forEach(tab => {
+      tab.onclick = () => switchPanel(tab.dataset.panel);
+      tab.onkeydown = event => {
+        const currentIndex = panelTabs.indexOf(tab);
+        let nextIndex = currentIndex;
+        if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % panelTabs.length;
+        else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + panelTabs.length) % panelTabs.length;
+        else if (event.key === 'Home') nextIndex = 0;
+        else if (event.key === 'End') nextIndex = panelTabs.length - 1;
+        else return;
+        event.preventDefault();
+        const nextTab = panelTabs[nextIndex];
+        switchPanel(nextTab.dataset.panel);
+        nextTab.focus();
+      };
+    });
     $$('[data-filter]').forEach(button => {
       button.onclick = () => {
         activeFilter = button.dataset.filter;
-        $$('[data-filter]').forEach(item => item.classList.toggle('active', item === button));
+        $$('[data-filter]').forEach(item => {
+          const selected = item === button;
+          item.classList.toggle('active', selected);
+          item.setAttribute('aria-pressed', String(selected));
+        });
         renderDiscovery();
       };
     });
