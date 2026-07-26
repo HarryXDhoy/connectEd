@@ -819,7 +819,7 @@
       height: 100%;
       display: block;
       opacity: 0;
-      cursor: crosshair;
+      cursor: grab;
       transition: opacity var(--motion-base) var(--ease-standard);
     }
     .stage.webgl-ready .project-network-canvas { opacity: 1; }
@@ -908,34 +908,58 @@
       inset: 72px 28px 82px;
       z-index: 2;
       display: grid;
-      grid-template-columns: 1fr 1.25fr 1fr;
-      align-items: center;
-      gap: var(--space-6);
+      place-items: center;
       opacity: 1;
       transition: opacity var(--motion-base) var(--ease-standard);
     }
     .stage.webgl-ready .network-fallback { opacity: 0; }
-    .fallback-node {
-      min-height: 96px;
-      display: grid;
-      place-items: center;
+    .fallback-globe {
+      position: relative;
+      width: min(78%, 340px);
+      aspect-ratio: 1;
+      overflow: hidden;
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
+      border-radius: 50%;
       background: var(--bg);
-      color: var(--fg-2);
-      font: var(--text-xs)/1.4 var(--font-mono);
-      letter-spacing: .06em;
-      text-align: center;
-      text-transform: uppercase;
+      transform: rotate(-12deg);
     }
-    .fallback-node:first-child {
-      border-color: color-mix(in oklab, var(--accent), transparent 45%);
-      color: var(--accent);
+    .fallback-globe::before,
+    .fallback-globe::after,
+    .globe-latitude,
+    .globe-longitude {
+      content: "";
+      position: absolute;
+      border: 1px solid var(--border);
+      border-radius: 50%;
     }
-    .fallback-node:nth-child(2) {
-      min-height: 180px;
-      background: color-mix(in oklab, var(--surface), var(--fg) 3%);
-      color: var(--fg);
+    .fallback-globe::before { inset: 18% -5%; }
+    .fallback-globe::after { inset: 37% -5%; }
+    .globe-latitude { inset: 8% 27%; }
+    .globe-longitude { inset: 8% 44%; }
+    .globe-longitude-secondary { inset: 8% 18%; }
+    .globe-marker {
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--fg-2);
+    }
+    .globe-marker-primary {
+      top: 35%;
+      left: 68%;
+      background: var(--accent);
+    }
+    .globe-marker-west { top: 43%; left: 23%; }
+    .globe-marker-south { top: 69%; left: 57%; }
+    .globe-route {
+      position: absolute;
+      top: 43%;
+      left: 25%;
+      width: 46%;
+      height: 22%;
+      border-top: 1px solid color-mix(in oklab, var(--accent), transparent 35%);
+      border-radius: 50%;
+      transform: rotate(-9deg);
     }
     .pin-cover,
     .pin:nth-child(3n + 2) .pin-cover,
@@ -1076,10 +1100,17 @@
     .brand-mark {
       width: 28px;
       height: 28px;
+      overflow: hidden;
       border-radius: var(--radius-sm);
+      background: transparent;
       font-family: var(--font-mono);
       font-weight: 500;
       letter-spacing: -.04em;
+    }
+    .brand-mark img {
+      width: 100%;
+      height: 100%;
+      display: block;
     }
     .nav-search input {
       min-height: 40px;
@@ -1360,7 +1391,7 @@
   <header class="topbar" data-od-id="site-header">
     <div class="container nav">
       <a class="brand" href="connected-app.html" aria-label="connectEd home">
-        <span class="brand-mark">cE</span><span>connectEd</span>
+        <span class="brand-mark"><img src="assets/connected-favicon.svg" alt=""></span><span>connectEd</span>
       </a>
       <label class="nav-search" aria-label="Search projects">
         <input id="nav-search" type="search" placeholder="Search projects, roles, and skills">
@@ -1388,26 +1419,32 @@
             <button class="btn" data-open="create" data-od-id="hero-share-cta">Share a project</button>
           </div>
         </div>
-        <div class="stage" id="stage" role="group" aria-label="Interactive project network: an idea connects with design, engineering, and research collaborators before an interview">
+        <div class="stage" id="stage" role="group" aria-label="Interactive three-dimensional Earth showing project collaboration routes around the world">
           <canvas id="project-network-canvas" class="project-network-canvas" aria-hidden="true"></canvas>
           <div class="network-fallback" aria-hidden="true">
-            <div class="fallback-node">Open idea</div>
-            <div class="fallback-node">Design / Engineering / Research</div>
-            <div class="fallback-node">Interview ready</div>
+            <div class="fallback-globe">
+              <span class="globe-latitude"></span>
+              <span class="globe-longitude"></span>
+              <span class="globe-longitude globe-longitude-secondary"></span>
+              <span class="globe-route"></span>
+              <span class="globe-marker globe-marker-primary"></span>
+              <span class="globe-marker globe-marker-west"></span>
+              <span class="globe-marker globe-marker-south"></span>
+            </div>
           </div>
           <div class="stage-hud">
-            <span class="network-kicker">Project graph / live</span>
+            <span class="network-kicker">Connected Earth / live</span>
             <button class="network-motion-toggle" id="network-motion-toggle" type="button" aria-pressed="false" aria-controls="project-network-canvas" hidden>
               Pause motion
             </button>
             <div class="network-steps" aria-hidden="true">
-              <span class="network-step">Publish</span>
-              <span class="network-step">Collaborate</span>
-              <span class="network-step">Interview</span>
+              <span class="network-step">Discover</span>
+              <span class="network-step">Connect</span>
+              <span class="network-step">Build</span>
             </div>
             <div class="network-focus" id="network-focus" aria-hidden="true">
-              Project network
-              <span>Move across a node to inspect the path.</span>
+              Global project network
+              <span>Move across a city to inspect a collaboration route.</span>
             </div>
           </div>
         </div>
@@ -2132,12 +2169,12 @@
       if (!stage || !canvas) return;
 
       try {
-        const THREE = await import('https://unpkg.com/three@0.168.0/build/three.module.js');
+        const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js');
         const styles = getComputedStyle(document.documentElement);
         const color = token => styles.getPropertyValue(token).trim();
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-        camera.position.set(0, 0, 9);
+        const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+        camera.position.set(0, 0, 7.8);
 
         const renderer = new THREE.WebGLRenderer({
           canvas,
@@ -2149,86 +2186,155 @@
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.setClearColor(0, 0);
 
-        const graph = new THREE.Group();
-        scene.add(graph);
-        scene.add(new THREE.AmbientLight(color('--fg'), 1.1));
-        const keyLight = new THREE.PointLight(color('--accent'), 12, 14);
-        keyLight.position.set(-3, 3, 5);
+        const earth = new THREE.Group();
+        earth.rotation.set(.12, -1.9, -.12);
+        scene.add(earth);
+
+        scene.add(new THREE.AmbientLight(color('--fg'), .8));
+        const keyLight = new THREE.DirectionalLight(color('--accent'), 2.4);
+        keyLight.position.set(-4, 3, 6);
         scene.add(keyLight);
+        const rimLight = new THREE.DirectionalLight(color('--fg-2'), 1.25);
+        rimLight.position.set(4, -2, 2);
+        scene.add(rimLight);
 
-        const definitions = [
-          { name: 'Open idea', detail: 'A project publishes its purpose and open roles.', position: [-3.1, 0, 0.2], radius: .46, tone: '--accent' },
-          { name: 'Product design', detail: 'A collaborator joins to shape the experience.', position: [-.75, 1.55, .35], radius: .28, tone: '--fg-2' },
-          { name: 'Mobile engineering', detail: 'An engineer connects implementation to the idea.', position: [-.45, 0, .9], radius: .34, tone: '--fg-2' },
-          { name: 'User research', detail: 'Research keeps the team close to real needs.', position: [-.75, -1.55, .15], radius: .28, tone: '--fg-2' },
-          { name: 'Interview ready', detail: 'The strongest match moves into a scheduled conversation.', position: [3.05, 0, .4], radius: .43, tone: '--fg' }
-        ];
-        const sphere = new THREE.SphereGeometry(1, 32, 24);
-        const nodes = definitions.map((definition, index) => {
-          const material = new THREE.MeshStandardMaterial({
-            color: color(definition.tone),
-            roughness: .36,
-            metalness: .18,
-            emissive: index === 0 ? color('--accent') : color('--bg'),
-            emissiveIntensity: index === 0 ? .14 : .04
-          });
-          const mesh = new THREE.Mesh(sphere, material);
-          mesh.position.fromArray(definition.position);
-          mesh.scale.setScalar(definition.radius);
-          mesh.userData = definition;
-          graph.add(mesh);
-          return mesh;
-        });
-
-        const pairs = [[0, 1], [0, 2], [0, 3], [1, 4], [2, 4], [3, 4]];
-        const linePositions = [];
-        pairs.forEach(([from, to]) => {
-          linePositions.push(...definitions[from].position, ...definitions[to].position);
-        });
-        const lineGeometry = new THREE.BufferGeometry();
-        lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
-        graph.add(new THREE.LineSegments(
-          lineGeometry,
-          new THREE.LineBasicMaterial({ color: color('--border'), transparent: true, opacity: .95 })
-        ));
-
-        const outcomeRing = new THREE.Mesh(
-          new THREE.TorusGeometry(.7, .018, 12, 64),
-          new THREE.MeshBasicMaterial({ color: color('--fg-2'), transparent: true, opacity: .6 })
+        const globeRadius = 2.28;
+        const globeGeometry = new THREE.SphereGeometry(globeRadius, 64, 48);
+        const globeSurface = new THREE.Mesh(
+          globeGeometry,
+          new THREE.MeshStandardMaterial({
+            color: color('--surface'),
+            roughness: .92,
+            metalness: .04,
+            transparent: true,
+            opacity: .9
+          })
         );
-        outcomeRing.position.fromArray(definitions[4].position);
-        outcomeRing.rotation.x = .65;
-        graph.add(outcomeRing);
+        earth.add(globeSurface);
 
-        const memberPositions = [];
-        for (let index = 0; index < 42; index += 1) {
-          const angle = index * 2.399;
-          const radius = 2.2 + (index % 7) * .34;
-          memberPositions.push(
-            Math.cos(angle) * radius,
-            Math.sin(angle) * radius * .58,
-            -1.3 - (index % 5) * .22
+        const globeGrid = new THREE.Mesh(
+          globeGeometry,
+          new THREE.MeshBasicMaterial({
+            color: color('--border'),
+            wireframe: true,
+            transparent: true,
+            opacity: .42
+          })
+        );
+        earth.add(globeGrid);
+
+        const atmosphere = new THREE.Mesh(
+          new THREE.SphereGeometry(globeRadius + .09, 64, 48),
+          new THREE.MeshBasicMaterial({
+            color: color('--accent'),
+            transparent: true,
+            opacity: .045,
+            side: THREE.BackSide
+          })
+        );
+        earth.add(atmosphere);
+
+        function latLonToVector(latitude, longitude, radius = globeRadius + .025) {
+          const lat = THREE.MathUtils.degToRad(latitude);
+          const lon = THREE.MathUtils.degToRad(longitude);
+          return new THREE.Vector3(
+            radius * Math.cos(lat) * Math.sin(lon),
+            radius * Math.sin(lat),
+            radius * Math.cos(lat) * Math.cos(lon)
           );
         }
-        const members = new THREE.BufferGeometry();
-        members.setAttribute('position', new THREE.Float32BufferAttribute(memberPositions, 3));
-        graph.add(new THREE.Points(
-          members,
+
+        const continentMaterial = new THREE.LineBasicMaterial({
+          color: color('--fg-2'),
+          transparent: true,
+          opacity: .56
+        });
+        const continentShapes = [
+          [[-168, 71], [-140, 60], [-125, 49], [-117, 32], [-98, 18], [-82, 25], [-65, 45], [-82, 59], [-108, 72], [-140, 70], [-168, 71]],
+          [[-81, 12], [-66, 9], [-51, -5], [-42, -23], [-57, -55], [-72, -40], [-79, -10], [-81, 12]],
+          [[-17, 36], [2, 51], [30, 60], [42, 44], [52, 31], [44, 12], [36, -35], [17, -34], [5, -5], [-17, 15], [-17, 36]],
+          [[30, 60], [62, 72], [112, 70], [150, 58], [162, 45], [138, 35], [121, 22], [104, 4], [78, 9], [61, 28], [42, 44], [30, 60]],
+          [[112, -11], [153, -10], [154, -38], [131, -44], [113, -28], [112, -11]],
+          [[-53, 83], [-22, 78], [-18, 63], [-43, 58], [-61, 70], [-53, 83]]
+        ];
+        continentShapes.forEach(shape => {
+          const points = shape.map(([longitude, latitude]) => latLonToVector(latitude, longitude));
+          earth.add(new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(points),
+            continentMaterial
+          ));
+        });
+
+        const routeMaterial = new THREE.LineBasicMaterial({
+          color: color('--accent'),
+          transparent: true,
+          opacity: .62
+        });
+        const locations = [
+          { name: 'Seoul', detail: 'An open project connects with collaborators across disciplines.', latitude: 37.57, longitude: 126.98, active: true },
+          { name: 'San Francisco', detail: 'Design and engineering skills join the same project path.', latitude: 37.77, longitude: -122.42 },
+          { name: 'London', detail: 'A distributed team moves from interest to conversation.', latitude: 51.51, longitude: -.13 },
+          { name: 'Singapore', detail: 'Research and product context travel with the team.', latitude: 1.35, longitude: 103.82 }
+        ];
+
+        function addRoute(from, to) {
+          const start = latLonToVector(from.latitude, from.longitude, globeRadius + .07);
+          const end = latLonToVector(to.latitude, to.longitude, globeRadius + .07);
+          const midpoint = start.clone().add(end).normalize().multiplyScalar(globeRadius + .78);
+          const curve = new THREE.QuadraticBezierCurve3(start, midpoint, end);
+          earth.add(new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),
+            routeMaterial
+          ));
+        }
+        addRoute(locations[0], locations[1]);
+        addRoute(locations[0], locations[2]);
+        addRoute(locations[0], locations[3]);
+
+        const markerGeometry = new THREE.SphereGeometry(.065, 20, 16);
+        const markers = locations.map(location => {
+          const marker = new THREE.Mesh(
+            markerGeometry,
+            new THREE.MeshBasicMaterial({
+              color: color(location.active ? '--accent' : '--fg-2')
+            })
+          );
+          marker.position.copy(latLonToVector(location.latitude, location.longitude, globeRadius + .09));
+          marker.userData = location;
+          earth.add(marker);
+          return marker;
+        });
+
+        const starPositions = [];
+        for (let index = 0; index < 72; index += 1) {
+          const angle = index * 2.399963;
+          const radius = 3.1 + (index % 9) * .22;
+          starPositions.push(
+            Math.cos(angle) * radius,
+            Math.sin(angle) * radius * .72,
+            -2.8 - (index % 6) * .25
+          );
+        }
+        const stars = new THREE.BufferGeometry();
+        stars.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+        scene.add(new THREE.Points(
+          stars,
           new THREE.PointsMaterial({
             color: color('--muted'),
-            size: .045,
+            size: .025,
             transparent: true,
-            opacity: .45,
-            sizeAttenuation: true
+            opacity: .38
           })
         ));
 
         const raycaster = new THREE.Raycaster();
         const pointer = new THREE.Vector2(4, 4);
-        const cameraTarget = new THREE.Vector2();
+        const pointerTilt = new THREE.Vector2();
         let visible = true;
         let userPaused = false;
         let frame = 0;
+        let spin = -1.9;
+        let previousTime = performance.now();
 
         function resize() {
           const width = Math.max(1, stage.clientWidth);
@@ -2241,12 +2347,12 @@
 
         function render(time) {
           if (!reducedMotion && !userPaused) {
-            const seconds = time * .001;
-            graph.rotation.y += (cameraTarget.x * .12 - graph.rotation.y) * .045;
-            graph.rotation.x += (-cameraTarget.y * .08 - graph.rotation.x) * .045;
-            nodes[0].scale.setScalar(definitions[0].radius * (1 + Math.sin(seconds * 2) * .045));
-            outcomeRing.rotation.z = seconds * .08;
+            const elapsed = Math.min(32, Math.max(0, time - previousTime));
+            spin += elapsed * .00007;
           }
+          previousTime = time;
+          earth.rotation.y += (spin + pointerTilt.x * .18 - earth.rotation.y) * .045;
+          earth.rotation.x += (.12 - pointerTilt.y * .08 - earth.rotation.x) * .045;
           renderer.render(scene, camera);
         }
 
@@ -2267,17 +2373,17 @@
           const rect = canvas.getBoundingClientRect();
           pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
           pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-          cameraTarget.set(pointer.x, pointer.y);
+          pointerTilt.set(pointer.x, pointer.y);
           raycaster.setFromCamera(pointer, camera);
-          const hit = raycaster.intersectObjects(nodes, false)[0];
-          nodes.forEach(node => node.scale.setScalar(node.userData.radius));
+          const hit = raycaster.intersectObjects(markers, false)[0];
+          markers.forEach(marker => marker.scale.setScalar(1));
           if (hit) {
-            hit.object.scale.setScalar(hit.object.userData.radius * 1.18);
+            hit.object.scale.setScalar(1.8);
             canvas.style.cursor = 'pointer';
             focus.innerHTML = `${escapeHtml(hit.object.userData.name)}<span>${escapeHtml(hit.object.userData.detail)}</span>`;
           } else {
-            canvas.style.cursor = 'crosshair';
-            focus.innerHTML = 'Project network<span>Move across a node to inspect the path.</span>';
+            canvas.style.cursor = 'grab';
+            focus.innerHTML = 'Global project network<span>Move across a city to inspect a collaboration route.</span>';
           }
           if (reducedMotion) render(performance.now());
         }
@@ -2285,10 +2391,10 @@
         canvas.addEventListener('pointermove', inspect);
         canvas.addEventListener('pointerleave', () => {
           pointer.set(4, 4);
-          cameraTarget.set(0, 0);
-          canvas.style.cursor = 'crosshair';
-          focus.innerHTML = 'Project network<span>Move across a node to inspect the path.</span>';
-          nodes.forEach(node => node.scale.setScalar(node.userData.radius));
+          pointerTilt.set(0, 0);
+          canvas.style.cursor = 'grab';
+          focus.innerHTML = 'Global project network<span>Move across a city to inspect a collaboration route.</span>';
+          markers.forEach(marker => marker.scale.setScalar(1));
           if (reducedMotion) render(performance.now());
         });
         canvas.addEventListener('webglcontextlost', event => {
@@ -2320,7 +2426,7 @@
         startAnimation();
       } catch (error) {
         stage.classList.remove('webgl-ready');
-        console.warn('Project network fallback active.', error);
+        console.warn('Connected Earth fallback active.', error);
       }
     }
 
