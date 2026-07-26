@@ -763,6 +763,20 @@
     }
     .modal-head { display: flex; justify-content: space-between; gap: var(--space-5); }
     .modal h2 { font-size: var(--text-2xl); }
+    .detail-cover {
+      margin: var(--space-5) 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      aspect-ratio: 16 / 9;
+    }
+    .detail-cover img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
     .close {
       width: 44px;
       height: 44px;
@@ -1765,6 +1779,9 @@
         <div><p class="eyebrow" id="detail-owner">Project</p><h2 id="detail-title">Project detail</h2></div>
         <button class="close" data-close="project-detail" aria-label="Close">×</button>
       </div>
+      <figure class="detail-cover" data-od-id="project-detail-cover">
+        <img id="detail-cover-image" alt="">
+      </figure>
       <p id="detail-description" class="muted"></p>
       <div id="detail-tags" class="tags"></div>
       <div class="empty" id="application-paused-message" hidden>This project is visible, but the initiator has paused new applications.</div>
@@ -2785,6 +2802,14 @@
       $('#detail-owner').textContent = `Shared by ${activeProject.owner}`;
       $('#detail-description').textContent = activeProject.description;
       $('#detail-tags').innerHTML = projectTags(activeProject).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
+      const detailCover = $('#detail-cover-image');
+      const fallbackCover = projectCover(activeProject);
+      detailCover.onerror = () => {
+        detailCover.onerror = null;
+        detailCover.src = fallbackCover;
+      };
+      detailCover.src = projectImageData(activeProject) || fallbackCover;
+      detailCover.alt = `${activeProject.title} project cover`;
       const canApply = activeProject.owner_id !== user?.id && isAcceptingApplications(activeProject);
       $('#application-form').hidden = !canApply;
       $('#application-paused-message').hidden = activeProject.owner_id === user?.id || isAcceptingApplications(activeProject);
