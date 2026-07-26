@@ -1602,7 +1602,10 @@
         button.textContent = 'Connecting…';
       }
       try {
-        await signInWithGoogle('/project-hub.html');
+        const result = await signInWithGoogle('/project-hub.html');
+        if (result.previewHandoff) {
+          toast('Google sign-in opened on the live site in a new tab.');
+        }
       } catch (error) {
         toast(error.message || 'Google sign-in is unavailable.');
       } finally {
@@ -2277,7 +2280,9 @@
     });
     bindSigninButtons();
 
-    const checkoutState = new URLSearchParams(window.location.search).get('checkout');
+    const query = new URLSearchParams(window.location.search);
+    const checkoutState = query.get('checkout');
+    const authIntent = query.get('auth');
     if (checkoutState === 'success') toast('Payment received. Plus activates after Stripe confirms it.');
     if (checkoutState === 'cancelled') toast('Checkout cancelled. Nothing was charged.');
 
@@ -2285,6 +2290,13 @@
       supabase.auth.onAuthStateChange(() => window.setTimeout(loadAll, 0));
     }
     await loadAll();
+    if (authIntent === 'google' && !user) {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('auth');
+      cleanUrl.searchParams.delete('return');
+      window.history.replaceState(null, '', cleanUrl);
+      await beginGoogleSignIn();
+    }
   </script>
 </body>
 </html>

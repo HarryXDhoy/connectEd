@@ -43,10 +43,47 @@ export async function authHeaders() {
   };
 }
 
+export function isEmbeddedPreview() {
+  try {
+    return (
+      window.self !== window.top ||
+      window.location.protocol === 'file:' ||
+      ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    );
+  } catch (_) {
+    return true;
+  }
+}
+
+function publicSiteUrl() {
+  return String(config.publicSiteUrl || window.location.origin).replace(/\/+$/, '');
+}
+
+function openPreviewAuthHandoff(returnPath) {
+  const destination = new URL('/project-hub.html', `${publicSiteUrl()}/`);
+  destination.searchParams.set('auth', 'google');
+  destination.searchParams.set('return', returnPath);
+  const link = document.createElement('a');
+  link.href = destination.toString();
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  return destination.toString();
+}
+
 export async function signInWithGoogle(returnPath = '/project-hub.html') {
   if (!supabase) throw new Error('Supabase is not configured yet.');
+  if (isEmbeddedPreview()) {
+    return {
+      data: { url: openPreviewAuthHandoff(returnPath) },
+      error: null,
+      previewHandoff: true
+    };
+  }
   const redirectTo = new URL(returnPath, window.location.origin).toString();
-  return supabase.auth.signInWithOAuth({
+  const result = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo,
@@ -57,6 +94,8 @@ export async function signInWithGoogle(returnPath = '/project-hub.html') {
       scopes: 'https://www.googleapis.com/auth/calendar.events'
     }
   });
+  if (result.error) throw result.error;
+  return result;
 }
 
 export async function signInWithPassword(email, password) {
@@ -71,7 +110,10 @@ export async function signUpWithPassword(email, password, displayName) {
     password,
     options: {
       data: { full_name: displayName },
-      emailRedirectTo: new URL('/project-hub.html', window.location.origin).toString()
+      emailRedirectTo: new URL(
+        '/project-hub.html',
+        isEmbeddedPreview() ? `${publicSiteUrl()}/` : window.location.origin
+      ).toString()
     }
   });
 }

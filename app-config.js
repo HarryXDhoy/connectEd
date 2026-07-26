@@ -2,4 +2,5 @@
 window.CONNECTED_CONFIG = {
   url: "https://josrjdvcdkqkwfzomxxh.supabase.co",
   anonKey: "sb_publishable_HWbWWjReEesgL3JrSSalwQ_uzPLpzAi",
+  publicSiteUrl: "https://cntd-projects.vercel.app",
 };

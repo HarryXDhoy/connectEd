@@ -2297,7 +2297,10 @@
       button.disabled = true;
       button.textContent = 'Connecting…';
       try {
-        await signInWithGoogle('/project-hub.html');
+        const result = await signInWithGoogle('/project-hub.html');
+        if (result.previewHandoff) {
+          toast('Google sign-in opened on the live site in a new tab.');
+        }
       } catch (error) {
         toast(error.message || 'Google sign-in is unavailable.');
       } finally {

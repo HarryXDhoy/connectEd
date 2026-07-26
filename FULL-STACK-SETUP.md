@@ -77,6 +77,11 @@ In Google Cloud:
 
 Meet links are created through Calendar events; no separate Meet API is needed.
 
+The embedded Open Design preview cannot complete Google OAuth inside its iframe.
+Its Google buttons intentionally open the production project hub in a new tab,
+then continue the same Supabase sign-in flow there. Keep
+`window.CONNECTED_CONFIG.publicSiteUrl` pointed at the canonical deployed site.
+
 ## 5. Vercel environment variables
 
 Add these under Vercel → cntd → Settings → Environment Variables:
