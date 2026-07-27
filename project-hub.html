@@ -2760,7 +2760,7 @@
           .select('id,display_name,headline,bio,skills,avatar_url,banner_url,custom_avatar,priority_match_active')
           .eq('id', user.id)
           .maybeSingle();
-        if (profileResult.error && /banner_url|custom_avatar/.test(profileResult.error.message)) {
+        if (profileResult.error && /permission denied/i.test(profileResult.error.message)) {
           profileResult = await supabase
             .from('profiles')
             .select('id,display_name,headline,bio,skills,avatar_url,priority_match_active')
@@ -2802,7 +2802,7 @@
           .from('interviews')
           .select('id,application_id,project_id,organizer_id,candidate_id,starts_at,ends_at,title,notes,google_event_id,meet_url,calendar_html_link,created_at')
           .order('starts_at', { ascending: true });
-        if (interviewResult.error && /calendar_html_link/.test(interviewResult.error.message)) {
+        if (interviewResult.error && /permission denied/i.test(interviewResult.error.message)) {
           // calendar_html_link migration not applied yet — fall back so the
           // rest of the interview data (Meet links, schedule) still loads.
           interviewResult = await supabase
@@ -2922,7 +2922,7 @@
           const profileResult = await supabase.from('profiles')
             .update({ location_label: null, location_latitude: latitude, location_longitude: longitude })
             .eq('id', user.id);
-          if (profileResult.error && !/location_/.test(profileResult.error.message)) throw profileResult.error;
+          if (profileResult.error && !/permission denied/i.test(profileResult.error.message)) throw profileResult.error;
           const marker = locationTag(location);
           await Promise.all(ownedProjects.map(project => {
             const tags = (project.tags || []).filter(tag => !String(tag).startsWith(PROJECT_LOCATION_PREFIX));
@@ -3334,7 +3334,7 @@
         .select('id,display_name,headline,bio,skills,avatar_url,banner_url,priority_match_active')
         .eq('id', profileId)
         .maybeSingle();
-      if (target.error && /banner_url/.test(target.error.message)) {
+      if (target.error && /permission denied/i.test(target.error.message)) {
         target = await supabase
           .from('profiles')
           .select('id,display_name,headline,bio,skills,avatar_url,priority_match_active')
@@ -3967,7 +3967,7 @@
         calendar_html_link: data.htmlLink
       };
       let saved = await supabase.from('interviews').insert(interviewRow);
-      if (saved.error && /calendar_html_link/.test(saved.error.message)) {
+      if (saved.error && /permission denied/i.test(saved.error.message)) {
         delete interviewRow.calendar_html_link;
         saved = await supabase.from('interviews').insert(interviewRow);
       }
@@ -4078,12 +4078,12 @@
         location_latitude: location?.latitude ?? null,
         location_longitude: location?.longitude ?? null
       }).eq('id', user.id);
-      if (result.error && /location_/.test(result.error.message)) {
+      if (result.error && /permission denied/i.test(result.error.message)) {
         // The location columns migration has not been applied yet — save the
         // rest of the profile and keep location in auth metadata only.
         result = await supabase.from('profiles').update({ ...profileBase, ...imageUpdates }).eq('id', user.id);
       }
-      if (result.error && /avatar_url|custom_avatar|banner_url/.test(result.error.message)) {
+      if (result.error && /permission denied/i.test(result.error.message)) {
         // Photo/cover columns not migrated yet — save the rest of the
         // profile rather than blocking the whole form on it.
         result = await supabase.from('profiles').update(profileBase).eq('id', user.id);

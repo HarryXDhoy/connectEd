@@ -1875,6 +1875,7 @@
               <a class="network-step" href="#discover" data-od-id="network-step-discover">Discover</a>
               <a class="network-step" href="project-hub.html" data-od-id="network-step-connect">Connect</a>
               <button class="network-step" type="button" data-open="create" data-od-id="network-step-build">Build</button>
+              <button class="network-step" type="button" id="network-step-location" data-od-id="network-step-location" hidden>Share location</button>
             </div>
             <div class="location-invite" id="location-invite" data-od-id="location-invite" hidden>
               <p>Pin yourself on the Earth<span>Approximate only — rounded to about a kilometre before it leaves your device.</span></p>
@@ -3454,8 +3455,25 @@
     // coordinates are rounded to ~1 km before they are saved anywhere.
     function initLocationInvite() {
       const invite = $('#location-invite');
-      if (!invite || !accountUser || !isSupabaseConfigured) return;
-      if (userLocation(accountUser)) return;
+      const stageButton = $('#network-step-location');
+      if (!accountUser || !isSupabaseConfigured) {
+        if (invite) invite.hidden = true;
+        if (stageButton) stageButton.hidden = true;
+        return;
+      }
+      const alreadyShared = Boolean(userLocation(accountUser));
+
+      // Persistent control on the globe itself — unlike the dismissible
+      // nudge below, this never disappears for good, so sharing (or
+      // updating) a location is always one click away.
+      if (stageButton) {
+        stageButton.hidden = false;
+        stageButton.textContent = alreadyShared ? 'Update location' : 'Share location';
+        stageButton.onclick = event => shareLocationInline(event.currentTarget, stageButton.textContent);
+      }
+
+      if (!invite) return;
+      if (alreadyShared) { invite.hidden = true; return; }
       const dismissKey = `connected:location-invite:${accountUser.id}`;
       try { if (localStorage.getItem(dismissKey) === 'dismissed') return; } catch (_) {}
       invite.hidden = false;
@@ -3466,13 +3484,13 @@
       $('#location-invite-share').onclick = event => shareLocationInline(event.currentTarget);
     }
 
-    function shareLocationInline(button) {
+    function shareLocationInline(button, originalLabel = 'Share location') {
       if (!navigator.geolocation) return toast('Location is not supported by this browser.');
       button.disabled = true;
       button.textContent = 'Locating…';
       const restore = () => {
         button.disabled = false;
-        button.textContent = 'Share location';
+        button.textContent = originalLabel;
       };
       navigator.geolocation.getCurrentPosition(async position => {
         const latitude = Number(position.coords.latitude.toFixed(2));
@@ -3485,7 +3503,7 @@
           const profileResult = await supabase.from('profiles')
             .update({ location_label: null, location_latitude: latitude, location_longitude: longitude })
             .eq('id', accountUser.id);
-          if (profileResult.error && !/location_/.test(profileResult.error.message)) throw profileResult.error;
+          if (profileResult.error && !/permission denied/i.test(profileResult.error.message)) throw profileResult.error;
           const marker = locationTag(location);
           const ownedProjects = projects.filter(project => project.owner_id === accountUser.id);
           await Promise.all(ownedProjects.map(project => {
