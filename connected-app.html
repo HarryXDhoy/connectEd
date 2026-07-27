@@ -381,6 +381,14 @@
     .member-project-item h3 { margin-bottom: 6px; }
     .member-project-item p { margin-bottom: var(--space-3); color: var(--muted); font-size: var(--text-sm); }
     .member-project-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: var(--space-3); }
+    .member-project-group {
+      margin: var(--space-2) 0 0;
+      color: var(--muted);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .member-project-group:first-child { margin-top: 0; }
     .empty {
       padding: var(--space-12);
       border-radius: var(--radius-lg);
@@ -2598,18 +2606,11 @@
       openModal('project');
     }
 
-    // Clicking a member node opens their published projects, each with its
-    // own Apply button — one member can own several, so this can't just
-    // jump straight into a single project's application form.
-    function showMemberProjects(location) {
-      const memberProjects = (location.projectIds || [])
-        .map(id => projects.find(project => String(project.id) === id))
-        .filter(Boolean);
-      if (!memberProjects.length) {
-        return toast(`${location.name} hasn't published a project yet.`);
-      }
-      $('#member-projects-name').textContent = location.name;
-      $('#member-projects-list').innerHTML = memberProjects.map(project => {
+    // Clicking a node opens the published projects of everyone pinned there
+    // — a member can own several projects, and a node can represent several
+    // members sharing one spot, so this can't just jump into one apply form.
+    function showMemberProjects(node) {
+      const projectCard = project => {
         const seatCount = Number(project.seats_total) || 0;
         return `
           <article class="member-project-item">
@@ -2622,6 +2623,21 @@
             </div>
           </article>
         `;
+      };
+      const members = node.members.map(member => ({
+        member,
+        projects: member.projectIds.map(id => projects.find(project => String(project.id) === id)).filter(Boolean)
+      }));
+      if (!members.some(entry => entry.projects.length)) {
+        return toast(node.cluster
+          ? "None of the members at this spot have published a project yet."
+          : `${node.name} hasn't published a project yet.`);
+      }
+      $('#member-projects-name').textContent = node.cluster ? node.meta.split(' · ')[0] : node.name;
+      $('#member-projects-list').innerHTML = members.map(({ member, projects: memberProjects }) => {
+        if (!memberProjects.length) return '';
+        const heading = node.cluster ? `<h4 class="member-project-group">${escapeHtml(member.name)}</h4>` : '';
+        return `${heading}${memberProjects.map(projectCard).join('')}`;
       }).join('');
       $$('[data-apply-project]').forEach(button => {
         button.onclick = () => {
@@ -3142,7 +3158,7 @@
           return `${lat}, ${lon}`;
         }
 
-        const locations = memberLocations.map(person => {
+        const members = memberLocations.map(person => {
           const ownedProjects = projectsByOwner.get(person.id) || [];
           const projectSummary = ownedProjects.length
             ? ownedProjects.slice(0, 4).map(project => project.title).join(', ')
@@ -3152,12 +3168,46 @@
           return {
             userId: String(person.id),
             name: person.display_name || 'connectEd member',
-            meta: `${person.location_label || coordinate} · ${ownedProjects.length} open ${ownedProjects.length === 1 ? 'project' : 'projects'}`,
-            detail: `${person.headline ? `${person.headline}. ` : ''}${projectSummary}${seatTotal ? ` · ${seatTotal} open ${seatTotal === 1 ? 'seat' : 'seats'}` : ''} · ${coordinate}`,
+            headline: person.headline || '',
+            summary: `${ownedProjects.length} open ${ownedProjects.length === 1 ? 'project' : 'projects'}${seatTotal ? ` · ${seatTotal} open ${seatTotal === 1 ? 'seat' : 'seats'}` : ''}`,
+            projectSummary,
+            coordinate,
+            locationLabel: person.location_label || coordinate,
             latitude: person.location_latitude,
             longitude: person.location_longitude,
             viewer: Boolean(accountUser) && String(accountUser.id) === String(person.id),
             projectIds: ownedProjects.map(project => String(project.id))
+          };
+        });
+
+        // Members whose ~1 km coordinates round to the same cell share one
+        // node — otherwise they'd stack invisibly on top of each other. The
+        // node carries every member at that spot; clicking it lists them all.
+        const clusterMap = new Map();
+        members.forEach(member => {
+          const key = `${member.latitude.toFixed(2)}|${member.longitude.toFixed(2)}`;
+          if (!clusterMap.has(key)) clusterMap.set(key, []);
+          clusterMap.get(key).push(member);
+        });
+        const locations = [...clusterMap.values()].map(clusterMembers => {
+          const primary = clusterMembers[0];
+          const count = clusterMembers.length;
+          const viewer = clusterMembers.some(member => member.viewer);
+          const totalProjects = clusterMembers.reduce((sum, member) => sum + member.projectIds.length, 0);
+          return {
+            members: clusterMembers,
+            userId: primary.userId,
+            name: count > 1 ? `${count} members here` : primary.name,
+            meta: count > 1
+              ? `${primary.locationLabel} · ${count} members · ${totalProjects} open ${totalProjects === 1 ? 'project' : 'projects'}`
+              : `${primary.locationLabel} · ${primary.summary}`,
+            detail: count > 1
+              ? `${clusterMembers.map(member => member.name).join(', ')} · ${primary.coordinate}`
+              : `${primary.headline ? `${primary.headline}. ` : ''}${primary.projectSummary} · ${primary.coordinate}`,
+            latitude: primary.latitude,
+            longitude: primary.longitude,
+            viewer,
+            cluster: count > 1
           };
         });
 
@@ -3181,7 +3231,10 @@
         if (accountUser && isSupabaseConfigured) {
           try {
             const ownerByProjectId = new Map(projects.map(project => [String(project.id), String(project.owner_id)]));
-            const nodeByUserId = new Map(locations.map(entry => [entry.userId, entry]));
+            // Any member maps to the node for their cluster, so an arc lands
+            // on the shared pin when collaborators sit at the same spot.
+            const nodeByUserId = new Map();
+            locations.forEach(node => node.members.forEach(member => nodeByUserId.set(member.userId, node)));
             const { data: teamLinks, error: teamError } = await supabase
               .from('applications')
               .select('project_id,applicant_id,status')
@@ -3195,6 +3248,8 @@
                 const ownerNode = nodeByUserId.get(ownerId);
                 const participantNode = nodeByUserId.get(applicantId);
                 if (!ownerNode || !participantNode) return;
+                // Same cluster — a zero-length arc would render as an artifact.
+                if (ownerNode === participantNode) return;
                 const pairKey = [ownerId, applicantId].sort().join('|');
                 if (drawnPairs.has(pairKey)) return;
                 drawnPairs.add(pairKey);
@@ -3231,25 +3286,32 @@
         const markerGeometry = new THREE.SphereGeometry(.028, 20, 16);
         const markerHitGeometry = new THREE.SphereGeometry(.11, 16, 12);
         const haloGeometry = new THREE.RingGeometry(.044, .07, 32);
+        // Cluster nodes grow a little with each extra member (capped) so a
+        // spot with several people reads as denser, not just relabeled.
+        const baseScale = location => location.cluster
+          ? Math.min(1.9, 1 + (location.members.length - 1) * .22)
+          : 1;
+        const baseHaloOpacity = location => location.viewer ? .38 : location.cluster ? .3 : .18;
         const markerTargets = [];
         const markers = locations.map(location => {
           const highlighted = location.viewer;
+          const clusterScale = baseScale(location);
           const marker = new THREE.Group();
           const core = new THREE.Mesh(
             markerGeometry,
             new THREE.MeshStandardMaterial({
-              color: color(highlighted ? '--accent' : '--fg'),
-              emissive: color(highlighted ? '--accent' : '--fg-2'),
-              emissiveIntensity: highlighted ? .72 : .28,
+              color: color(highlighted ? '--accent' : location.cluster ? '--accent' : '--fg'),
+              emissive: color(highlighted ? '--accent' : location.cluster ? '--accent' : '--fg-2'),
+              emissiveIntensity: highlighted ? .72 : location.cluster ? .5 : .28,
               roughness: .5
             })
           );
           const halo = new THREE.Mesh(
             haloGeometry,
             new THREE.MeshBasicMaterial({
-              color: color(highlighted ? '--accent' : '--fg-2'),
+              color: color(highlighted ? '--accent' : location.cluster ? '--accent' : '--fg-2'),
               transparent: true,
-              opacity: highlighted ? .38 : .18,
+              opacity: baseHaloOpacity(location),
               side: THREE.DoubleSide,
               depthWrite: false
             })
@@ -3261,6 +3323,7 @@
           hitTarget.userData = { location, marker, core, halo };
           markerTargets.push(hitTarget);
           marker.add(core, halo, hitTarget);
+          marker.scale.setScalar(clusterScale);
           const position = latLonToVector(location.latitude, location.longitude, globeRadius + .085);
           marker.position.copy(position);
           marker.quaternion.setFromUnitVectors(
@@ -3388,12 +3451,12 @@
           // markers hold still under the cursor.
           hoverPaused = Boolean(hit);
           markers.forEach(marker => {
-            marker.scale.setScalar(1);
-            marker.children[1].material.opacity = marker.userData.viewer ? .38 : .18;
+            marker.scale.setScalar(baseScale(marker.userData));
+            marker.children[1].material.opacity = baseHaloOpacity(marker.userData);
           });
           if (hit && markerTargets.includes(hit.object)) {
             const { location, marker, halo } = hit.object.userData;
-            marker.scale.setScalar(1.42);
+            marker.scale.setScalar(baseScale(location) * 1.42);
             halo.material.opacity = .72;
             canvas.style.cursor = 'pointer';
             focus.innerHTML = `<small>${escapeHtml(location.meta)}</small>${escapeHtml(location.name)}<span>${escapeHtml(location.detail)}</span>`;
@@ -3467,8 +3530,8 @@
           focus.classList.remove('is-tooltip');
           focus.innerHTML = defaultFocusMarkup;
           markers.forEach(marker => {
-            marker.scale.setScalar(1);
-            marker.children[1].material.opacity = marker.userData.viewer ? .38 : .18;
+            marker.scale.setScalar(baseScale(marker.userData));
+            marker.children[1].material.opacity = baseHaloOpacity(marker.userData);
           });
           if (reducedMotion || userPaused || !visible) render(performance.now());
         });
