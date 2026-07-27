@@ -3,16 +3,35 @@
 The public website is deployed at `https://cntd-projects.vercel.app`.
 Complete these steps in order.
 
-## 1. Apply the Supabase schema and security policies
+## 1. Database migrations (automated)
 
-1. Open Supabase → SQL Editor.
-2. Open `supabase-schema.sql` in this repository.
-3. Copy the entire file into a new SQL query.
-4. Run it.
+Schema changes live in `supabase/migrations/` and apply themselves. A
+GitHub Action (`.github/workflows/supabase-migrations.yml`) runs
+`supabase db push` against the live project on every push to `main` that
+touches `supabase/migrations/**` — pushing code and migrating the database
+are no longer two separate manual steps.
 
-The file is safe to rerun. It creates the tables, replaces the Row Level
-Security policies, hides billing identifiers, prevents members from granting
-themselves Plus status, and installs the protected project-boost function.
+One-time setup, in this GitHub repo's Settings → Secrets and variables →
+Actions:
+
+```text
+SUPABASE_ACCESS_TOKEN   Supabase → Account → Access Tokens → generate one
+SUPABASE_DB_PASSWORD    Supabase → Project Settings → Database → Database password
+                        (reset it there if you don't have it)
+```
+
+Neither secret is visible to the deployed app — they only exist inside the
+GitHub Action's environment, never in Vercel or client code.
+
+To add a schema change: create a new file in `supabase/migrations/` named
+`YYYYMMDDHHMMSS_description.sql` and push it. Don't edit old migration
+files — the CLI tracks which ones already ran, so an edited file won't
+re-apply.
+
+To run it by hand instead (e.g. before the Action is set up, or to check
+something immediately): open the newest file in `supabase/migrations/` in
+the Supabase SQL Editor and run it directly — every migration in this
+project is written to be safe to rerun.
 
 ## 2. Public Supabase browser configuration
 

@@ -1,0 +1,5 @@
+# Minimal config — this repo only uses the Supabase CLI to push migrations
+# in CI (see .github/workflows/supabase-migrations.yml). It does not run
+# `supabase start` locally, so the emulated-services sections that
+# `supabase init` normally generates are omitted on purpose.
+project_id = "josrjdvcdkqkwfzomxxh"
