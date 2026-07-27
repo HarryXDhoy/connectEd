@@ -3286,11 +3286,11 @@
         const markerGeometry = new THREE.SphereGeometry(.028, 20, 16);
         const markerHitGeometry = new THREE.SphereGeometry(.11, 16, 12);
         const haloGeometry = new THREE.RingGeometry(.044, .07, 32);
-        // Cluster nodes grow a little with each extra member (capped) so a
-        // spot with several people reads as denser, not just relabeled.
-        const baseScale = location => location.cluster
-          ? Math.min(1.9, 1 + (location.members.length - 1) * .22)
-          : 1;
+        // Radius scales with the square root of member count, so the node's
+        // visual area (not its radius) is proportional to how many people
+        // are there — the standard bubble-map convention, and a much more
+        // legible read than a small linear bump per extra member.
+        const baseScale = location => Math.min(3, Math.sqrt(location.cluster ? location.members.length : 1));
         const baseHaloOpacity = location => location.viewer ? .38 : location.cluster ? .3 : .18;
         const markerTargets = [];
         const markers = locations.map(location => {
