@@ -3251,10 +3251,15 @@
             <button class="btn btn-small" data-interview="${application.id}">Interview</button>
           `
           : application.status === 'accepted'
-            ? `<button class="btn btn-small" data-interview="${application.id}">Schedule interview</button>`
+            ? `
+              <button class="btn btn-small" data-interview="${application.id}">Schedule interview</button>
+              <button class="btn btn-small btn-ghost" data-review="pending" data-id="${application.id}">Cancel acceptance</button>
+            `
             : application.status === 'interview'
               ? `<button class="btn btn-small" data-review="accepted" data-id="${application.id}">Accept</button>`
-              : '';
+              : application.status === 'declined'
+                ? `<button class="btn btn-small btn-ghost" data-review="pending" data-id="${application.id}">Reconsider</button>`
+                : '';
         return `
           <article class="applicant" data-od-id="applicant-${escapeHtml(application.id)}">
             ${avatar}
@@ -3866,7 +3871,11 @@
     async function reviewApplication(id, status) {
       const result = await supabase.from('applications').update({ status }).eq('id', id);
       if (result.error) return toast(result.error.message);
-      toast(status === 'accepted' ? 'Applicant accepted.' : 'Application declined.');
+      toast(
+        status === 'accepted' ? 'Applicant accepted.'
+          : status === 'declined' ? 'Application declined.'
+          : 'Decision cancelled — back to pending.'
+      );
       await loadAll();
     }
 
