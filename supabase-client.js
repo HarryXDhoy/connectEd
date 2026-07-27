@@ -8,6 +8,15 @@ const configured = Boolean(
   !config.anonKey.includes('YOUR_')
 );
 
+if (!configured) {
+  console.error('[connectEd] Supabase not configured:', {
+    hasWindow: typeof window !== 'undefined',
+    hasConfig: Boolean(window.CONNECTED_CONFIG),
+    url: config.url || '(missing)',
+    anonKeyPrefix: config.anonKey?.slice(0, 20) || '(missing)'
+  });
+}
+
 export const supabase = configured
   ? createClient(config.url, config.anonKey, {
       auth: {
