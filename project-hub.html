@@ -1690,7 +1690,8 @@
       -webkit-line-clamp: 2;
       overflow: hidden;
     }
-    .pin .tag {
+    .pin .tag,
+    .modal .tag {
       border: 1px solid var(--border-soft);
       background: transparent;
       padding: 4px 8px;
@@ -2635,15 +2636,21 @@
             counts.set(tag, (counts.get(tag) || 0) + 1);
           });
         });
+      // Most-used tags first, capped so one-off tags don't crowd the row;
+      // short tags read as acronyms (AI, CAD), longer ones as words.
       const tags = [...counts]
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .map(([tag]) => tag);
+        .map(([tag]) => tag)
+        .slice(0, 8);
+      const filterLabel = tag => tag.length <= 3
+        ? tag.toUpperCase()
+        : tag.charAt(0).toUpperCase() + tag.slice(1);
       if (!['all', 'saved'].includes(activeFilter) && !tags.includes(activeFilter)) activeFilter = 'all';
       $('#hub-project-filters').innerHTML = [
         `<button class="chip${activeFilter === 'all' ? ' active' : ''}" data-filter="all" aria-pressed="${activeFilter === 'all'}">All</button>`,
         ...tags.map(tag => `
           <button class="chip${activeFilter === tag ? ' active' : ''}" data-filter="${escapeHtml(tag)}" aria-pressed="${activeFilter === tag}">
-            ${escapeHtml(tag.replace(/\b\w/g, character => character.toUpperCase()))}
+            ${escapeHtml(filterLabel(tag))}
           </button>
         `),
         `<button class="chip${activeFilter === 'saved' ? ' active' : ''}" data-filter="saved" aria-pressed="${activeFilter === 'saved'}">
@@ -3162,7 +3169,8 @@
       activeProject = projects.find(project => String(project.id) === String(id));
       if (!activeProject) return;
       $('#detail-title').textContent = activeProject.title;
-      $('#detail-owner').textContent = `Shared by ${activeProject.owner}`;
+      const detailSeats = Number(activeProject.seats_total) || 0;
+      $('#detail-owner').textContent = `Shared by ${activeProject.owner}${detailSeats ? ` · ${detailSeats} ${detailSeats === 1 ? 'seat' : 'seats'}` : ''}`;
       $('#detail-description').textContent = activeProject.description;
       $('#detail-tags').innerHTML = projectTags(activeProject).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
       const detailCover = $('#detail-cover-image');
@@ -3173,9 +3181,20 @@
       };
       detailCover.src = projectImageData(activeProject) || fallbackCover;
       detailCover.alt = `${activeProject.title} project cover`;
-      const canApply = activeProject.owner_id !== user?.id && isAcceptingApplications(activeProject);
+      // Three mutually exclusive states: already applied, paused, or open.
+      const existingApplication = sentApplications.find(item => String(item.project_id) === String(activeProject.id));
+      const pausedMessage = $('#application-paused-message');
+      const canApply = activeProject.owner_id !== user?.id
+        && isAcceptingApplications(activeProject)
+        && !existingApplication;
       $('#application-form').hidden = !canApply;
-      $('#application-paused-message').hidden = activeProject.owner_id === user?.id || isAcceptingApplications(activeProject);
+      if (existingApplication) {
+        pausedMessage.textContent = `You already sent a request to this project — current status: ${String(existingApplication.status).replace('_', ' ')}. Track it under My requests.`;
+        pausedMessage.hidden = false;
+      } else {
+        pausedMessage.textContent = 'This project is visible, but the initiator has paused new applications.';
+        pausedMessage.hidden = activeProject.owner_id === user?.id || isAcceptingApplications(activeProject);
+      }
 
       let questions = [];
       if (isSupabaseConfigured && !String(id).startsWith('preview-')) {

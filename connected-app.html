@@ -1510,7 +1510,8 @@
       -webkit-line-clamp: 2;
       overflow: hidden;
     }
-    .pin .tag {
+    .pin .tag,
+    .modal .tag {
       border: 1px solid var(--border-soft);
       background: transparent;
       padding: 4px 8px;
@@ -1539,6 +1540,22 @@
       letter-spacing: .1em;
       text-transform: uppercase;
     }
+    .footer-row {
+      align-items: center;
+      padding-block: var(--space-8);
+      color: var(--muted);
+      font-size: var(--text-sm);
+    }
+    .footer-links {
+      display: flex;
+      gap: var(--space-5);
+    }
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      transition: color var(--motion-fast) var(--ease-standard);
+    }
+    .footer-links a:hover { color: var(--fg); }
     .membership-compare { border-color: var(--border); }
     .membership-tier { padding-block: var(--space-12); }
     .membership-tier + .membership-tier { border-color: var(--border); }
@@ -1847,7 +1864,7 @@
           <div class="filter-row" id="landing-project-filters" role="group" aria-label="Project filters">
             <button class="chip active" data-filter="all" aria-pressed="true">All ideas</button>
           </div>
-          <a class="btn btn-small" href="project-hub.html">Browse projects</a>
+          <a class="btn btn-small" href="project-hub.html">Open the full board</a>
         </div>
         <div id="project-pins" class="masonry" aria-live="polite" aria-busy="true"></div>
       </div>
@@ -1906,8 +1923,15 @@
 
   <footer>
     <div class="container footer-row">
-      <span>connectEd</span>
+      <a class="brand" href="connected-app.html" aria-label="connectEd home">
+        <span class="brand-mark"><img src="assets/connected-favicon.svg" alt=""></span><span>connectEd</span>
+      </a>
       <span>Projects worth building. Teams ready to build them.</span>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="project-hub.html">Project board</a>
+        <a href="#discover">Browse</a>
+        <a href="#main-content">Back to top</a>
+      </nav>
     </div>
   </footer>
 
@@ -2397,15 +2421,21 @@
           counts.set(tag, (counts.get(tag) || 0) + 1);
         });
       });
+      // Most-used tags first, capped so one-off tags don't crowd the row;
+      // short tags read as acronyms (AI, CAD), longer ones as words.
       const tags = [...counts]
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .map(([tag]) => tag);
+        .map(([tag]) => tag)
+        .slice(0, 8);
+      const filterLabel = tag => tag.length <= 3
+        ? tag.toUpperCase()
+        : tag.charAt(0).toUpperCase() + tag.slice(1);
       if (activeFilter !== 'all' && !tags.includes(activeFilter)) activeFilter = 'all';
       $('#landing-project-filters').innerHTML = [
         `<button class="chip${activeFilter === 'all' ? ' active' : ''}" data-filter="all" aria-pressed="${activeFilter === 'all'}">All ideas</button>`,
         ...tags.map(tag => `
           <button class="chip${activeFilter === tag ? ' active' : ''}" data-filter="${escapeHtml(tag)}" aria-pressed="${activeFilter === tag}">
-            ${escapeHtml(tag.replace(/\b\w/g, character => character.toUpperCase()))}
+            ${escapeHtml(filterLabel(tag))}
           </button>
         `)
       ].join('');
@@ -2450,7 +2480,8 @@
       activeProject = projects.find(project => String(project.id) === id);
       if (!activeProject) return;
       $('#project-title').textContent = activeProject.title;
-      $('#project-owner').textContent = `Shared by ${activeProject.owner}`;
+      const detailSeats = Number(activeProject.seats_total) || 0;
+      $('#project-owner').textContent = `Shared by ${activeProject.owner}${detailSeats ? ` · ${detailSeats} ${detailSeats === 1 ? 'seat' : 'seats'}` : ''}`;
       $('#project-description').textContent = activeProject.description;
       $('#project-tags').innerHTML = projectTags(activeProject)
         .map(tag => `<span class="tag">${escapeHtml(tag)}</span>`)
