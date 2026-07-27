@@ -2055,8 +2055,8 @@
         <input type="hidden" name="project_id">
         <input type="hidden" name="candidate_id">
         <label>Interview title<input class="field" name="title" maxlength="120" value="connectEd project interview" required></label>
-        <label>Candidate email<input class="field" name="email" type="email" placeholder="Finding candidate email…" required></label>
-        <span class="field-help" id="candidate-email-help">Added automatically from the candidate’s connectEd account.</span>
+        <label>Candidate email<input class="field" name="email" type="email" placeholder="candidate@example.com"></label>
+        <span class="field-help" id="candidate-email-help">Pre-filled from the candidate’s connectEd account. Edit if needed.</span>
         <div class="field-row">
           <label>Interview date<input class="field" name="date" type="date" required></label>
           <label>Start time<input class="field" name="time" type="time" required></label>
@@ -3436,41 +3436,13 @@
       ].join('-');
       form.date.min = localDate(new Date());
       form.date.value = localDate(suggestedStart);
-      form.time.value = `${String(suggestedStart.getHours()).padStart(2, '0')}:${String(suggestedStart.getMinutes()).padStart(2, '0')}`;
+      form.time.value = `${String(suggestedStart.getHours()).padStart(2, ‘0’)}:${String(suggestedStart.getMinutes()).padStart(2, ‘0’)}`;
       syncTimeMin(form);
-      form.email.value = '';
-      form.email.readOnly = true;
-      form.email.placeholder = 'Finding candidate email…';
-      $('#candidate-email-help').textContent = 'Added automatically from the candidate’s connectEd account.';
-      openModal('interview');
-
-      const enableManualEmail = message => {
-        form.email.readOnly = false;
-        form.email.placeholder = 'candidate@example.com';
-        $('#candidate-email-help').textContent = message;
-        form.email.focus();
-      };
-      if (isEmbeddedPreview()) {
-        // The serverless API only runs on the live site — skip the lookup
-        // instead of leaving the field stuck in its loading state.
-        enableManualEmail('Automatic lookup runs on the live site. Enter the candidate email to continue.');
-        return;
-      }
-      try {
-        const response = await fetch(`/api/google-calendar?applicationId=${encodeURIComponent(application.id)}&projectId=${encodeURIComponent(application.project_id)}`, {
-          headers: await authHeaders()
-        });
-        const data = await response.json();
-        if (response.ok && data.candidateEmail) {
-          form.email.value = data.candidateEmail;
-          form.email.placeholder = '';
-        } else {
-          enableManualEmail('We could not retrieve the account email. Enter it once to continue.');
-          toast(data.error || 'Candidate email could not be added automatically.');
-        }
-      } catch (_) {
-        enableManualEmail('We could not retrieve the account email. Enter it once to continue.');
-      }
+      // Pre-fill the candidate email from their profiles record (the same
+      // data the applicants list already rendered) — gracefully fallback to
+      // empty if missing and let the project owner edit.
+      form.email.value = application.profiles?.email || ‘’;
+      openModal(‘interview’);
     }
 
     // Keep the time picker honest: when the chosen date is today, the
