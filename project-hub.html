@@ -2194,8 +2194,8 @@
         <input type="hidden" name="project_id">
         <input type="hidden" name="candidate_id">
         <label>Interview title<input class="field" name="title" maxlength="120" value="connectEd project interview" required></label>
-        <label>Candidate email<input class="field" name="email" type="email" placeholder="candidate@example.com"></label>
-        <span class="field-help" id="candidate-email-help">Pre-filled from the candidate’s connectEd account. Edit if needed.</span>
+        <label>Candidate email · optional<input class="field" name="email" type="email" placeholder="Leave blank to use their account email"></label>
+        <span class="field-help" id="candidate-email-help">We invite the candidate at their connectEd account email. Fill this in only to send the invite somewhere else.</span>
         <div class="field-row">
           <label>Interview date<input class="field" name="date" type="date" required></label>
           <label>Start time<input class="field" name="time" type="time" required></label>
@@ -3880,10 +3880,11 @@
       form.date.value = localDate(suggestedStart);
       form.time.value = `${String(suggestedStart.getHours()).padStart(2, '0')}:${String(suggestedStart.getMinutes()).padStart(2, '0')}`;
       syncTimeMin(form);
-      // Pre-fill the candidate email from their profiles record (the same
-      // data the applicants list already rendered) — gracefully fallback to
-      // empty if missing and let the project owner edit.
-      form.email.value = application.profiles?.email || '';
+      // Emails live in auth.users, which the browser cannot read — there is
+      // no profiles.email column to pre-fill from. The serverless endpoint
+      // resolves the real address with the service-role key, so leave this
+      // blank and let it stay optional as an override.
+      form.email.value = '';
       openModal('interview');
     }
 

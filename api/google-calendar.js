@@ -16,16 +16,18 @@ function validDate(value) {
 async function candidateEmail(userId) {
   const url = process.env.SUPABASE_URL || 'https://josrjdvcdkqkwfzomxxh.supabase.co';
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceRoleKey) return '';
+  // Distinguish "not configured" from "looked up and found nothing" so the
+  // caller can explain which one actually happened.
+  if (!serviceRoleKey) return { email: '', reason: 'unconfigured' };
   const response = await fetch(`${url}/auth/v1/admin/users/${userId}`, {
     headers: {
       apikey: serviceRoleKey,
       authorization: `Bearer ${serviceRoleKey}`
     }
   });
-  if (!response.ok) return '';
+  if (!response.ok) return { email: '', reason: 'lookup_failed' };
   const candidate = await response.json();
-  return String(candidate.email || '').trim();
+  return { email: String(candidate.email || '').trim(), reason: '' };
 }
 
 export default async function handler(req, res) {
@@ -74,10 +76,15 @@ export default async function handler(req, res) {
     return json(res, 400, { error: 'Choose a future interview lasting 15 minutes to 3 hours.' });
   }
 
-  const accountEmail = await candidateEmail(applications[0].applicant_id);
+  const { email: accountEmail, reason: lookupIssue } = await candidateEmail(applications[0].applicant_id);
   const resolvedEmail = accountEmail || String(attendeeEmail).trim();
   if (!resolvedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resolvedEmail)) {
-    return json(res, 400, { error: 'Candidate email is unavailable or invalid.' });
+    const detail = lookupIssue === 'unconfigured'
+      ? 'The server is missing SUPABASE_SERVICE_ROLE_KEY, so it could not look up the candidate’s account email.'
+      : lookupIssue === 'lookup_failed'
+        ? 'The candidate’s account email lookup failed.'
+        : 'The candidate has no email on file.';
+    return json(res, 400, { error: `Candidate email is unavailable or invalid. ${detail} Enter it manually to continue.` });
   }
 
   const event = {
