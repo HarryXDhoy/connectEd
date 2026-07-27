@@ -3240,7 +3240,9 @@
           `
           : application.status === 'accepted'
             ? `<button class="btn btn-small" data-interview="${application.id}">Schedule interview</button>`
-            : '';
+            : application.status === 'interview'
+              ? `<button class="btn btn-small" data-review="accepted" data-id="${application.id}">Accept</button>`
+              : '';
         return `
           <article class="applicant" data-od-id="applicant-${escapeHtml(application.id)}">
             ${avatar}

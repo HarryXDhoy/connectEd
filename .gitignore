@@ -2,6 +2,7 @@
 .file-versions/
 .od-skills/
 plugin-source/
+.claude/
 *.artifact.json
 image*.png
 drawing-*.png
