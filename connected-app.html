@@ -1253,6 +1253,14 @@
       font: 500 var(--text-xs)/1 var(--font-mono);
       letter-spacing: .04em;
       text-transform: uppercase;
+      overflow: hidden;
+    }
+    .account-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      grid-area: 1 / 1;
     }
     .account-avatar[hidden] { display: none; }
     .hero {
@@ -1815,7 +1823,10 @@
       <div class="nav-actions">
         <a class="btn btn-ghost btn-small" href="project-hub.html">Browse projects</a>
         <button id="account-button" class="account-control btn btn-primary btn-small" data-open="auth">
-          <span class="account-avatar" id="account-avatar" aria-hidden="true" hidden></span>
+          <span class="account-avatar" id="account-avatar" aria-hidden="true" hidden>
+            <img id="account-avatar-img" alt="" referrerpolicy="no-referrer" hidden>
+            <span id="account-avatar-initial"></span>
+          </span>
           <span class="account-label" id="account-label">Sign in</span>
         </button>
       </div>
@@ -2307,6 +2318,8 @@
       accountUser = user;
       const button = $('#account-button');
       const avatar = $('#account-avatar');
+      const avatarImg = $('#account-avatar-img');
+      const avatarInitial = $('#account-avatar-initial');
       const label = $('#account-label');
       if (user) {
         const displayName = user.user_metadata?.full_name
@@ -2315,7 +2328,23 @@
           || user.email
           || 'Account';
         const initial = String(displayName).trim().charAt(0) || 'A';
-        avatar.textContent = initial;
+        const avatarUrl = String(user.user_metadata?.avatar_url || user.user_metadata?.picture || '').trim();
+        avatarInitial.textContent = initial;
+        avatarImg.referrerPolicy = 'no-referrer';
+        avatarImg.onerror = () => {
+          avatarImg.hidden = true;
+          avatarInitial.hidden = false;
+        };
+        if (avatarUrl) {
+          avatarImg.src = avatarUrl;
+          avatarImg.alt = `${displayName} profile photo`;
+          avatarImg.hidden = false;
+          avatarInitial.hidden = true;
+        } else {
+          avatarImg.hidden = true;
+          avatarImg.removeAttribute('src');
+          avatarInitial.hidden = false;
+        }
         avatar.hidden = false;
         label.textContent = 'Account';
         button.classList.add('account-signed-in');
@@ -2324,7 +2353,10 @@
         button.dataset.open = '';
         button.onclick = () => { window.location.href = 'project-hub.html'; };
       } else {
-        avatar.textContent = '';
+        avatarImg.hidden = true;
+        avatarImg.removeAttribute('src');
+        avatarInitial.hidden = true;
+        avatarInitial.textContent = '';
         avatar.hidden = true;
         label.textContent = 'Sign in';
         button.classList.remove('account-signed-in');

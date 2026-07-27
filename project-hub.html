@@ -605,10 +605,11 @@
     .account-photo { width: 28px; height: 28px; }
     .notification-wrap { position: relative; }
     .notification-panel {
-      position: absolute;
-      top: calc(100% + var(--space-2));
-      right: 0;
-      z-index: 20;
+      /* Fixed, not absolute: header.topbar clips overflow for its rounded
+         pill corners, which silently clipped this panel when it hung below
+         the header's own box. Position is computed in JS on open. */
+      position: fixed;
+      z-index: 40;
       width: min(360px, calc(100vw - 32px));
       overflow: hidden;
       border: 1px solid var(--border);
@@ -1810,13 +1811,6 @@
           <button class="btn btn-small" id="notification-action" type="button" aria-expanded="false" aria-controls="notification-panel" hidden>
             Updates <span class="tab-count notification-count" id="notification-count"></span>
           </button>
-          <div class="notification-panel" id="notification-panel" hidden>
-            <div class="notification-head">
-              <strong>Request updates</strong>
-              <button class="btn btn-small" id="notification-view-all" type="button">View all</button>
-            </div>
-            <div class="notification-list" id="notification-list"></div>
-          </div>
         </div>
         <button class="btn btn-small account-control" id="account-action">
           <img class="account-photo" id="account-photo" alt="" hidden>
@@ -1825,6 +1819,19 @@
       </div>
     </div>
   </header>
+
+  <!-- Rendered outside header.topbar on purpose: the header uses
+       backdrop-filter for its glass look, which makes it the containing
+       block for any position:fixed descendant, and its rounded-corner
+       overflow:hidden then clips that descendant entirely. Position is
+       computed in JS relative to the Updates button. -->
+  <div class="notification-panel" id="notification-panel" hidden>
+    <div class="notification-head">
+      <strong>Request updates</strong>
+      <button class="btn btn-small" id="notification-view-all" type="button">View all</button>
+    </div>
+    <div class="notification-list" id="notification-list"></div>
+  </div>
 
   <main class="board-shell" id="main-content">
     <div class="container">
@@ -1849,7 +1856,7 @@
         <div class="location-nudge" id="location-nudge" data-od-id="location-nudge" hidden>
           <p>Show yourself on the Earth view<span>Share an approximate location (rounded to about a kilometre) and your projects pin to your real spot.</span></p>
           <div class="location-nudge-actions">
-            <button class="btn btn-small" id="location-nudge-open" type="button">Open my profile</button>
+            <button class="btn btn-small" id="location-nudge-share" type="button">Share location</button>
             <button class="btn btn-small btn-ghost" id="location-nudge-dismiss" type="button">Not now</button>
           </div>
         </div>
@@ -2674,16 +2681,53 @@
       } catch (_) {}
       nudge.hidden = !user || !isSupabaseConfigured || dismissed || Boolean(userLocation(user));
     }
-    $('#location-nudge-open').onclick = () => {
-      switchPanel('profile');
-      $('#use-current-location').focus();
-    };
+    $('#location-nudge-share').onclick = event => shareLocationInline(event.currentTarget);
     $('#location-nudge-dismiss').onclick = () => {
       if (user) {
         try { localStorage.setItem(`connected:location-invite:${user.id}`, 'dismissed'); } catch (_) {}
       }
       $('#location-nudge').hidden = true;
     };
+
+    // Inline "pin yourself" from the board, mirroring the landing page's
+    // one-tap flow — no detour through the profile tab.
+    function shareLocationInline(button) {
+      if (!navigator.geolocation) return toast('Location is not supported by this browser.');
+      button.disabled = true;
+      button.textContent = 'Locating…';
+      const restore = () => {
+        button.disabled = false;
+        button.textContent = 'Share location';
+      };
+      navigator.geolocation.getCurrentPosition(async position => {
+        const latitude = Number(position.coords.latitude.toFixed(2));
+        const longitude = Number(position.coords.longitude.toFixed(2));
+        const location = { shared: true, label: '', latitude, longitude };
+        try {
+          const authResult = await supabase.auth.updateUser({ data: { connected_location: location } });
+          if (authResult.error) throw authResult.error;
+          user = authResult.data.user || user;
+          const profileResult = await supabase.from('profiles')
+            .update({ location_label: null, location_latitude: latitude, location_longitude: longitude })
+            .eq('id', user.id);
+          if (profileResult.error && !/location_/.test(profileResult.error.message)) throw profileResult.error;
+          const marker = locationTag(location);
+          await Promise.all(ownedProjects.map(project => {
+            const tags = (project.tags || []).filter(tag => !String(tag).startsWith(PROJECT_LOCATION_PREFIX));
+            tags.push(marker);
+            return supabase.from('projects').update({ tags }).eq('id', project.id);
+          }));
+          toast('Pinned on the Earth view.');
+          await loadAll();
+        } catch (error) {
+          toast(error.message || 'Location could not be saved.');
+          restore();
+        }
+      }, error => {
+        toast(error.code === 1 ? 'Location permission was not granted.' : 'Your location could not be determined.');
+        restore();
+      }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+    }
 
     function renderProjectFilters() {
       const counts = new Map();
@@ -3722,6 +3766,11 @@
       event.stopPropagation();
       const panel = $('#notification-panel');
       const willOpen = panel.hidden;
+      if (willOpen) {
+        const anchor = event.currentTarget.getBoundingClientRect();
+        panel.style.top = `${anchor.bottom + 8}px`;
+        panel.style.right = `${window.innerWidth - anchor.right}px`;
+      }
       panel.hidden = !willOpen;
       $('#notification-action').setAttribute('aria-expanded', String(willOpen));
       if (willOpen && user) {
