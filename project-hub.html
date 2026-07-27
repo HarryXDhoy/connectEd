@@ -2127,7 +2127,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="app-config.js"></script>
+  <script src="app-config.js?v=20260727"></script>
   <script type="module">
     import {
       supabase,
@@ -2140,7 +2140,7 @@
       signUpWithPassword,
       signOut,
       isEmbeddedPreview
-    } from './supabase-client.js';
+    } from './supabase-client.js?v=20260727';
 
     const $ = selector => document.querySelector(selector);
     const $$ = selector => [...document.querySelectorAll(selector)];
@@ -3436,13 +3436,13 @@
       ].join('-');
       form.date.min = localDate(new Date());
       form.date.value = localDate(suggestedStart);
-      form.time.value = `${String(suggestedStart.getHours()).padStart(2, ‘0’)}:${String(suggestedStart.getMinutes()).padStart(2, ‘0’)}`;
+      form.time.value = `${String(suggestedStart.getHours()).padStart(2, '0')}:${String(suggestedStart.getMinutes()).padStart(2, '0')}`;
       syncTimeMin(form);
       // Pre-fill the candidate email from their profiles record (the same
       // data the applicants list already rendered) — gracefully fallback to
       // empty if missing and let the project owner edit.
-      form.email.value = application.profiles?.email || ‘’;
-      openModal(‘interview’);
+      form.email.value = application.profiles?.email || '';
+      openModal('interview');
     }
 
     // Keep the time picker honest: when the chosen date is today, the

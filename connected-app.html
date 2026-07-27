@@ -2066,7 +2066,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="app-config.js"></script>
+  <script src="app-config.js?v=20260727"></script>
   <script type="module">
     import {
       supabase,
@@ -2078,7 +2078,7 @@
       signUpWithPassword,
       signOut,
       isEmbeddedPreview
-    } from './supabase-client.js';
+    } from './supabase-client.js?v=20260727';
 
     const $ = selector => document.querySelector(selector);
     const $$ = selector => [...document.querySelectorAll(selector)];
