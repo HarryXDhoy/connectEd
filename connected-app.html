@@ -1540,6 +1540,37 @@
       letter-spacing: .1em;
       text-transform: uppercase;
     }
+    .location-invite {
+      position: absolute;
+      left: var(--space-4);
+      bottom: calc(var(--space-4) + 52px);
+      max-width: 250px;
+      pointer-events: auto;
+      display: grid;
+      gap: var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      background: color-mix(in oklab, var(--bg), transparent 8%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .location-invite[hidden] { display: none; }
+    .location-invite p {
+      margin: 0;
+      color: var(--fg);
+      font-size: var(--text-sm);
+      font-weight: 500;
+    }
+    .location-invite p span {
+      display: block;
+      margin-top: var(--space-1);
+      color: var(--muted);
+      font-size: var(--text-xs);
+      font-weight: 400;
+      line-height: 1.45;
+    }
+    .location-invite-actions { display: flex; gap: var(--space-2); }
     .footer-row {
       align-items: center;
       padding-block: var(--space-8);
@@ -1833,6 +1864,13 @@
               <a class="network-step" href="#discover" data-od-id="network-step-discover">Discover</a>
               <a class="network-step" href="project-hub.html" data-od-id="network-step-connect">Connect</a>
               <button class="network-step" type="button" data-open="create" data-od-id="network-step-build">Build</button>
+            </div>
+            <div class="location-invite" id="location-invite" data-od-id="location-invite" hidden>
+              <p>Pin yourself on the Earth<span>Approximate only — rounded to about a kilometre before it leaves your device.</span></p>
+              <div class="location-invite-actions">
+                <button class="btn btn-small" id="location-invite-share" type="button">Share location</button>
+                <button class="btn btn-small btn-ghost" id="location-invite-dismiss" type="button">Not now</button>
+              </div>
             </div>
             <div class="network-focus" id="network-focus" aria-hidden="true">
               Loading project network
@@ -3413,12 +3451,69 @@
       }
     }
 
+    // One-time "pin yourself" invite for signed-in members without a
+    // shared location. Consent stays with the browser permission prompt;
+    // coordinates are rounded to ~1 km before they are saved anywhere.
+    function initLocationInvite() {
+      const invite = $('#location-invite');
+      if (!invite || !accountUser || !isSupabaseConfigured) return;
+      if (userLocation(accountUser)) return;
+      const dismissKey = `connected:location-invite:${accountUser.id}`;
+      try { if (localStorage.getItem(dismissKey) === 'dismissed') return; } catch (_) {}
+      invite.hidden = false;
+      $('#location-invite-dismiss').onclick = () => {
+        invite.hidden = true;
+        try { localStorage.setItem(dismissKey, 'dismissed'); } catch (_) {}
+      };
+      $('#location-invite-share').onclick = event => shareLocationInline(event.currentTarget);
+    }
+
+    function shareLocationInline(button) {
+      if (!navigator.geolocation) return toast('Location is not supported by this browser.');
+      button.disabled = true;
+      button.textContent = 'Locating…';
+      const restore = () => {
+        button.disabled = false;
+        button.textContent = 'Share location';
+      };
+      navigator.geolocation.getCurrentPosition(async position => {
+        const latitude = Number(position.coords.latitude.toFixed(2));
+        const longitude = Number(position.coords.longitude.toFixed(2));
+        const location = { shared: true, label: '', latitude, longitude };
+        try {
+          const authResult = await supabase.auth.updateUser({ data: { connected_location: location } });
+          if (authResult.error) throw authResult.error;
+          accountUser = authResult.data.user || accountUser;
+          const profileResult = await supabase.from('profiles')
+            .update({ location_label: null, location_latitude: latitude, location_longitude: longitude })
+            .eq('id', accountUser.id);
+          if (profileResult.error && !/location_/.test(profileResult.error.message)) throw profileResult.error;
+          const marker = locationTag(location);
+          const ownedProjects = projects.filter(project => project.owner_id === accountUser.id);
+          await Promise.all(ownedProjects.map(project => {
+            const tags = (project.tags || []).filter(tag => !String(tag).startsWith(PROJECT_LOCATION_PREFIX));
+            tags.push(marker);
+            return supabase.from('projects').update({ tags }).eq('id', project.id);
+          }));
+          toast('Pinned. Reloading the Earth…');
+          window.setTimeout(() => window.location.reload(), 900);
+        } catch (error) {
+          toast(error.message || 'Location could not be saved.');
+          restore();
+        }
+      }, error => {
+        toast(error.code === 1 ? 'Location permission was not granted.' : 'Your location could not be determined.');
+        restore();
+      }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+    }
+
     if (supabase) {
       supabase.auth.onAuthStateChange(() => refreshAccount());
     }
     $('#auth-preview-note').hidden = !isEmbeddedPreview();
     await Promise.all([refreshAccount(), loadProjects()]);
     initProjectNetwork();
+    initLocationInvite();
   </script>
 </body>
 </html>

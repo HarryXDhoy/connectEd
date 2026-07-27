@@ -1603,6 +1603,34 @@
     /* Guard: nothing may introduce sideways scroll at any viewport. */
     html, body { overflow-x: clip; }
 
+    .location-nudge {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      margin-bottom: var(--space-6);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-4) var(--space-5);
+      background: var(--surface);
+    }
+    .location-nudge[hidden] { display: none; }
+    .location-nudge p {
+      margin: 0;
+      color: var(--fg);
+      font-size: var(--text-sm);
+      font-weight: 500;
+    }
+    .location-nudge p span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: var(--text-xs);
+      font-weight: 400;
+    }
+    .location-nudge-actions { display: flex; gap: var(--space-2); }
+
     /* Live-board signal + keyboard focus polish. */
     .board-status { gap: var(--space-2); }
     .board-status.is-live::before {
@@ -1818,6 +1846,13 @@
       </nav>
 
       <section id="panel-discover" class="panel" data-od-id="discover-panel" role="tabpanel" aria-labelledby="tab-discover" tabindex="0">
+        <div class="location-nudge" id="location-nudge" data-od-id="location-nudge" hidden>
+          <p>Show yourself on the Earth view<span>Share an approximate location (rounded to about a kilometre) and your projects pin to your real spot.</span></p>
+          <div class="location-nudge-actions">
+            <button class="btn btn-small" id="location-nudge-open" type="button">Open my profile</button>
+            <button class="btn btn-small btn-ghost" id="location-nudge-dismiss" type="button">Not now</button>
+          </div>
+        </div>
         <div class="panel-head">
           <div>
             <h2>Projects looking for collaborators</h2>
@@ -2625,7 +2660,30 @@
       renderApplicants();
       renderProfile();
       renderNotifications();
+      renderLocationNudge();
     }
+
+    // Invite signed-in members without a shared location to pin themselves
+    // on the Earth view; one dismissal silences it on both pages.
+    function renderLocationNudge() {
+      const nudge = $('#location-nudge');
+      if (!nudge) return;
+      let dismissed = false;
+      try {
+        dismissed = Boolean(user) && localStorage.getItem(`connected:location-invite:${user.id}`) === 'dismissed';
+      } catch (_) {}
+      nudge.hidden = !user || !isSupabaseConfigured || dismissed || Boolean(userLocation(user));
+    }
+    $('#location-nudge-open').onclick = () => {
+      switchPanel('profile');
+      $('#use-current-location').focus();
+    };
+    $('#location-nudge-dismiss').onclick = () => {
+      if (user) {
+        try { localStorage.setItem(`connected:location-invite:${user.id}`, 'dismissed'); } catch (_) {}
+      }
+      $('#location-nudge').hidden = true;
+    };
 
     function renderProjectFilters() {
       const counts = new Map();
