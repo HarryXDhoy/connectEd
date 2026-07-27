@@ -3775,6 +3775,9 @@
     if (checkoutState === 'success') toast('Payment received. Plus activates after Stripe confirms it.');
     if (checkoutState === 'cancelled') toast('Checkout cancelled. Nothing was charged.');
 
+    // Register auth listener BEFORE the first loadAll so initial session
+    // restoration triggers a UI refresh — without this, signing in works but
+    // the UI stays in signed-out state until a manual reload.
     if (supabase) {
       supabase.auth.onAuthStateChange(() => window.setTimeout(loadAll, 0));
       window.setInterval(pollRequestStatuses, 45000);

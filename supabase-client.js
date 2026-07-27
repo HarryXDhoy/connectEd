@@ -30,7 +30,10 @@ export async function getSession() {
 export async function currentUser() {
   if (!supabase) return null;
   const { data, error } = await supabase.auth.getUser();
-  if (error) return null;
+  if (error) {
+    console.error('[connectEd] Failed to load user:', error.message || error);
+    return null;
+  }
   return data.user || null;
 }
 
