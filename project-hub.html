@@ -422,6 +422,18 @@
       overflow: hidden;
     }
     .avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    button.avatar { border: none; padding: 0; cursor: pointer; }
+    button.avatar:hover, button.avatar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .link-button {
+      border: none;
+      background: none;
+      padding: 0;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+    .link-button:hover { text-decoration: underline; }
     .applicant h3 { margin-bottom: 4px; font-size: var(--text-lg); }
     .applicant p { margin-bottom: 8px; color: var(--muted); font-size: var(--text-sm); }
     .applicant-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
@@ -480,6 +492,63 @@
       border-radius: var(--radius-lg);
       padding: clamp(24px, 4vw, 42px);
     }
+    .calendar-card { grid-column: 1 / -1; }
+    .calendar-card[hidden] { display: none; }
+    .calendar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      margin-bottom: var(--space-5);
+    }
+    .calendar-nav { display: flex; align-items: center; gap: var(--space-3); }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: var(--space-5);
+    }
+    .calendar-weekday {
+      padding: 6px 0;
+      color: var(--muted);
+      font-size: var(--text-xs);
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .calendar-day {
+      position: relative;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: none;
+      color: var(--fg);
+      font: inherit;
+      cursor: pointer;
+    }
+    .calendar-day.empty { visibility: hidden; cursor: default; }
+    .calendar-day:hover { background: var(--surface); }
+    .calendar-day.today { border-color: var(--border); }
+    .calendar-day.has-interview { color: var(--accent); font-weight: 500; }
+    .calendar-dot {
+      position: absolute;
+      bottom: 4px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .calendar-agenda { display: grid; gap: var(--space-3); }
+    .calendar-agenda-item {
+      display: grid;
+      gap: 4px;
+      padding: var(--space-4);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+    }
+    .calendar-agenda-item span { color: var(--muted); font-size: var(--text-sm); }
+    .calendar-agenda-actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
     .profile-identity {
       display: grid;
       grid-template-columns: 72px minmax(0, 1fr);
@@ -514,6 +583,44 @@
     .account-photo[hidden] { display: none; }
     .profile-identity strong { display: block; color: var(--fg); font-size: var(--text-lg); font-weight: 500; }
     .profile-identity span { display: block; overflow: hidden; color: var(--muted); font-size: var(--text-sm); text-overflow: ellipsis; }
+    .profile-photo-wrap { position: relative; width: 72px; height: 72px; }
+    .profile-photo-wrap .profile-photo,
+    .profile-photo-wrap .profile-photo-fallback { position: absolute; inset: 0; }
+    .profile-photo-edit {
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--surface);
+      color: var(--fg);
+      font-size: var(--text-xs);
+      cursor: pointer;
+    }
+    .profile-photo-edit:hover { background: var(--surface-warm); }
+    .profile-banner {
+      width: 100%;
+      height: 140px;
+      margin-bottom: var(--space-4);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      background-position: center;
+      background-size: cover;
+    }
+    .profile-banner[hidden] { display: none; }
+    .profile-banner-upload {
+      display: inline-block;
+      margin-bottom: var(--space-5);
+      color: var(--muted);
+      font-size: var(--text-sm);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .profile-banner-upload:hover { color: var(--fg); }
     .reputation-summary {
       display: flex;
       align-items: baseline;
@@ -1903,16 +2010,28 @@
         </div>
         <div id="profile-content" class="profile-layout" hidden>
           <article class="profile-card glass">
+            <div class="profile-banner" id="profile-banner" hidden></div>
+            <label class="profile-banner-upload" for="profile-banner-input">
+              Change cover image
+              <input id="profile-banner-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            </label>
             <p class="eyebrow">Public profile</p>
             <h2>Show the work you can do.</h2>
             <div class="profile-identity">
-              <img class="profile-photo" id="profile-photo" alt="Google account profile photo" hidden>
-              <span class="profile-photo-fallback" id="profile-photo-fallback" aria-hidden="true">cE</span>
+              <div class="profile-photo-wrap">
+                <img class="profile-photo" id="profile-photo" alt="Profile photo" hidden>
+                <span class="profile-photo-fallback" id="profile-photo-fallback" aria-hidden="true">cE</span>
+                <label class="profile-photo-edit" for="profile-photo-input" title="Change photo" aria-label="Change profile photo">
+                  ✎
+                  <input id="profile-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+                </label>
+              </div>
               <div>
                 <strong id="profile-identity-name">connectEd member</strong>
                 <span id="profile-identity-email"></span>
               </div>
             </div>
+            <p class="field-help" id="profile-photo-status" hidden></p>
             <form id="profile-form" class="form">
               <label>Display name<input class="field" name="display_name" maxlength="80" required></label>
               <label>Headline<input class="field" name="headline" maxlength="160" placeholder="Product designer · Community builder"></label>
@@ -1950,6 +2069,19 @@
               <div id="profile-review-list"></div>
             </div>
           </aside>
+          <article class="profile-card glass calendar-card" id="interview-calendar-card" hidden>
+            <p class="eyebrow">Your schedule</p>
+            <div class="calendar-head">
+              <h2>Interviews</h2>
+              <div class="calendar-nav">
+                <button class="btn btn-small" id="calendar-prev" type="button" aria-label="Previous month">‹</button>
+                <strong id="calendar-month-label"></strong>
+                <button class="btn btn-small" id="calendar-next" type="button" aria-label="Next month">›</button>
+              </div>
+            </div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+            <div class="calendar-agenda" id="calendar-agenda"></div>
+          </article>
         </div>
       </section>
     </div>
@@ -2132,6 +2264,29 @@
     </div>
   </div>
 
+  <div id="modal-view-profile" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="view-profile-name" tabindex="-1">
+    <div class="modal glass">
+      <div class="modal-head">
+        <div><p class="eyebrow">Profile</p><h2 id="view-profile-name">Member</h2></div>
+        <button class="close" data-close="view-profile" aria-label="Close">×</button>
+      </div>
+      <div class="profile-banner" id="view-profile-banner" hidden></div>
+      <div class="profile-identity">
+        <div class="profile-photo-wrap">
+          <img class="profile-photo" id="view-profile-photo" alt="" hidden>
+          <span class="profile-photo-fallback" id="view-profile-photo-fallback" aria-hidden="true"></span>
+        </div>
+        <div>
+          <strong id="view-profile-headline"></strong>
+          <span id="view-profile-reputation"></span>
+        </div>
+      </div>
+      <p class="muted" id="view-profile-bio"></p>
+      <div class="tags" id="view-profile-skills"></div>
+      <div class="review-list" id="view-profile-reviews"></div>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="app-config.js?v=20260727"></script>
@@ -2205,18 +2360,15 @@
     });
     const canvasToBlob = (canvas, type, quality) => new Promise(resolve => canvas.toBlob(resolve, type, quality));
 
-    async function optimizeProjectImage(file) {
+    async function optimizeImage(file, { maxWidth, maxHeight, byteLimit, hardLimit }) {
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
         throw new Error('Choose a JPEG, PNG, or WebP image.');
       }
       if (file.size > 8 * 1024 * 1024) throw new Error('Images must be 8 MB or smaller.');
       const bitmap = await createImageBitmap(file);
-      const maxWidth = 1440;
-      const maxHeight = 960;
       const baseScale = Math.min(1, maxWidth / bitmap.width, maxHeight / bitmap.height);
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d', { alpha: false });
-      const byteLimit = 180 * 1024;
       let smallest = null;
       for (const dimensionScale of [1, .82, .68]) {
         canvas.width = Math.max(1, Math.round(bitmap.width * baseScale * dimensionScale));
@@ -2231,15 +2383,43 @@
           smallest = !smallest || blob.size < smallest.size ? blob : smallest;
           if (blob.size <= byteLimit) {
             bitmap.close?.();
-            return `${PROJECT_IMAGE_PREFIX}${await fileToDataUrl(blob)}`;
+            return await fileToDataUrl(blob);
           }
         }
       }
       bitmap.close?.();
-      if (smallest && smallest.size <= 260 * 1024) {
-        return `${PROJECT_IMAGE_PREFIX}${await fileToDataUrl(smallest)}`;
+      if (smallest && smallest.size <= hardLimit) {
+        return await fileToDataUrl(smallest);
       }
       throw new Error('This image could not be optimized enough. Try a simpler or smaller image.');
+    }
+
+    async function optimizeProjectImage(file) {
+      const dataUrl = await optimizeImage(file, {
+        maxWidth: 1440,
+        maxHeight: 960,
+        byteLimit: 180 * 1024,
+        hardLimit: 260 * 1024
+      });
+      return `${PROJECT_IMAGE_PREFIX}${dataUrl}`;
+    }
+
+    async function optimizeAvatarImage(file) {
+      return optimizeImage(file, {
+        maxWidth: 320,
+        maxHeight: 320,
+        byteLimit: 60 * 1024,
+        hardLimit: 100 * 1024
+      });
+    }
+
+    async function optimizeBannerImage(file) {
+      return optimizeImage(file, {
+        maxWidth: 1200,
+        maxHeight: 360,
+        byteLimit: 150 * 1024,
+        hardLimit: 220 * 1024
+      });
     }
 
     const previewProjects = [
@@ -2311,11 +2491,14 @@
       return '★'.repeat(rounded) + '☆'.repeat(5 - rounded);
     }
 
-    function googleAvatarUrl() {
+    // profile.avatar_url is the source of truth once a member uploads their
+    // own photo (custom_avatar); provider metadata is only a fallback for
+    // before that first sync/upload happens.
+    function currentAvatarUrl() {
       return String(
+        profile?.avatar_url ||
         user?.user_metadata?.avatar_url ||
         user?.user_metadata?.picture ||
-        profile?.avatar_url ||
         ''
       ).trim();
     }
@@ -2560,15 +2743,24 @@
       ownedProjects = user ? projects.filter(project => project.owner_id === user.id) : [];
 
       if (user) {
-        const profileResult = await supabase
+        let profileResult = await supabase
           .from('profiles')
-          .select('id,display_name,headline,bio,skills,avatar_url,priority_match_active')
+          .select('id,display_name,headline,bio,skills,avatar_url,banner_url,custom_avatar,priority_match_active')
           .eq('id', user.id)
           .maybeSingle();
+        if (profileResult.error && /banner_url|custom_avatar/.test(profileResult.error.message)) {
+          profileResult = await supabase
+            .from('profiles')
+            .select('id,display_name,headline,bio,skills,avatar_url,priority_match_active')
+            .eq('id', user.id)
+            .maybeSingle();
+        }
         profile = profileResult.data || null;
 
+        // Only sync the provider's photo in when the member hasn't chosen
+        // their own — otherwise every reload would clobber a custom upload.
         const providerAvatar = String(user.user_metadata?.avatar_url || user.user_metadata?.picture || '').trim();
-        if (providerAvatar && profile?.avatar_url !== providerAvatar) {
+        if (providerAvatar && !profile?.custom_avatar && profile?.avatar_url !== providerAvatar) {
           const avatarResult = await supabase
             .from('profiles')
             .update({ avatar_url: providerAvatar })
@@ -2594,10 +2786,18 @@
           .order('created_at', { ascending: false });
         sentApplications = sentApplicationResult.error ? [] : sentApplicationResult.data || [];
 
-        const interviewResult = await supabase
+        let interviewResult = await supabase
           .from('interviews')
-          .select('id,application_id,project_id,organizer_id,candidate_id,starts_at,ends_at,title,google_event_id,meet_url,created_at')
+          .select('id,application_id,project_id,organizer_id,candidate_id,starts_at,ends_at,title,notes,google_event_id,meet_url,calendar_html_link,created_at')
           .order('starts_at', { ascending: true });
+        if (interviewResult.error && /calendar_html_link/.test(interviewResult.error.message)) {
+          // calendar_html_link migration not applied yet — fall back so the
+          // rest of the interview data (Meet links, schedule) still loads.
+          interviewResult = await supabase
+            .from('interviews')
+            .select('id,application_id,project_id,organizer_id,candidate_id,starts_at,ends_at,title,notes,google_event_id,meet_url,created_at')
+            .order('starts_at', { ascending: true });
+        }
         interviews = interviewResult.error ? [] : interviewResult.data || [];
 
         const reviewResult = await supabase
@@ -2627,7 +2827,7 @@
       const photo = $('#account-photo');
       if (user) {
         label.textContent = 'Sign out';
-        const avatarUrl = googleAvatarUrl();
+        const avatarUrl = currentAvatarUrl();
         photo.referrerPolicy = 'no-referrer';
         photo.onerror = () => { photo.hidden = true; };
         photo.hidden = !avatarUrl;
@@ -2951,6 +3151,9 @@
                   ${interview?.meet_url
                     ? `<a class="btn btn-small" href="${escapeHtml(interview.meet_url)}" target="_blank" rel="noopener">Open Meet</a>`
                     : ''}
+                  ${interview?.calendar_html_link
+                    ? `<a class="btn btn-small" href="${escapeHtml(interview.calendar_html_link)}" target="_blank" rel="noopener">Open Calendar</a>`
+                    : ''}
                   ${['accepted', 'interview'].includes(application.status) && reviewsAvailable
                     ? `<button class="btn btn-small" data-review-project="${escapeHtml(application.project_id)}">Review project team</button>`
                     : ''}
@@ -3023,9 +3226,12 @@
         const reputation = reviewSummary(person.id);
         const interview = interviews.find(item => String(item.application_id) === String(application.id));
         const answers = Object.values(application.answers || {}).filter(Boolean);
-        const avatar = person.avatar_url
-          ? `<span class="avatar"><img src="${escapeHtml(person.avatar_url)}" alt=""></span>`
-          : `<span class="avatar">${escapeHtml((person.display_name || 'cE').slice(0, 2).toUpperCase())}</span>`;
+        const avatarInner = person.avatar_url
+          ? `<img src="${escapeHtml(person.avatar_url)}" alt="">`
+          : escapeHtml((person.display_name || 'cE').slice(0, 2).toUpperCase());
+        const avatar = person.id
+          ? `<button type="button" class="avatar" data-view-profile="${escapeHtml(person.id)}" aria-label="View ${escapeHtml(person.display_name || 'member')}&#39;s profile">${avatarInner}</button>`
+          : `<span class="avatar">${avatarInner}</span>`;
         const pendingActions = application.status === 'pending'
           ? `
             <button class="btn btn-small" data-review="declined" data-id="${application.id}">Decline</button>
@@ -3040,7 +3246,9 @@
             ${avatar}
             <div>
               <h3>
-                ${escapeHtml(person.display_name || 'Applicant')}
+                ${person.id
+                  ? `<button type="button" class="link-button" data-view-profile="${escapeHtml(person.id)}">${escapeHtml(person.display_name || 'Applicant')}</button>`
+                  : escapeHtml(person.display_name || 'Applicant')}
                 ${person.priority_match_active ? '<span class="badge priority">Priority</span>' : ''}
               </h3>
               <p>${escapeHtml(person.headline || 'No profile headline yet')}</p>
@@ -3053,6 +3261,9 @@
               <span class="request-status" data-status="${escapeHtml(application.status)}">${escapeHtml(statusLabel(application.status))}</span>
               ${interview?.meet_url
                 ? `<a class="btn btn-small" href="${escapeHtml(interview.meet_url)}" target="_blank" rel="noopener">Open Meet</a>`
+                : ''}
+              ${interview?.calendar_html_link
+                ? `<a class="btn btn-small" href="${escapeHtml(interview.calendar_html_link)}" target="_blank" rel="noopener">Open Calendar</a>`
                 : ''}
               ${pendingActions}
             </div>
@@ -3094,6 +3305,67 @@
         button.onclick = () => openInterview(button.dataset.interview);
       });
       bindReviewButtons();
+      bindProfileViewButtons();
+    }
+
+    function bindProfileViewButtons() {
+      $$('[data-view-profile]').forEach(button => {
+        button.onclick = () => openProfileView(button.dataset.viewProfile);
+      });
+    }
+
+    async function openProfileView(profileId) {
+      let target = await supabase
+        .from('profiles')
+        .select('id,display_name,headline,bio,skills,avatar_url,banner_url,priority_match_active')
+        .eq('id', profileId)
+        .maybeSingle();
+      if (target.error && /banner_url/.test(target.error.message)) {
+        target = await supabase
+          .from('profiles')
+          .select('id,display_name,headline,bio,skills,avatar_url,priority_match_active')
+          .eq('id', profileId)
+          .maybeSingle();
+      }
+      if (target.error || !target.data) return toast('This profile could not be loaded.');
+      const person = target.data;
+      const displayName = person.display_name || 'connectEd member';
+      $('#view-profile-name').textContent = displayName;
+      $('#view-profile-headline').textContent = person.headline || 'No profile headline yet';
+      const banner = $('#view-profile-banner');
+      if (person.banner_url) {
+        banner.style.backgroundImage = `url("${person.banner_url}")`;
+        banner.hidden = false;
+      } else {
+        banner.style.backgroundImage = '';
+        banner.hidden = true;
+      }
+      const photo = $('#view-profile-photo');
+      const fallback = $('#view-profile-photo-fallback');
+      photo.referrerPolicy = 'no-referrer';
+      photo.onerror = () => { photo.hidden = true; fallback.hidden = false; };
+      photo.hidden = !person.avatar_url;
+      fallback.hidden = Boolean(person.avatar_url);
+      if (person.avatar_url) photo.src = person.avatar_url;
+      photo.alt = person.avatar_url ? `${displayName} profile photo` : '';
+      fallback.textContent = displayName.slice(0, 2).toUpperCase();
+      const reputation = reviewSummary(person.id);
+      $('#view-profile-reputation').textContent = reputation.received.length
+        ? `${starText(reputation.average)} ${reputation.average.toFixed(1)} from ${reputation.received.length} verified ${reputation.received.length === 1 ? 'review' : 'reviews'}`
+        : 'No reviews yet';
+      $('#view-profile-bio').textContent = person.bio || 'This member has not added a bio yet.';
+      $('#view-profile-skills').innerHTML = (person.skills || [])
+        .map(skill => `<span class="tag">${escapeHtml(skill)}</span>`).join('');
+      $('#view-profile-reviews').innerHTML = reputation.received.slice(0, 4).map(review => `
+        <article class="review-entry">
+          <div class="review-entry-meta">
+            <span>${escapeHtml(review.reviewer?.display_name || 'Project participant')} · ${escapeHtml(review.projects?.title || 'Project')}</span>
+            <span class="reputation-stars">${starText(review.rating)}</span>
+          </div>
+          ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}
+        </article>
+      `).join('');
+      openModal('view-profile');
     }
 
     function renderProfile() {
@@ -3103,7 +3375,7 @@
         bindSigninButtons();
         return;
       }
-      const avatarUrl = googleAvatarUrl();
+      const avatarUrl = currentAvatarUrl();
       const profilePhoto = $('#profile-photo');
       const profileFallback = $('#profile-photo-fallback');
       const displayName = profile?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'connectEd member';
@@ -3115,10 +3387,18 @@
       profilePhoto.hidden = !avatarUrl;
       profileFallback.hidden = Boolean(avatarUrl);
       if (avatarUrl) profilePhoto.src = avatarUrl;
-      profilePhoto.alt = avatarUrl ? `${displayName} Google account profile photo` : '';
+      profilePhoto.alt = avatarUrl ? `${displayName} profile photo` : '';
       profileFallback.textContent = displayName.slice(0, 2).toUpperCase();
       $('#profile-identity-name').textContent = displayName;
       $('#profile-identity-email').textContent = user.email || '';
+      const banner = $('#profile-banner');
+      if (profile?.banner_url) {
+        banner.style.backgroundImage = `url("${profile.banner_url}")`;
+        banner.hidden = false;
+      } else {
+        banner.style.backgroundImage = '';
+        banner.hidden = true;
+      }
       for (const key of ['display_name', 'headline', 'bio']) {
         $(`#profile-form [name=${key}]`).value = profile?.[key] || '';
       }
@@ -3151,7 +3431,90 @@
           ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}
         </article>
       `).join('');
+      renderInterviewCalendar();
     }
+
+    let calendarMonth = new Date();
+    calendarMonth.setDate(1);
+    let pendingAvatarDataUrl = null;
+    let pendingBannerDataUrl = null;
+
+    function userInterviews() {
+      if (!user) return [];
+      return interviews.filter(item => item.organizer_id === user.id || item.candidate_id === user.id);
+    }
+
+    function renderInterviewCalendar() {
+      const card = $('#interview-calendar-card');
+      if (!user) { card.hidden = true; return; }
+      card.hidden = false;
+      const year = calendarMonth.getFullYear();
+      const month = calendarMonth.getMonth();
+      $('#calendar-month-label').textContent = calendarMonth.toLocaleString([], { month: 'long', year: 'numeric' });
+
+      const byDay = new Map();
+      userInterviews().forEach(item => {
+        const date = new Date(item.starts_at);
+        const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        if (!byDay.has(key)) byDay.set(key, []);
+        byDay.get(key).push(item);
+      });
+
+      const startWeekday = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const today = new Date();
+      const cells = Array(startWeekday).fill(null).concat(
+        Array.from({ length: daysInMonth }, (_, index) => index + 1)
+      );
+
+      const grid = $('#calendar-grid');
+      grid.innerHTML = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => `<span class="calendar-weekday">${day}</span>`).join('')
+        + cells.map(day => {
+          if (!day) return '<span class="calendar-day empty"></span>';
+          const dayItems = byDay.get(`${year}-${month}-${day}`) || [];
+          const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+          return `<button type="button" class="calendar-day${dayItems.length ? ' has-interview' : ''}${isToday ? ' today' : ''}" data-day="${day}">${day}${dayItems.length ? '<span class="calendar-dot"></span>' : ''}</button>`;
+        }).join('');
+      $$('.calendar-day[data-day]').forEach(button => {
+        button.onclick = () => renderCalendarAgenda(Number(button.dataset.day), byDay, year, month);
+      });
+
+      const firstDayWithInterviews = [...byDay.keys()]
+        .map(key => key.split('-').map(Number))
+        .find(([keyYear, keyMonth]) => keyYear === year && keyMonth === month);
+      if (firstDayWithInterviews) {
+        renderCalendarAgenda(firstDayWithInterviews[2], byDay, year, month);
+      } else {
+        $('#calendar-agenda').innerHTML = '<p class="muted">No interviews this month.</p>';
+      }
+    }
+
+    function renderCalendarAgenda(day, byDay, year, month) {
+      const items = (byDay.get(`${year}-${month}-${day}`) || [])
+        .slice()
+        .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+      $('#calendar-agenda').innerHTML = items.length
+        ? items.map(item => `
+            <div class="calendar-agenda-item">
+              <strong>${escapeHtml(item.title)}</strong>
+              <span>${escapeHtml(new Date(item.starts_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))}</span>
+              <div class="calendar-agenda-actions">
+                ${item.meet_url ? `<a class="btn btn-small" href="${escapeHtml(item.meet_url)}" target="_blank" rel="noopener">Open Meet</a>` : ''}
+                ${item.calendar_html_link ? `<a class="btn btn-small" href="${escapeHtml(item.calendar_html_link)}" target="_blank" rel="noopener">Open Calendar</a>` : ''}
+              </div>
+            </div>
+          `).join('')
+        : '<p class="muted">No interviews on this day.</p>';
+    }
+
+    $('#calendar-prev').onclick = () => {
+      calendarMonth.setMonth(calendarMonth.getMonth() - 1);
+      renderInterviewCalendar();
+    };
+    $('#calendar-next').onclick = () => {
+      calendarMonth.setMonth(calendarMonth.getMonth() + 1);
+      renderInterviewCalendar();
+    };
 
     function bindSigninButtons() {
       $$('[data-google-signin]').forEach(button => {
@@ -3430,6 +3793,39 @@
       $('#hub-image-preview').hidden = false;
     };
 
+    $('#profile-photo-input').onchange = async event => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+      const status = $('#profile-photo-status');
+      status.hidden = false;
+      status.textContent = 'Optimizing photo…';
+      try {
+        pendingAvatarDataUrl = await optimizeAvatarImage(file);
+        $('#profile-photo').src = pendingAvatarDataUrl;
+        $('#profile-photo').hidden = false;
+        $('#profile-photo-fallback').hidden = true;
+        status.textContent = 'Photo ready — save your profile to publish it.';
+      } catch (error) {
+        status.textContent = error.message || 'Photo could not be processed.';
+      }
+    };
+
+    $('#profile-banner-input').onchange = async event => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+      try {
+        pendingBannerDataUrl = await optimizeBannerImage(file);
+        const banner = $('#profile-banner');
+        banner.style.backgroundImage = `url("${pendingBannerDataUrl}")`;
+        banner.hidden = false;
+        toast('Cover image ready — save your profile to publish it.');
+      } catch (error) {
+        toast(error.message || 'Cover image could not be processed.');
+      }
+    };
+
     async function submitApplication(form) {
       if (!(await requireUser())) return;
       if (!activeProject || String(activeProject.id).startsWith('preview-')) return toast('Preview projects do not accept applications.');
@@ -3540,7 +3936,7 @@
       const data = await response.json();
       if (!response.ok) return toast(data.error || 'Calendar event could not be created.');
 
-      const saved = await supabase.from('interviews').insert({
+      const interviewRow = {
         project_id: values.get('project_id'),
         application_id: values.get('application_id'),
         organizer_id: user.id,
@@ -3550,8 +3946,14 @@
         title: String(values.get('title')).trim(),
         notes: String(values.get('notes')).trim(),
         google_event_id: data.eventId,
-        meet_url: data.meetUrl
-      });
+        meet_url: data.meetUrl,
+        calendar_html_link: data.htmlLink
+      };
+      let saved = await supabase.from('interviews').insert(interviewRow);
+      if (saved.error && /calendar_html_link/.test(saved.error.message)) {
+        delete interviewRow.calendar_html_link;
+        saved = await supabase.from('interviews').insert(interviewRow);
+      }
       if (saved.error) return toast(saved.error.message);
       const statusUpdate = await supabase.from('applications').update({ status: 'interview' }).eq('id', values.get('application_id'));
       if (statusUpdate.error) toast('The Meet was created, but the application status could not be updated.');
@@ -3648,8 +4050,13 @@
         bio: String(values.get('bio')).trim(),
         skills: normalizeTags(values.get('skills'))
       };
+      const imageUpdates = {
+        ...(pendingAvatarDataUrl ? { avatar_url: pendingAvatarDataUrl, custom_avatar: true } : {}),
+        ...(pendingBannerDataUrl ? { banner_url: pendingBannerDataUrl } : {})
+      };
       let result = await supabase.from('profiles').update({
         ...profileBase,
+        ...imageUpdates,
         location_label: location?.label || null,
         location_latitude: location?.latitude ?? null,
         location_longitude: location?.longitude ?? null
@@ -3657,9 +4064,17 @@
       if (result.error && /location_/.test(result.error.message)) {
         // The location columns migration has not been applied yet — save the
         // rest of the profile and keep location in auth metadata only.
+        result = await supabase.from('profiles').update({ ...profileBase, ...imageUpdates }).eq('id', user.id);
+      }
+      if (result.error && /avatar_url|custom_avatar|banner_url/.test(result.error.message)) {
+        // Photo/cover columns not migrated yet — save the rest of the
+        // profile rather than blocking the whole form on it.
         result = await supabase.from('profiles').update(profileBase).eq('id', user.id);
+        toast('Profile saved, but photo/cover updates need a database migration first.');
       }
       if (result.error) return toast(result.error.message);
+      pendingAvatarDataUrl = null;
+      pendingBannerDataUrl = null;
 
       const authResult = await supabase.auth.updateUser({
         data: { connected_location: location }

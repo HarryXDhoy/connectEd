@@ -23,6 +23,13 @@ alter table public.profiles
   add column if not exists location_latitude double precision,
   add column if not exists location_longitude double precision;
 
+-- Custom profile photo + cover image. custom_avatar marks that avatar_url
+-- was set by the member rather than synced from their sign-in provider, so
+-- the provider-photo sync (in the app) knows not to overwrite it.
+alter table public.profiles
+  add column if not exists banner_url text,
+  add column if not exists custom_avatar boolean not null default false;
+
 create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.profiles(id) on delete cascade,
@@ -71,6 +78,12 @@ create table if not exists public.interviews (
   meet_url text,
   created_at timestamptz not null default now()
 );
+
+-- The Calendar event's own link was created but never saved, so "View in
+-- Google Calendar" only ever worked once, in the moment right after
+-- scheduling. Persist it so it can be shown again later.
+alter table public.interviews
+  add column if not exists calendar_html_link text;
 
 create table if not exists public.project_reviews (
   id uuid primary key default gen_random_uuid(),
@@ -373,14 +386,25 @@ create policy "users read own entitlements"
 
 -- Hide billing identifiers from the public profile API and prevent users
 -- from granting themselves paid placement.
+--
+-- location_label/latitude/longitude and banner_url/custom_avatar were added
+-- by later `alter table` migrations further up this file, but this grant
+-- list was never updated to match — every read/write of another member's
+-- location silently failed at the column-privilege level (RLS itself is
+-- `using (true)`, so this was the only thing blocking it), and profile
+-- saves that included location fields were failing and falling back to
+-- skip them, so location never actually persisted to this table at all.
 revoke select on public.profiles from anon, authenticated;
 grant select (
-  id, display_name, headline, bio, skills, avatar_url,
+  id, display_name, headline, bio, skills, avatar_url, banner_url,
+  custom_avatar, location_label, location_latitude, location_longitude,
   priority_match_active, created_at, updated_at
 ) on public.profiles to anon, authenticated;
 revoke update on public.profiles from authenticated;
 grant update (
-  display_name, headline, bio, skills, avatar_url, updated_at
+  display_name, headline, bio, skills, avatar_url, banner_url,
+  custom_avatar, location_label, location_latitude, location_longitude,
+  updated_at
 ) on public.profiles to authenticated;
 
 grant select on public.projects, public.project_questions to anon, authenticated;

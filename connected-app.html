@@ -2838,19 +2838,37 @@
       const motionToggle = $('#network-motion-toggle');
       if (!stage || !canvas) return;
 
-      const networkProjects = projects
-        .filter(project => project.status !== 'closed')
-        .slice(0, 24);
-      const defaultFocusMarkup = networkProjects.length
-        ? `Live project network<span>Drag the Earth to explore. Hover a node to inspect ${networkProjects.length} open ${networkProjects.length === 1 ? 'project' : 'projects'} from the board.</span>`
-        : 'Live project network<span>Drag the Earth to explore. Share the first idea to place a node.</span>';
-      focus.innerHTML = defaultFocusMarkup;
+      const openProjects = projects.filter(project => project.status !== 'closed');
       const heroMeta = $('#hero-live-meta');
       if (heroMeta) {
-        heroMeta.textContent = networkProjects.length
-          ? `${networkProjects.length} open ${networkProjects.length === 1 ? 'project' : 'projects'} on the live board`
+        heroMeta.textContent = openProjects.length
+          ? `${openProjects.length} open ${openProjects.length === 1 ? 'project' : 'projects'} on the live board`
           : 'Live board · share the first project';
       }
+
+      // Earth nodes are members who opted into sharing a location, not
+      // projects — reflects who's actually on the map, and lets hovering a
+      // node surface what that person is building.
+      let memberLocations = [];
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id,display_name,headline,location_label,location_latitude,location_longitude')
+          .not('location_latitude', 'is', null)
+          .not('location_longitude', 'is', null)
+          .limit(200);
+        if (!error) memberLocations = data || [];
+      }
+      const projectsByOwner = new Map();
+      openProjects.forEach(project => {
+        if (!projectsByOwner.has(project.owner_id)) projectsByOwner.set(project.owner_id, []);
+        projectsByOwner.get(project.owner_id).push(project);
+      });
+
+      const defaultFocusMarkup = memberLocations.length
+        ? `Live member network<span>Drag the Earth to explore. Hover a node to see ${memberLocations.length} ${memberLocations.length === 1 ? 'member' : 'members'} and the projects they're building.</span>`
+        : 'Live member network<span>Drag the Earth to explore. Share your location from your profile to place the first node.</span>';
+      focus.innerHTML = defaultFocusMarkup;
 
       try {
         const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js');
@@ -3055,60 +3073,27 @@
           })
         ));
 
-        const routeMaterial = new THREE.LineBasicMaterial({
-          color: color('--accent'),
-          transparent: true,
-          opacity: .18
-        });
         const participantRouteMaterial = new THREE.LineBasicMaterial({
           color: color('--accent'),
           transparent: true,
           opacity: .58
         });
-        const nodePositions = [
-          [32, 88], [-12, 112], [57, 142], [-42, 68],
-          [8, 174], [44, 48], [-28, 156], [2, 126],
-          [68, 102], [-58, 134], [22, 62], [-5, 194],
-          [37, -122], [51, 0], [1, -78], [-24, -47],
-          [35, -98], [-34, -15], [13, -145], [53, -73],
-          [-7, -110], [26, -32], [-46, -91], [63, -158]
-        ];
-        const locations = networkProjects.map((project, index) => {
-          const tags = projectTags(project);
-          const fallbackPosition = nodePositions[index];
-          const sharedLocation = projectLocationData(project);
-          const latitude = sharedLocation?.latitude ?? fallbackPosition[0];
-          const longitude = sharedLocation?.longitude ?? fallbackPosition[1];
-          const seatCount = Number(project.seats_total) || 0;
-          const tagLabel = tags.slice(0, 2).join(' + ') || 'Open collaboration';
-          const locationLabel = sharedLocation
-            ? `${sharedLocation.label || 'Shared location'} · `
-            : 'Location not shared · ';
+        const locations = memberLocations.map(person => {
+          const ownedProjects = projectsByOwner.get(person.id) || [];
+          const projectSummary = ownedProjects.length
+            ? ownedProjects.slice(0, 4).map(project => project.title).join(', ')
+            : 'No open projects yet';
+          const seatTotal = ownedProjects.reduce((sum, project) => sum + (Number(project.seats_total) || 0), 0);
           return {
-            projectId: String(project.id),
-            name: project.title,
-            meta: `${locationLabel}${tagLabel} · ${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}`,
-            detail: `${project.summary || project.description} Shared by ${project.owner}.${sharedLocation ? '' : ' Placed at an approximate spot until the owner shares a location.'}`,
-            latitude,
-            longitude,
-            active: index === 0
+            userId: String(person.id),
+            name: person.display_name || 'connectEd member',
+            meta: `${person.location_label || 'Shared location'} · ${ownedProjects.length} open ${ownedProjects.length === 1 ? 'project' : 'projects'}`,
+            detail: `${person.headline ? `${person.headline}. ` : ''}${projectSummary}${seatTotal ? ` · ${seatTotal} open ${seatTotal === 1 ? 'seat' : 'seats'}` : ''}`,
+            latitude: person.location_latitude,
+            longitude: person.location_longitude,
+            viewer: Boolean(accountUser) && String(accountUser.id) === String(person.id)
           };
         });
-
-        // The signed-in viewer joins the map at their real shared location.
-        const viewerLocation = userLocation(accountUser);
-        if (viewerLocation) {
-          locations.push({
-            projectId: '',
-            name: 'You are here',
-            meta: viewerLocation.label || 'Your shared location',
-            detail: 'Your approximate location from your connectEd profile, rounded to about one kilometre.',
-            latitude: viewerLocation.latitude,
-            longitude: viewerLocation.longitude,
-            active: false,
-            viewer: true
-          });
-        }
 
         const routeCurves = [];
         function addRoute(from, to) {
@@ -3119,58 +3104,39 @@
           routeCurves.push(curve);
           earth.add(new THREE.Line(
             new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),
-            routeMaterial
+            participantRouteMaterial
           ));
         }
-        const routePairs = [];
-        for (let index = 1; index < Math.min(locations.length, 7); index += 1) {
-          routePairs.push([0, index]);
-        }
-        for (let index = 7; index < locations.length; index += 2) {
-          routePairs.push([index - 1, index]);
-        }
-        routePairs.forEach(([from, to]) => addRoute(locations[from], locations[to]));
-
-        // Real collaboration arcs: accepted participants → the project they
-        // joined, drawn from opt-in profile locations. Row-level security
-        // scopes the query — each viewer sees only the teams they belong to
-        // or run; signed-out visitors keep the ambient network alone.
+        // Real collaboration arcs: accepted participants ↔ the owner of the
+        // project they joined, connecting two member nodes rather than a
+        // member to a project (projects are no longer nodes on this map).
+        // Row-level security scopes the query — signed-out visitors keep the
+        // ambient member pins without arcs.
         if (accountUser && isSupabaseConfigured) {
           try {
+            const ownerByProjectId = new Map(projects.map(project => [String(project.id), String(project.owner_id)]));
+            const nodeByUserId = new Map(locations.map(entry => [entry.userId, entry]));
             const { data: teamLinks, error: teamError } = await supabase
               .from('applications')
-              .select('project_id,applicant_id,status,profiles:applicant_id(location_latitude,location_longitude)')
+              .select('project_id,applicant_id,status')
               .eq('status', 'accepted');
             if (!teamError) {
-              const viewerShared = userLocation(accountUser);
+              const drawnPairs = new Set();
               (teamLinks || []).forEach(link => {
-                const projectNode = locations.find(entry => entry.projectId === String(link.project_id));
-                if (!projectNode) return;
-                let participantLatitude = link.profiles?.location_latitude;
-                let participantLongitude = link.profiles?.location_longitude;
-                if (
-                  (!Number.isFinite(participantLatitude) || !Number.isFinite(participantLongitude)) &&
-                  String(link.applicant_id) === String(accountUser.id) &&
-                  viewerShared
-                ) {
-                  participantLatitude = viewerShared.latitude;
-                  participantLongitude = viewerShared.longitude;
-                }
-                if (!Number.isFinite(participantLatitude) || !Number.isFinite(participantLongitude)) return;
-                const start = latLonToVector(participantLatitude, participantLongitude, globeRadius + .07);
-                const end = latLonToVector(projectNode.latitude, projectNode.longitude, globeRadius + .07);
-                const midpoint = start.clone().add(end).normalize().multiplyScalar(globeRadius + .62);
-                const curve = new THREE.QuadraticBezierCurve3(start, midpoint, end);
-                routeCurves.push(curve);
-                earth.add(new THREE.Line(
-                  new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),
-                  participantRouteMaterial
-                ));
+                const ownerId = ownerByProjectId.get(String(link.project_id));
+                const applicantId = String(link.applicant_id);
+                if (!ownerId || ownerId === applicantId) return;
+                const ownerNode = nodeByUserId.get(ownerId);
+                const participantNode = nodeByUserId.get(applicantId);
+                if (!ownerNode || !participantNode) return;
+                const pairKey = [ownerId, applicantId].sort().join('|');
+                if (drawnPairs.has(pairKey)) return;
+                drawnPairs.add(pairKey);
+                addRoute(participantNode, ownerNode);
               });
             }
           } catch (_) {
-            // Location columns not migrated yet or query unavailable — the
-            // ambient network still renders.
+            // Query unavailable — the map still shows individual member pins.
           }
         }
 
@@ -3201,7 +3167,7 @@
         const haloGeometry = new THREE.RingGeometry(.082, .125, 32);
         const markerTargets = [];
         const markers = locations.map(location => {
-          const highlighted = location.active || location.viewer;
+          const highlighted = location.viewer;
           const marker = new THREE.Group();
           const core = new THREE.Mesh(
             markerGeometry,
@@ -3357,7 +3323,7 @@
           hoverPaused = Boolean(hit);
           markers.forEach(marker => {
             marker.scale.setScalar(1);
-            marker.children[1].material.opacity = (marker.userData.active || marker.userData.viewer) ? .38 : .18;
+            marker.children[1].material.opacity = marker.userData.viewer ? .38 : .18;
           });
           if (hit && markerTargets.includes(hit.object)) {
             const { location, marker, halo } = hit.object.userData;
@@ -3436,7 +3402,7 @@
           focus.innerHTML = defaultFocusMarkup;
           markers.forEach(marker => {
             marker.scale.setScalar(1);
-            marker.children[1].material.opacity = (marker.userData.active || marker.userData.viewer) ? .38 : .18;
+            marker.children[1].material.opacity = marker.userData.viewer ? .38 : .18;
           });
           if (reducedMotion || userPaused || !visible) render(performance.now());
         });
