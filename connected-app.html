@@ -2366,6 +2366,7 @@
         button.dataset.open = 'auth';
         button.onclick = () => openModal('auth');
       }
+      initLocationInvite();
       return user;
     }
 
@@ -3016,8 +3017,8 @@
           const rings = [];
           (geometry.type === 'MultiPolygon' ? geometry.coordinates : [geometry.coordinates])
             .forEach(polygon => polygon.forEach(ring => rings.push(ring)));
-          const maskWidth = 720;
-          const maskHeight = 360;
+          const maskWidth = 1440;
+          const maskHeight = 720;
           const mask = new Uint8Array(maskWidth * maskHeight);
           for (let row = 0; row < maskHeight; row += 1) {
             const rowLatitude = 90 - ((row + .5) * 180) / maskHeight;
@@ -3050,7 +3051,7 @@
         }
 
         const landDotPositions = [];
-        const dotSamples = 30000;
+        const dotSamples = 70000;
         const goldenAngle = Math.PI * (3 - Math.sqrt(5));
         for (let index = 0; index < dotSamples; index += 1) {
           const unitY = 1 - (index / (dotSamples - 1)) * 2;
@@ -3079,20 +3080,31 @@
           transparent: true,
           opacity: .58
         });
+        // Shown in the tooltip so a member can verify the pin against a real
+        // map themselves — the globe itself is a stylized dot matrix with no
+        // labels or borders, so the raw numbers are the only precise check.
+        function formatCoordinate(latitude, longitude) {
+          const lat = `${Math.abs(latitude).toFixed(2)}°${latitude >= 0 ? 'N' : 'S'}`;
+          const lon = `${Math.abs(longitude).toFixed(2)}°${longitude >= 0 ? 'E' : 'W'}`;
+          return `${lat}, ${lon}`;
+        }
+
         const locations = memberLocations.map(person => {
           const ownedProjects = projectsByOwner.get(person.id) || [];
           const projectSummary = ownedProjects.length
             ? ownedProjects.slice(0, 4).map(project => project.title).join(', ')
             : 'No open projects yet';
           const seatTotal = ownedProjects.reduce((sum, project) => sum + (Number(project.seats_total) || 0), 0);
+          const coordinate = formatCoordinate(person.location_latitude, person.location_longitude);
           return {
             userId: String(person.id),
             name: person.display_name || 'connectEd member',
-            meta: `${person.location_label || 'Shared location'} · ${ownedProjects.length} open ${ownedProjects.length === 1 ? 'project' : 'projects'}`,
-            detail: `${person.headline ? `${person.headline}. ` : ''}${projectSummary}${seatTotal ? ` · ${seatTotal} open ${seatTotal === 1 ? 'seat' : 'seats'}` : ''}`,
+            meta: `${person.location_label || coordinate} · ${ownedProjects.length} open ${ownedProjects.length === 1 ? 'project' : 'projects'}`,
+            detail: `${person.headline ? `${person.headline}. ` : ''}${projectSummary}${seatTotal ? ` · ${seatTotal} open ${seatTotal === 1 ? 'seat' : 'seats'}` : ''} · ${coordinate}`,
             latitude: person.location_latitude,
             longitude: person.location_longitude,
-            viewer: Boolean(accountUser) && String(accountUser.id) === String(person.id)
+            viewer: Boolean(accountUser) && String(accountUser.id) === String(person.id),
+            projectIds: ownedProjects.map(project => String(project.id))
           };
         });
 
@@ -3414,7 +3426,9 @@
           pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
           raycaster.setFromCamera(pointer, camera);
           const hit = raycaster.intersectObjects(markerTargets, false)[0];
-          const projectId = hit?.object?.userData?.location?.projectId;
+          // A node is a member now, not a project — open the first project
+          // they published, since that's what clicking a node should surface.
+          const projectId = hit?.object?.userData?.location?.projectIds?.[0];
           if (projectId) showProject(projectId);
         });
         canvas.addEventListener('webglcontextlost', event => {
@@ -3456,22 +3470,29 @@
     function initLocationInvite() {
       const invite = $('#location-invite');
       const stageButton = $('#network-step-location');
-      if (!accountUser || !isSupabaseConfigured) {
+      if (!isSupabaseConfigured) {
         if (invite) invite.hidden = true;
         if (stageButton) stageButton.hidden = true;
         return;
       }
-      const alreadyShared = Boolean(userLocation(accountUser));
 
-      // Persistent control on the globe itself — unlike the dismissible
-      // nudge below, this never disappears for good, so sharing (or
-      // updating) a location is always one click away.
+      const alreadyShared = Boolean(accountUser && userLocation(accountUser));
+
+      // Visible even signed out — clicking it while signed out opens sign-in
+      // first; once that completes, onAuthStateChange re-runs this function
+      // and the button is ready to actually share.
       if (stageButton) {
         stageButton.hidden = false;
         stageButton.textContent = alreadyShared ? 'Update location' : 'Share location';
-        stageButton.onclick = event => shareLocationInline(event.currentTarget, stageButton.textContent);
+        stageButton.onclick = accountUser
+          ? event => shareLocationInline(event.currentTarget, stageButton.textContent)
+          : () => openModal('auth');
       }
 
+      if (!accountUser) {
+        if (invite) invite.hidden = true;
+        return;
+      }
       if (!invite) return;
       if (alreadyShared) { invite.hidden = true; return; }
       const dismissKey = `connected:location-invite:${accountUser.id}`;
@@ -3529,7 +3550,6 @@
     $('#auth-preview-note').hidden = !isEmbeddedPreview();
     await Promise.all([refreshAccount(), loadProjects()]);
     initProjectNetwork();
-    initLocationInvite();
   </script>
 </body>
 </html>
