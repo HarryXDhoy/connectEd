@@ -30,6 +30,47 @@ async function candidateEmail(userId) {
   return { email: String(candidate.email || '').trim(), reason: '' };
 }
 
+// Google access tokens expire in about an hour and Supabase never hands us
+// a fresh one after the initial sign-in redirect, so the organizer's stored
+// refresh token (captured once, at sign-in — see api/store-google-token.js)
+// is exchanged for a new access token on every request instead.
+async function organizerGoogleAccessToken(userId) {
+  const url = process.env.SUPABASE_URL || 'https://josrjdvcdkqkwfzomxxh.supabase.co';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) return { error: 'unconfigured' };
+
+  const profileResponse = await fetch(
+    `${url}/rest/v1/profiles?select=google_refresh_token&id=eq.${userId}&limit=1`,
+    {
+      headers: {
+        apikey: serviceRoleKey,
+        authorization: `Bearer ${serviceRoleKey}`
+      }
+    }
+  );
+  if (!profileResponse.ok) return { error: 'lookup_failed' };
+  const rows = await profileResponse.json();
+  const refreshToken = rows[0]?.google_refresh_token;
+  if (!refreshToken) return { error: 'not_connected' };
+
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return { error: 'unconfigured' };
+  }
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    })
+  });
+  if (!tokenResponse.ok) return { error: 'refresh_failed' };
+  const tokenData = await tokenResponse.json();
+  return { accessToken: tokenData.access_token };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
 
@@ -37,7 +78,6 @@ export default async function handler(req, res) {
   if (identity.error) return json(res, identity.status, { error: identity.error });
 
   const {
-    googleAccessToken,
     applicationId,
     projectId,
     title,
@@ -65,7 +105,7 @@ export default async function handler(req, res) {
   const applications = applicationResponse.ok ? await applicationResponse.json() : [];
   if (!applications.length) return json(res, 403, { error: 'Application does not belong to this project.' });
 
-  if (!googleAccessToken || !String(title || '').trim()) {
+  if (!String(title || '').trim()) {
     return json(res, 400, { error: 'Missing or invalid interview details.' });
   }
 
@@ -87,6 +127,16 @@ export default async function handler(req, res) {
     return json(res, 400, { error: `Candidate email is unavailable or invalid. ${detail} Enter it manually to continue.` });
   }
 
+  const tokenResult = await organizerGoogleAccessToken(identity.user.id);
+  if (tokenResult.error) {
+    const message = tokenResult.error === 'not_connected'
+      ? 'Connect Google Calendar to schedule interviews — sign in with Google once, and we will not ask again.'
+      : tokenResult.error === 'unconfigured'
+        ? 'Google Calendar is not configured on the server yet.'
+        : 'Google Calendar access could not be refreshed. Reconnect Google and try again.';
+    return json(res, 401, { error: message, needsGoogleReconnect: true });
+  }
+
   const event = {
     summary: String(title).trim().slice(0, 120),
     description: String(notes).trim().slice(0, 2000) || 'Interview scheduled through connectEd',
@@ -106,7 +156,7 @@ export default async function handler(req, res) {
     {
       method: 'POST',
       headers: {
-        authorization: `Bearer ${googleAccessToken}`,
+        authorization: `Bearer ${tokenResult.accessToken}`,
         'content-type': 'application/json'
       },
       body: JSON.stringify(event)

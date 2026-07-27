@@ -30,6 +30,16 @@ alter table public.profiles
   add column if not exists banner_url text,
   add column if not exists custom_avatar boolean not null default false;
 
+-- Google's Calendar access token expires in about an hour and Supabase does
+-- not persist or refresh it, which used to mean re-authenticating with
+-- Google every time an interview was scheduled. Storing the (long-lived)
+-- refresh token lets the server mint a fresh access token on demand instead.
+-- Deliberately NOT added to the anon/authenticated grants further down —
+-- only the service role (used from serverless functions) may ever read or
+-- write this column.
+alter table public.profiles
+  add column if not exists google_refresh_token text;
+
 create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.profiles(id) on delete cascade,

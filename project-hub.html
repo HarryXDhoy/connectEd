@@ -2295,7 +2295,6 @@
       supabase,
       isSupabaseConfigured,
       currentUser,
-      getSession,
       authHeaders,
       signInWithGoogle,
       signInWithPassword,
@@ -2633,6 +2632,19 @@
           button.disabled = false;
           button.textContent = originalLabel;
         }
+      }
+    }
+
+    async function storeGoogleRefreshToken(refreshToken) {
+      try {
+        await fetch('/api/store-google-token', {
+          method: 'POST',
+          headers: await authHeaders(),
+          body: JSON.stringify({ refreshToken })
+        });
+      } catch (_) {
+        // Best-effort — if this fails, scheduling an interview later will
+        // surface a clear "reconnect Google" prompt instead of failing silently.
       }
     }
 
@@ -3908,11 +3920,6 @@
 
     async function scheduleInterview(form) {
       const values = new FormData(form);
-      const session = await getSession();
-      if (!session?.provider_token) {
-        toast('Reconnect Google to grant Calendar access.');
-        return beginGoogleSignIn();
-      }
       const startsAt = new Date(`${String(values.get('date'))}T${String(values.get('time'))}:00`);
       const durationMinutes = Number(values.get('duration'));
       const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
@@ -3922,11 +3929,12 @@
       if (startsAt.getTime() < Date.now() + 5 * 60 * 1000) {
         return toast('Pick a start time at least five minutes from now.');
       }
+      // No Google token to attach here — the server holds a stored refresh
+      // token from sign-in and mints its own access token per request.
       const response = await fetch('/api/google-calendar', {
         method: 'POST',
         headers: await authHeaders(),
         body: JSON.stringify({
-          googleAccessToken: session.provider_token,
           applicationId: values.get('application_id'),
           projectId: values.get('project_id'),
           title: values.get('title'),
@@ -3937,7 +3945,13 @@
         })
       });
       const data = await response.json();
-      if (!response.ok) return toast(data.error || 'Calendar event could not be created.');
+      if (!response.ok) {
+        if (data.needsGoogleReconnect) {
+          toast(data.error || 'Reconnect Google to grant Calendar access.');
+          return beginGoogleSignIn();
+        }
+        return toast(data.error || 'Calendar event could not be created.');
+      }
 
       const interviewRow = {
         project_id: values.get('project_id'),
@@ -4246,7 +4260,15 @@
     // restoration triggers a UI refresh — without this, signing in works but
     // the UI stays in signed-out state until a manual reload.
     if (supabase) {
-      supabase.auth.onAuthStateChange(() => window.setTimeout(loadAll, 0));
+      supabase.auth.onAuthStateChange((_event, session) => {
+        window.setTimeout(loadAll, 0);
+        // Only present in the session object once, right after the OAuth
+        // redirect completes — store it now or lose the chance until the
+        // next sign-in.
+        if (session?.provider_refresh_token) {
+          storeGoogleRefreshToken(session.provider_refresh_token);
+        }
+      });
       window.setInterval(pollRequestStatuses, 45000);
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden) pollRequestStatuses();
