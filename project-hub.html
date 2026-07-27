@@ -3360,26 +3360,59 @@
       form.date.min = localDate(new Date());
       form.date.value = localDate(suggestedStart);
       form.time.value = `${String(suggestedStart.getHours()).padStart(2, '0')}:${String(suggestedStart.getMinutes()).padStart(2, '0')}`;
+      syncTimeMin(form);
       form.email.value = '';
       form.email.readOnly = true;
       form.email.placeholder = 'Finding candidate email…';
       $('#candidate-email-help').textContent = 'Added automatically from the candidate’s connectEd account.';
       openModal('interview');
 
-      const response = await fetch(`/api/google-calendar?applicationId=${encodeURIComponent(application.id)}&projectId=${encodeURIComponent(application.project_id)}`, {
-        headers: await authHeaders()
-      });
-      const data = await response.json();
-      if (response.ok && data.candidateEmail) {
-        form.email.value = data.candidateEmail;
-        form.email.placeholder = '';
-      } else {
+      const enableManualEmail = message => {
         form.email.readOnly = false;
         form.email.placeholder = 'candidate@example.com';
-        $('#candidate-email-help').textContent = 'We could not retrieve the account email. Enter it once to continue.';
-        toast(data.error || 'Candidate email could not be added automatically.');
+        $('#candidate-email-help').textContent = message;
+        form.email.focus();
+      };
+      if (isEmbeddedPreview()) {
+        // The serverless API only runs on the live site — skip the lookup
+        // instead of leaving the field stuck in its loading state.
+        enableManualEmail('Automatic lookup runs on the live site. Enter the candidate email to continue.');
+        return;
+      }
+      try {
+        const response = await fetch(`/api/google-calendar?applicationId=${encodeURIComponent(application.id)}&projectId=${encodeURIComponent(application.project_id)}`, {
+          headers: await authHeaders()
+        });
+        const data = await response.json();
+        if (response.ok && data.candidateEmail) {
+          form.email.value = data.candidateEmail;
+          form.email.placeholder = '';
+        } else {
+          enableManualEmail('We could not retrieve the account email. Enter it once to continue.');
+          toast(data.error || 'Candidate email could not be added automatically.');
+        }
+      } catch (_) {
+        enableManualEmail('We could not retrieve the account email. Enter it once to continue.');
       }
     }
+
+    // Keep the time picker honest: when the chosen date is today, the
+    // earliest selectable time is the next quarter hour.
+    function syncTimeMin(form) {
+      const today = new Date();
+      const todayValue = [
+        today.getFullYear(),
+        String(today.getMonth() + 1).padStart(2, '0'),
+        String(today.getDate()).padStart(2, '0')
+      ].join('-');
+      if (form.date.value === todayValue) {
+        const floor = new Date(today.getTime() + 15 * 60 * 1000);
+        form.time.min = `${String(floor.getHours()).padStart(2, '0')}:${String(floor.getMinutes()).padStart(2, '0')}`;
+      } else {
+        form.time.removeAttribute('min');
+      }
+    }
+    $('#interview-form [name=date]').onchange = () => syncTimeMin($('#interview-form'));
 
     async function scheduleInterview(form) {
       const values = new FormData(form);
@@ -3393,6 +3426,9 @@
       const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
       if (Number.isNaN(startsAt.getTime()) || ![15, 30, 45, 60, 90].includes(durationMinutes)) {
         return toast('Choose a valid interview date, time, and duration.');
+      }
+      if (startsAt.getTime() < Date.now() + 5 * 60 * 1000) {
+        return toast('Pick a start time at least five minutes from now.');
       }
       const response = await fetch('/api/google-calendar', {
         method: 'POST',
@@ -3424,7 +3460,8 @@
         meet_url: data.meetUrl
       });
       if (saved.error) return toast(saved.error.message);
-      await supabase.from('applications').update({ status: 'interview' }).eq('id', values.get('application_id'));
+      const statusUpdate = await supabase.from('applications').update({ status: 'interview' }).eq('id', values.get('application_id'));
+      if (statusUpdate.error) toast('The Meet was created, but the application status could not be updated.');
       form.hidden = true;
       const result = $('#interview-result');
       const meetLink = $('#interview-meet-link');
