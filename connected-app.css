@@ -899,10 +899,11 @@
     .network-focus,
     .network-step {
       position: absolute;
-      border: 1px solid color-mix(in oklab, var(--fg), transparent 72%);
-      background: color-mix(in oklab, var(--bg), transparent 2%);
+      border: 1px solid color-mix(in oklab, var(--fg), transparent 55%);
+      background: var(--bg);
+      box-shadow: 0 4px 16px color-mix(in oklab, black, transparent 45%);
       color: var(--fg);
-      font: var(--text-xs)/1.35 var(--font-mono);
+      font: 600 var(--text-xs)/1.35 var(--font-mono);
       letter-spacing: .08em;
       text-transform: uppercase;
     }
@@ -919,12 +920,13 @@
       right: var(--space-4);
       min-height: 36px;
       pointer-events: auto;
-      border: 1px solid var(--border);
+      border: 1px solid color-mix(in oklab, var(--fg), transparent 55%);
       border-radius: var(--radius-pill);
       padding: 0 var(--space-3);
-      background: color-mix(in oklab, var(--bg), transparent 8%);
-      color: var(--fg-2);
-      font: var(--text-xs)/1 var(--font-mono);
+      background: var(--bg);
+      box-shadow: 0 4px 16px color-mix(in oklab, black, transparent 45%);
+      color: var(--fg);
+      font: 600 var(--text-xs)/1 var(--font-mono);
       letter-spacing: .06em;
       text-transform: uppercase;
       transition:
@@ -1601,6 +1603,10 @@
     footer {
       border-top: 1px solid var(--border);
       background: var(--bg);
+      /* A leftover light-theme rule sets footer text to a near-black
+         color-mix that reads as invisible on this page's dark background —
+         restore the readable muted gray here since it wins the cascade. */
+      color: var(--fg-2);
     }
     /* Guard: nothing may introduce sideways scroll at any viewport. */
     html, body { overflow-x: clip; }
@@ -1735,6 +1741,10 @@
         grid-template-columns: 1fr;
         gap: var(--space-4);
       }
+      /* section:not(.hero) at the base of the stylesheet always wins over
+         the plain `section` mobile rule above due to :not()'s specificity —
+         override it explicitly here so sections actually shrink on tablet. */
+      section:not(.hero) { padding-block: var(--section-y-tablet); }
     }
     @media (max-width: 600px) {
       body { padding: 0; }
@@ -1752,9 +1762,11 @@
         padding-inline: 0;
         border-radius: 0;
       }
+      section:not(.hero) { padding-block: var(--section-y-phone); }
       .masonry { grid-template-columns: 1fr; }
       .stage { margin-inline: 0; }
       .network-steps { display: none; }
+      .network-motion-toggle { display: none; }
       .network-focus { max-width: 180px; }
       .account-control.account-signed-in {
         width: 40px;

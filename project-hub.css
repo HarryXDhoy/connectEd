@@ -1148,7 +1148,10 @@
       .nav { min-height: 64px; gap: var(--space-3); }
       .nav-actions .btn-ghost { display: none; }
       .notification-wrap .btn { padding-inline: var(--space-3); }
-      .account-control .account-label { display: none; }
+      /* Only collapse to icon-only once there's actually a photo to show —
+         otherwise a signed-out visitor gets a blank button with no "Sign
+         in" text and no avatar to replace it. */
+      .account-control:has(.account-photo:not([hidden])) .account-label { display: none; }
       .request-status { grid-column: 2; justify-self: start; }
       .applicant-group-head { align-items: flex-start; padding: var(--space-4); }
       .applicant-group-counts { justify-content: flex-end; }
