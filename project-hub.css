@@ -237,10 +237,14 @@
       display: flex;
       gap: var(--space-1);
       overflow-x: auto;
+      /* The tab strip still scrolls horizontally on narrow screens — it just
+         doesn't need to show a scrollbar track to do it. */
+      scrollbar-width: none;
       margin-bottom: var(--space-8);
       padding: 6px;
       border-radius: var(--radius-lg);
     }
+    .tabs::-webkit-scrollbar { display: none; }
     .tab {
       min-height: 42px;
       white-space: nowrap;
@@ -1894,7 +1898,16 @@
       .board-shell { border-radius: 0; }
       .board-shell > .container { padding: var(--space-6) var(--container-gutter-phone); }
       .board-status { align-self: flex-start; }
-      .masonry { grid-template-columns: 1fr; }
+      /* A single grid column just stacks cards top to bottom — switch to a
+         2-up CSS column layout so cards actually stagger like a masonry
+         feed on phones instead of one long list. */
+      .masonry {
+        display: block;
+        columns: 2;
+        column-gap: var(--space-3);
+      }
+      .masonry > .pin { margin: 0 0 var(--space-3); break-inside: avoid; }
+      .masonry > .empty, .masonry > .auth-wall { column-span: all; }
       .applicant-group-head { flex-direction: column; }
       .applicant-group-counts { justify-content: flex-start; }
     }

@@ -1807,11 +1807,40 @@ import {
       await loadAll();
     }
 
+      // Typing a city needs no GPS permission — geocode it through a free,
+      // keyless lookup so "share location" works either way.
+    async function geocodeLabel(label) {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(label)}`,
+          { headers: { Accept: 'application/json' } }
+        );
+        if (!response.ok) return null;
+        const results = await response.json();
+        const match = results[0];
+        if (!match) return null;
+        return { latitude: Number(match.lat), longitude: Number(match.lon) };
+      } catch (_) {
+        return null;
+      }
+    }
+
     async function saveProfile(form) {
       const values = new FormData(form);
       const shareLocation = values.get('location_shared') === 'on';
-      const latitudeValue = String(values.get('location_latitude') || '').trim();
-      const longitudeValue = String(values.get('location_longitude') || '').trim();
+      const labelValue = String(values.get('location_label') || '').trim().slice(0, 100);
+      let latitudeValue = String(values.get('location_latitude') || '').trim();
+      let longitudeValue = String(values.get('location_longitude') || '').trim();
+      if (shareLocation && (!latitudeValue || !longitudeValue) && labelValue) {
+        $('#location-status').textContent = 'Looking up that location…';
+        const geocoded = await geocodeLabel(labelValue);
+        if (geocoded) {
+          latitudeValue = String(geocoded.latitude);
+          longitudeValue = String(geocoded.longitude);
+          $('#profile-form [name=location_latitude]').value = latitudeValue;
+          $('#profile-form [name=location_longitude]').value = longitudeValue;
+        }
+      }
       const latitude = Number(latitudeValue);
       const longitude = Number(longitudeValue);
       if (
@@ -1823,12 +1852,12 @@ import {
           !Number.isFinite(longitude)
         )
       ) {
-        return toast('Use the location button before enabling location sharing.');
+        return toast('Type a city we can find (e.g. "Seoul, South Korea"), or use "Use my current location".');
       }
       const location = shareLocation
         ? {
             shared: true,
-            label: String(values.get('location_label') || '').trim().slice(0, 100),
+            label: labelValue,
             latitude: Number(latitude.toFixed(2)),
             longitude: Number(longitude.toFixed(2))
           }

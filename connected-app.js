@@ -828,8 +828,8 @@ import {
       });
 
       const defaultFocusMarkup = memberLocations.length
-        ? `Live member network<span>Drag the Earth to explore. Hover a node to see ${memberLocations.length} ${memberLocations.length === 1 ? 'member' : 'members'} and the projects they're building.</span>`
-        : 'Live member network<span>Drag the Earth to explore. Share your location from your profile to place the first node.</span>';
+        ? `Live member network<span>Drag to explore, ⌘/Ctrl + scroll to zoom. Hover a node to see ${memberLocations.length} ${memberLocations.length === 1 ? 'member' : 'members'} and the projects they're building.</span>`
+        : 'Live member network<span>Drag to explore, ⌘/Ctrl + scroll to zoom. Share your location from your profile to place the first node.</span>';
       focus.innerHTML = defaultFocusMarkup;
 
       try {
@@ -1071,16 +1071,32 @@ import {
           };
         });
 
-        // Members whose ~1 km coordinates round to the same cell share one
-        // node — otherwise they'd stack invisibly on top of each other. The
-        // node carries every member at that spot; clicking it lists them all.
-        const clusterMap = new Map();
+        // Members within ~50km of each other share one node. An exact
+        // coordinate match was too strict — two members a few km apart in
+        // the same city landed as separate, nearly-touching dots whose hit
+        // targets overlapped, so the smaller one couldn't reliably be
+        // hovered or clicked. Grouping by real-world distance (haversine,
+        // single-linkage) merges same-city members into one clickable node.
+        const CLUSTER_RADIUS_KM = 50;
+        function haversineKm(a, b) {
+          const toRad = degrees => (degrees * Math.PI) / 180;
+          const earthRadiusKm = 6371;
+          const dLat = toRad(b.latitude - a.latitude);
+          const dLon = toRad(b.longitude - a.longitude);
+          const lat1 = toRad(a.latitude);
+          const lat2 = toRad(b.latitude);
+          const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+          return 2 * earthRadiusKm * Math.asin(Math.sqrt(h));
+        }
+        const clusterGroups = [];
         members.forEach(member => {
-          const key = `${member.latitude.toFixed(2)}|${member.longitude.toFixed(2)}`;
-          if (!clusterMap.has(key)) clusterMap.set(key, []);
-          clusterMap.get(key).push(member);
+          const target = clusterGroups.find(group =>
+            group.some(existing => haversineKm(existing, member) <= CLUSTER_RADIUS_KM)
+          );
+          if (target) target.push(member);
+          else clusterGroups.push([member]);
         });
-        const locations = [...clusterMap.values()].map(clusterMembers => {
+        const locations = clusterGroups.map(clusterMembers => {
           const primary = clusterMembers[0];
           const count = clusterMembers.length;
           const viewer = clusterMembers.some(member => member.viewer);
@@ -1436,6 +1452,18 @@ import {
           const location = hit?.object?.userData?.location;
           if (location) showMemberProjects(location);
         });
+        // Zoom is opt-in behind Cmd/Ctrl so an ordinary two-finger scroll
+        // over the globe still scrolls the page instead of trapping the
+        // cursor — only the modified gesture takes over the camera.
+        const MIN_ZOOM = 3.2;
+        const MAX_ZOOM = 10;
+        canvas.addEventListener('wheel', event => {
+          if (!event.metaKey && !event.ctrlKey) return;
+          event.preventDefault();
+          camera.position.z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, camera.position.z + event.deltaY * .01));
+          if (reducedMotion || userPaused || !visible) render(performance.now());
+        }, { passive: false });
+
         canvas.addEventListener('webglcontextlost', event => {
           event.preventDefault();
           stage.classList.remove('webgl-ready');
