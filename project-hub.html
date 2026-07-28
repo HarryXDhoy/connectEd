@@ -2886,6 +2886,10 @@
       renderProfile();
       renderNotifications();
       renderLocationNudge();
+      // Global, not per-panel: every panel above can render a clickable
+      // avatar or name, so bind them once after everything has painted
+      // instead of repeating this call in each render function.
+      bindProfileViewButtons();
     }
 
     // Invite signed-in members without a shared location to pin themselves
@@ -3027,7 +3031,11 @@
         ? 'Invite only'
         : 'Open project';
       const seatCount = Number(project.seats_total) || 0;
-      const ownerLine = owned ? project.status.replace('_', ' ') : `By ${project.owner}`;
+      const ownerLine = owned
+        ? escapeHtml(project.status.replace('_', ' '))
+        : project.owner_id
+          ? `By <button type="button" class="link-button" data-view-profile="${escapeHtml(project.owner_id)}">${escapeHtml(project.owner)}</button>`
+          : escapeHtml(`By ${project.owner}`);
       const seatSuffix = seatCount ? ` · ${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}` : '';
       return `
         <article class="pin glass" data-od-id="${owned ? 'owned' : 'discover'}-project-${escapeHtml(project.id)}">
@@ -3041,7 +3049,7 @@
             <p>${escapeHtml(project.summary)}</p>
             <div class="tags">${projectTags(project).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
             <div class="pin-foot">
-              <span class="owner">${escapeHtml(ownerLine)}${escapeHtml(seatSuffix)}</span>
+              <span class="owner">${ownerLine}${escapeHtml(seatSuffix)}</span>
               <div class="pin-card-actions">
                 ${owned ? '' : `<button class="btn btn-small" data-save="${escapeHtml(project.id)}" aria-pressed="${savedProjectIds.has(String(project.id))}" aria-label="${savedProjectIds.has(String(project.id)) ? 'Remove' : 'Save'} ${escapeHtml(project.title)}">${savedProjectIds.has(String(project.id)) ? 'Saved' : 'Save'}</button>`}
                 <button class="btn btn-small" data-view="${escapeHtml(project.id)}" aria-label="View ${escapeHtml(project.title)}">View project</button>
@@ -3155,7 +3163,9 @@
                 <span class="avatar">${escapeHtml((project.title || 'cE').slice(0, 2).toUpperCase())}</span>
                 <div>
                   <h3>${escapeHtml(project.title || 'Project request')}</h3>
-                  <p>Sent to ${escapeHtml(owner)}</p>
+                  <p>Sent to ${project.owner_id
+                    ? `<button type="button" class="link-button" data-view-profile="${escapeHtml(project.owner_id)}">${escapeHtml(owner)}</button>`
+                    : escapeHtml(owner)}</p>
                   <p>${escapeHtml(application.message)}</p>
                   <div class="request-meta">
                     <span>Sent ${escapeHtml(formatDate(application.created_at))}</span>
@@ -3330,7 +3340,6 @@
         button.onclick = () => openInterview(button.dataset.interview);
       });
       bindReviewButtons();
-      bindProfileViewButtons();
     }
 
     function bindProfileViewButtons() {
@@ -3384,12 +3393,15 @@
       $('#view-profile-reviews').innerHTML = reputation.received.slice(0, 4).map(review => `
         <article class="review-entry">
           <div class="review-entry-meta">
-            <span>${escapeHtml(review.reviewer?.display_name || 'Project participant')} · ${escapeHtml(review.projects?.title || 'Project')}</span>
+            <span>${review.reviewer_id
+              ? `<button type="button" class="link-button" data-view-profile="${escapeHtml(review.reviewer_id)}">${escapeHtml(review.reviewer?.display_name || 'Project participant')}</button>`
+              : escapeHtml(review.reviewer?.display_name || 'Project participant')} · ${escapeHtml(review.projects?.title || 'Project')}</span>
             <span class="reputation-stars">${starText(review.rating)}</span>
           </div>
           ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}
         </article>
       `).join('');
+      bindProfileViewButtons();
       openModal('view-profile');
     }
 
@@ -3450,7 +3462,9 @@
       $('#profile-review-list').innerHTML = reputation.received.slice(0, 4).map(review => `
         <article class="review-entry">
           <div class="review-entry-meta">
-            <span>${escapeHtml(review.reviewer?.display_name || 'Project participant')} · ${escapeHtml(review.projects?.title || 'Project')}</span>
+            <span>${review.reviewer_id
+              ? `<button type="button" class="link-button" data-view-profile="${escapeHtml(review.reviewer_id)}">${escapeHtml(review.reviewer?.display_name || 'Project participant')}</button>`
+              : escapeHtml(review.reviewer?.display_name || 'Project participant')} · ${escapeHtml(review.projects?.title || 'Project')}</span>
             <span class="reputation-stars">${starText(review.rating)}</span>
           </div>
           ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}
@@ -3660,7 +3674,11 @@
       if (!activeProject) return;
       $('#detail-title').textContent = activeProject.title;
       const detailSeats = Number(activeProject.seats_total) || 0;
-      $('#detail-owner').textContent = `Shared by ${activeProject.owner}${detailSeats ? ` · ${detailSeats} ${detailSeats === 1 ? 'seat' : 'seats'}` : ''}`;
+      const detailSeatSuffix = detailSeats ? ` · ${detailSeats} ${detailSeats === 1 ? 'seat' : 'seats'}` : '';
+      $('#detail-owner').innerHTML = activeProject.owner_id
+        ? `Shared by <button type="button" class="link-button" data-view-profile="${escapeHtml(activeProject.owner_id)}">${escapeHtml(activeProject.owner)}</button>${escapeHtml(detailSeatSuffix)}`
+        : escapeHtml(`Shared by ${activeProject.owner}${detailSeatSuffix}`);
+      bindProfileViewButtons();
       $('#detail-description').textContent = activeProject.description;
       $('#detail-tags').innerHTML = projectTags(activeProject).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
       const detailCover = $('#detail-cover-image');
@@ -3875,6 +3893,27 @@
     }
 
     async function reviewApplication(id, status) {
+      // seats_total was purely decorative — nothing stopped an owner from
+      // accepting past the stated capacity. Warn instead of silently
+      // allowing it; final call still stays with the owner.
+      if (status === 'accepted') {
+        const application = applications.find(item => String(item.id) === String(id));
+        const project = application && ownedProjects.find(item => String(item.id) === String(application.project_id));
+        if (project) {
+          const seatLimit = Number(project.seats_total) || 0;
+          const filledSeats = applications.filter(item =>
+            String(item.project_id) === String(project.id) &&
+            String(item.id) !== String(id) &&
+            ['accepted', 'interview'].includes(item.status)
+          ).length;
+          if (seatLimit && filledSeats >= seatLimit) {
+            const proceed = window.confirm(
+              `${project.title} lists ${seatLimit} ${seatLimit === 1 ? 'seat' : 'seats'} and already has ${filledSeats} accepted or in interview. Accept anyway?`
+            );
+            if (!proceed) return;
+          }
+        }
+      }
       const result = await supabase.from('applications').update({ status }).eq('id', id);
       if (result.error) return toast(result.error.message);
       toast(
