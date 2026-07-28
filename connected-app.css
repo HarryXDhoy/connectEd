@@ -648,8 +648,13 @@
         0 10px 28px color-mix(in oklab, var(--accent), transparent 62%);
     }
     main {
-      width: min(100%, 1460px);
-      margin: 16px auto 0;
+      /* This used to cap <main> itself at 1460px and center it — on any
+         viewport wider than that (any modern desktop/ultrawide), it left a
+         dead, empty margin on both edges that the hero's full-bleed globe
+         couldn't actually reach, looking like content was cut off. Each
+         section already manages its own readable width via .container;
+         <main> doesn't need a second, conflicting cap on top of that. */
+      margin: 16px 0 0;
     }
     .hero {
       min-height: calc(100vh - 136px);
