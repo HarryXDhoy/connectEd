@@ -312,6 +312,17 @@ import {
       modal.closeTimer = window.setTimeout(finish, 170);
     }
 
+    // 'error' doesn't bubble, but the capture phase still sees it — this
+    // lets one listener cover every pin-thumb cover image ever rendered,
+    // instead of needing an inline onerror="..." (which would force
+    // script-src 'unsafe-inline' in the CSP) or re-binding after each render.
+    document.addEventListener('error', event => {
+      const img = event.target;
+      if (img instanceof HTMLImageElement && img.classList.contains('pin-thumb') && img.dataset.fallbackCover && img.src !== img.dataset.fallbackCover) {
+        img.src = img.dataset.fallbackCover;
+      }
+    }, true);
+
     document.addEventListener('keydown', event => {
       if (!activeModal) return;
       if (event.key === 'Escape') {
@@ -752,8 +763,8 @@ import {
       return `
         <article class="pin glass" data-od-id="${owned ? 'owned' : 'discover'}-project-${escapeHtml(project.id)}">
           <div class="pin-cover">
-            <img src="${projectImageData(project) || projectCover(project)}" alt="" loading="lazy" decoding="async"
-              onerror="this.onerror=null;this.src='${projectCover(project)}'">
+            <img class="pin-thumb" src="${escapeHtml(projectImageData(project) || projectCover(project))}" alt="" loading="lazy" decoding="async"
+              data-fallback-cover="${escapeHtml(projectCover(project))}">
             <span class="pin-status ${statusClass}">${statusLabel}</span>
           </div>
           <div class="pin-body">

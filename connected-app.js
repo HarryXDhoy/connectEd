@@ -353,8 +353,8 @@ import {
             return `
               <article class="pin glass" data-od-id="project-card-${escapeHtml(project.id)}">
                 <div class="pin-cover">
-                  <img src="${projectImageData(project) || projectCover(project)}" alt="" loading="lazy" decoding="async"
-                    onerror="this.onerror=null;this.src='${projectCover(project)}'">
+                  <img class="pin-thumb" src="${escapeHtml(projectImageData(project) || projectCover(project))}" alt="" loading="lazy" decoding="async"
+                    data-fallback-cover="${escapeHtml(projectCover(project))}">
                   <span class="pin-status ${statusClass}">${statusLabel}</span>
                 </div>
                 <div class="pin-body">
@@ -382,6 +382,16 @@ import {
 
       $$('[data-project]').forEach(button => {
         button.onclick = () => showProject(button.dataset.project);
+      });
+      // An inline onerror="..." attribute here would need script-src
+      // 'unsafe-inline' in the CSP just for this one fallback; binding it
+      // as a real listener after insertion means the CSP doesn't have to
+      // trust arbitrary inline script at all.
+      $$('.pin-thumb[data-fallback-cover]').forEach(img => {
+        img.onerror = () => {
+          img.onerror = null;
+          img.src = img.dataset.fallbackCover;
+        };
       });
       const clearView = $('#clear-project-view');
       if (clearView) {
@@ -514,7 +524,7 @@ import {
     function showMemberProjects(node) {
       const projectCard = project => {
         const seatCount = Number(project.seats_total) || 0;
-        const cover = projectImageData(project) || projectCover(project);
+        const cover = escapeHtml(projectImageData(project) || projectCover(project));
         return `
           <article class="member-project-item">
             <img class="member-project-cover" src="${cover}" alt="" loading="lazy" decoding="async">
@@ -1725,7 +1735,7 @@ import {
         stageButton.hidden = false;
         stageButton.textContent = alreadyShared ? 'Update location' : 'Share location';
         stageButton.onclick = accountUser
-          ? event => shareLocationInline(event.currentTarget, stageButton.textContent)
+          ? () => openModal('location')
           : () => openModal('auth');
       }
 
@@ -1742,36 +1752,87 @@ import {
         invite.hidden = true;
         try { localStorage.setItem(dismissKey, 'dismissed'); } catch (_) {}
       };
-      $('#location-invite-share').onclick = event => shareLocationInline(event.currentTarget);
+      $('#location-invite-share').onclick = () => openModal('location');
     }
 
-    function shareLocationInline(button, originalLabel = 'Share location') {
+    async function saveMemberLocation({ label = null, latitude, longitude }) {
+      try {
+        const profileResult = await supabase.from('profiles')
+          .update({ location_label: label, location_latitude: latitude, location_longitude: longitude })
+          .eq('id', accountUser.id);
+        if (profileResult.error) throw profileResult.error;
+        toast('Pinned. Reloading the Earth…');
+        window.setTimeout(() => window.location.reload(), 900);
+        return true;
+      } catch (error) {
+        toast(error.message || 'Location could not be saved.');
+        return false;
+      }
+    }
+
+    // Typing a city needs no GPS permission — geocode it through a free,
+    // keyless lookup so pinning yourself works either way, matching the
+    // same option already offered in the profile tab.
+    async function geocodeLabel(label) {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(label)}`,
+          { headers: { Accept: 'application/json' } }
+        );
+        if (!response.ok) return null;
+        const results = await response.json();
+        const match = results[0];
+        if (!match) return null;
+        return { latitude: Number(Number(match.lat).toFixed(2)), longitude: Number(Number(match.lon).toFixed(2)) };
+      } catch (_) {
+        return null;
+      }
+    }
+
+    $('#location-use-gps').onclick = event => {
+      if (!accountUser) return toast('Sign in to pin your location.');
       if (!navigator.geolocation) return toast('Location is not supported by this browser.');
+      const button = event.currentTarget;
+      const original = button.textContent;
       button.disabled = true;
       button.textContent = 'Locating…';
-      const restore = () => {
-        button.disabled = false;
-        button.textContent = originalLabel;
-      };
       navigator.geolocation.getCurrentPosition(async position => {
         const latitude = Number(position.coords.latitude.toFixed(2));
         const longitude = Number(position.coords.longitude.toFixed(2));
-        try {
-          const profileResult = await supabase.from('profiles')
-            .update({ location_label: null, location_latitude: latitude, location_longitude: longitude })
-            .eq('id', accountUser.id);
-          if (profileResult.error) throw profileResult.error;
-          toast('Pinned. Reloading the Earth…');
-          window.setTimeout(() => window.location.reload(), 900);
-        } catch (error) {
-          toast(error.message || 'Location could not be saved.');
-          restore();
+        const saved = await saveMemberLocation({ latitude, longitude });
+        if (!saved) {
+          button.disabled = false;
+          button.textContent = original;
         }
       }, error => {
         toast(error.code === 1 ? 'Location permission was not granted.' : 'Your location could not be determined.');
-        restore();
+        button.disabled = false;
+        button.textContent = original;
       }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
-    }
+    };
+
+    $('#location-form').onsubmit = async event => {
+      event.preventDefault();
+      if (!accountUser) return toast('Sign in to pin your location.');
+      const label = String(event.currentTarget.city.value || '').trim();
+      if (!label) return toast('Type a city, or use "Use my current location".');
+      const submitButton = event.currentTarget.querySelector('[type="submit"]');
+      const original = submitButton.textContent;
+      submitButton.disabled = true;
+      submitButton.textContent = 'Looking up…';
+      const geocoded = await geocodeLabel(label);
+      if (!geocoded) {
+        toast('Could not find that location — try being more specific.');
+        submitButton.disabled = false;
+        submitButton.textContent = original;
+        return;
+      }
+      const saved = await saveMemberLocation({ label, latitude: geocoded.latitude, longitude: geocoded.longitude });
+      if (!saved) {
+        submitButton.disabled = false;
+        submitButton.textContent = original;
+      }
+    };
 
     if (supabase) {
       supabase.auth.onAuthStateChange(() => refreshAccount());

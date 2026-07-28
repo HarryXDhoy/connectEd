@@ -315,6 +315,23 @@
     </div>
   </div>
 
+  <div id="modal-location" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="location-modal-title" tabindex="-1">
+    <div class="modal glass">
+      <div class="modal-head">
+        <div><p class="eyebrow">Live member network</p><h2 id="location-modal-title">Pin yourself on the Earth</h2></div>
+        <button class="close" data-close="location" aria-label="Close">×</button>
+      </div>
+      <p class="section-copy">Approximate only — rounded to about a kilometre before it's saved.</p>
+      <form id="location-form" class="form">
+        <label>City or region<input class="field" name="city" maxlength="100" placeholder="Seoul, South Korea"></label>
+        <div class="form-actions">
+          <button class="btn" type="button" id="location-use-gps">Use my current location</button>
+          <button class="btn btn-primary" type="submit">Pin my location</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="app-config.js?v=20260727"></script>

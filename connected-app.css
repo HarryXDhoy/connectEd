@@ -1012,8 +1012,11 @@
     .network-focus,
     .network-step {
       position: absolute;
-      border: 1px solid color-mix(in oklab, var(--fg), transparent 55%);
-      background: var(--bg);
+      border: 1px solid color-mix(in oklab, var(--fg), transparent 45%);
+      /* A background matching the page exactly reads as an outline, not a
+         button — the same lighter fill every other .btn uses makes these
+         pills actually look pressable instead of just labeled text. */
+      background: var(--surface-warm);
       box-shadow: 0 4px 16px color-mix(in oklab, black, transparent 45%);
       color: var(--fg);
       font: 600 var(--text-xs)/1.35 var(--font-mono);
@@ -1033,10 +1036,10 @@
       right: var(--space-4);
       min-height: 36px;
       pointer-events: auto;
-      border: 1px solid color-mix(in oklab, var(--fg), transparent 55%);
+      border: 1px solid color-mix(in oklab, var(--fg), transparent 45%);
       border-radius: var(--radius-pill);
       padding: 0 var(--space-3);
-      background: var(--bg);
+      background: var(--surface-warm);
       box-shadow: 0 4px 16px color-mix(in oklab, black, transparent 45%);
       color: var(--fg);
       font: 600 var(--text-xs)/1 var(--font-mono);
@@ -1509,7 +1512,7 @@
     .network-kicker,
     .network-motion-toggle,
     .network-step {
-      background: var(--bg);
+      background: var(--surface-warm);
     }
     section:not(.hero) { padding-block: var(--section-y-desktop); }
     .section-head,
