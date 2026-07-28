@@ -176,6 +176,7 @@
     }
     .search span { position: absolute; right: 17px; top: 13px; color: var(--meta); }
     .nav-actions { display: flex; gap: var(--space-2); align-items: center; }
+    .google-icon { flex-shrink: 0; }
     .btn {
       min-height: 44px;
       display: inline-flex;

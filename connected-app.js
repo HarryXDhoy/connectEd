@@ -247,7 +247,15 @@ import {
           || user.email
           || 'Account';
         const initial = String(displayName).trim().charAt(0) || 'A';
-        const avatarUrl = String(user.user_metadata?.avatar_url || user.user_metadata?.picture || '').trim();
+        // profiles.avatar_url is the source of truth once a member uploads
+        // their own photo in the Profile tab — the auth metadata photo
+        // (Google's picture) is only a fallback for before that happens.
+        let profileAvatarUrl = '';
+        if (isSupabaseConfigured) {
+          const { data } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle();
+          profileAvatarUrl = String(data?.avatar_url || '').trim();
+        }
+        const avatarUrl = profileAvatarUrl || String(user.user_metadata?.avatar_url || user.user_metadata?.picture || '').trim();
         avatarInitial.textContent = initial;
         avatarImg.referrerPolicy = 'no-referrer';
         avatarImg.onerror = () => {

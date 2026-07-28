@@ -183,6 +183,7 @@
       font-size: var(--text-sm);
     }
     .nav-actions { display: flex; align-items: center; gap: var(--space-2); }
+    .google-icon { flex-shrink: 0; }
     .btn {
       min-height: 44px;
       display: inline-flex;
