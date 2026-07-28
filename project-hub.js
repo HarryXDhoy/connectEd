@@ -37,12 +37,19 @@ import {
       const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_IMAGE_PREFIX));
       return marker ? String(marker).slice(PROJECT_IMAGE_PREFIX.length) : '';
     };
-    const userLocation = targetUser => {
-      const location = targetUser?.user_metadata?.connected_location;
-      const latitude = Number(location?.latitude);
-      const longitude = Number(location?.longitude);
+    // profiles.location_* columns are the single source of truth for a
+    // member's shared location. An earlier version also mirrored this into
+    // auth user_metadata and into a hidden tag on every owned project —
+    // three copies that could (and did) drift out of sync on a partial
+    // failure. Reading straight from the loaded profile row here removes
+    // that whole class of bug.
+    const profileLocation = profileRow => {
+      // Number.isFinite (no coercion) on purpose: Number(null) is 0, a
+      // real-looking coordinate, so a coerced check would treat "no
+      // location saved" as "shared at 0°,0°".
+      const latitude = profileRow?.location_latitude;
+      const longitude = profileRow?.location_longitude;
       if (
-        !location?.shared ||
         !Number.isFinite(latitude) ||
         !Number.isFinite(longitude) ||
         latitude < -90 || latitude > 90 ||
@@ -50,14 +57,11 @@ import {
       ) return null;
       return {
         shared: true,
-        label: String(location.label || '').trim().slice(0, 100),
+        label: String(profileRow?.location_label || '').trim().slice(0, 100),
         latitude,
         longitude
       };
     };
-    const locationTag = location => location
-      ? `${PROJECT_LOCATION_PREFIX}${location.latitude.toFixed(2)}|${location.longitude.toFixed(2)}|${encodeURIComponent(location.label)}`
-      : '';
     const fileToDataUrl = file => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result || ''));
@@ -619,7 +623,7 @@ import {
       try {
         dismissed = Boolean(user) && localStorage.getItem(`connected:location-invite:${user.id}`) === 'dismissed';
       } catch (_) {}
-      nudge.hidden = !user || !isSupabaseConfigured || dismissed || Boolean(userLocation(user));
+      nudge.hidden = !user || !isSupabaseConfigured || dismissed || Boolean(profileLocation(profile));
     }
     $('#location-nudge-share').onclick = event => shareLocationInline(event.currentTarget);
     $('#location-nudge-dismiss').onclick = () => {
@@ -642,21 +646,11 @@ import {
       navigator.geolocation.getCurrentPosition(async position => {
         const latitude = Number(position.coords.latitude.toFixed(2));
         const longitude = Number(position.coords.longitude.toFixed(2));
-        const location = { shared: true, label: '', latitude, longitude };
         try {
-          const authResult = await supabase.auth.updateUser({ data: { connected_location: location } });
-          if (authResult.error) throw authResult.error;
-          user = authResult.data.user || user;
           const profileResult = await supabase.from('profiles')
             .update({ location_label: null, location_latitude: latitude, location_longitude: longitude })
             .eq('id', user.id);
-          if (profileResult.error && !/permission denied/i.test(profileResult.error.message)) throw profileResult.error;
-          const marker = locationTag(location);
-          await Promise.all(ownedProjects.map(project => {
-            const tags = (project.tags || []).filter(tag => !String(tag).startsWith(PROJECT_LOCATION_PREFIX));
-            tags.push(marker);
-            return supabase.from('projects').update({ tags }).eq('id', project.id);
-          }));
+          if (profileResult.error) throw profileResult.error;
           toast('Pinned on the Earth view.');
           await loadAll();
         } catch (error) {
@@ -1158,7 +1152,7 @@ import {
         $(`#profile-form [name=${key}]`).value = profile?.[key] || '';
       }
       $('#profile-form [name=skills]').value = (profile?.skills || []).join(', ');
-      const location = userLocation(user);
+      const location = profileLocation(profile);
       $('#profile-form [name=location_label]').value = location?.label || '';
       $('#profile-form [name=location_latitude]').value = location?.latitude ?? '';
       $('#profile-form [name=location_longitude]').value = location?.longitude ?? '';
@@ -1488,8 +1482,6 @@ import {
       if ((existingProject?.tags || []).includes(APPLICATIONS_PAUSED_TAG)) {
         tags.push(APPLICATIONS_PAUSED_TAG);
       }
-      const sharedLocationTag = locationTag(userLocation(user));
-      if (sharedLocationTag) tags.push(sharedLocationTag);
       const payload = {
         title: String(values.get('title')).trim(),
         summary: String(values.get('summary')).trim(),
@@ -1872,6 +1864,9 @@ import {
         ...(pendingAvatarDataUrl ? { avatar_url: pendingAvatarDataUrl, custom_avatar: true } : {}),
         ...(pendingBannerDataUrl ? { banner_url: pendingBannerDataUrl } : {})
       };
+      // profiles.location_* is the only place location is written now — no
+      // parallel auth-metadata copy and no per-project tag to keep in sync.
+      let savedMessage = 'Profile saved.';
       let result = await supabase.from('profiles').update({
         ...profileBase,
         ...imageUpdates,
@@ -1881,35 +1876,20 @@ import {
       }).eq('id', user.id);
       if (result.error && /permission denied/i.test(result.error.message)) {
         // The location columns migration has not been applied yet — save the
-        // rest of the profile and keep location in auth metadata only.
+        // rest of the profile; location can't be persisted until it is.
         result = await supabase.from('profiles').update({ ...profileBase, ...imageUpdates }).eq('id', user.id);
+        if (location) savedMessage = 'Profile saved, but location needs a database migration first.';
       }
       if (result.error && /permission denied/i.test(result.error.message)) {
         // Photo/cover columns not migrated yet — save the rest of the
         // profile rather than blocking the whole form on it.
         result = await supabase.from('profiles').update(profileBase).eq('id', user.id);
-        toast('Profile saved, but photo/cover updates need a database migration first.');
+        savedMessage = 'Profile saved, but photo/cover updates need a database migration first.';
       }
       if (result.error) return toast(result.error.message);
       pendingAvatarDataUrl = null;
       pendingBannerDataUrl = null;
-
-      const authResult = await supabase.auth.updateUser({
-        data: { connected_location: location }
-      });
-      if (authResult.error) return toast(authResult.error.message);
-      user = authResult.data.user || user;
-
-      const marker = locationTag(location);
-      const locationUpdates = await Promise.all(ownedProjects.map(project => {
-        const tags = (project.tags || [])
-          .filter(tag => !String(tag).startsWith(PROJECT_LOCATION_PREFIX));
-        if (marker) tags.push(marker);
-        return supabase.from('projects').update({ tags }).eq('id', project.id);
-      }));
-      const locationError = locationUpdates.find(update => update.error)?.error;
-      if (locationError) return toast(locationError.message);
-      toast('Profile saved.');
+      toast(savedMessage);
       await loadAll();
     }
 

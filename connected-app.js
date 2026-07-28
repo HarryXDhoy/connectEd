@@ -34,12 +34,19 @@ import {
       const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_IMAGE_PREFIX));
       return marker ? String(marker).slice(PROJECT_IMAGE_PREFIX.length) : '';
     };
-    const userLocation = targetUser => {
-      const location = targetUser?.user_metadata?.connected_location;
-      const latitude = Number(location?.latitude);
-      const longitude = Number(location?.longitude);
+    // profiles.location_* columns are the single source of truth for a
+    // member's shared location. An earlier version also mirrored this into
+    // auth user_metadata and into a hidden tag on every owned project —
+    // three copies that could (and did) drift out of sync on a partial
+    // failure. Reading straight from the loaded profile row here removes
+    // that whole class of bug.
+    const profileLocation = profileRow => {
+      // Number.isFinite (no coercion) on purpose: Number(null) is 0, a
+      // real-looking coordinate, so a coerced check would treat "no
+      // location saved" as "shared at 0°,0°".
+      const latitude = profileRow?.location_latitude;
+      const longitude = profileRow?.location_longitude;
       if (
-        !location?.shared ||
         !Number.isFinite(latitude) ||
         !Number.isFinite(longitude) ||
         latitude < -90 || latitude > 90 ||
@@ -47,31 +54,10 @@ import {
       ) return null;
       return {
         shared: true,
-        label: String(location.label || '').trim().slice(0, 100),
+        label: String(profileRow?.location_label || '').trim().slice(0, 100),
         latitude,
         longitude
       };
-    };
-    const locationTag = location => location
-      ? `${PROJECT_LOCATION_PREFIX}${location.latitude.toFixed(2)}|${location.longitude.toFixed(2)}|${encodeURIComponent(location.label)}`
-      : '';
-    const projectLocationData = project => {
-      const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_LOCATION_PREFIX));
-      if (!marker) return null;
-      const [latitudeValue, longitudeValue, labelValue = ''] = String(marker)
-        .slice(PROJECT_LOCATION_PREFIX.length)
-        .split('|');
-      const latitude = Number(latitudeValue);
-      const longitude = Number(longitudeValue);
-      if (
-        !Number.isFinite(latitude) ||
-        !Number.isFinite(longitude) ||
-        latitude < -90 || latitude > 90 ||
-        longitude < -180 || longitude > 180
-      ) return null;
-      let label = '';
-      try { label = decodeURIComponent(labelValue); } catch (_) {}
-      return { latitude, longitude, label: label.slice(0, 100) };
     };
     const fileToDataUrl = file => new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -232,9 +218,11 @@ import {
     });
 
     let accountUser = null;
+    let accountProfile = null;
     async function refreshAccount() {
       const user = await currentUser();
       accountUser = user;
+      accountProfile = null;
       const button = $('#account-button');
       const avatar = $('#account-avatar');
       const avatarImg = $('#account-avatar-img');
@@ -250,11 +238,16 @@ import {
         // profiles.avatar_url is the source of truth once a member uploads
         // their own photo in the Profile tab — the auth metadata photo
         // (Google's picture) is only a fallback for before that happens.
-        let profileAvatarUrl = '';
+        // Fetched alongside location here so initLocationInvite() doesn't
+        // need a second round trip just to check location_latitude.
         if (isSupabaseConfigured) {
-          const { data } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle();
-          profileAvatarUrl = String(data?.avatar_url || '').trim();
+          const { data } = await supabase.from('profiles')
+            .select('avatar_url,location_label,location_latitude,location_longitude')
+            .eq('id', user.id)
+            .maybeSingle();
+          accountProfile = data || null;
         }
+        const profileAvatarUrl = String(accountProfile?.avatar_url || '').trim();
         const avatarUrl = profileAvatarUrl || String(user.user_metadata?.avatar_url || user.user_metadata?.picture || '').trim();
         avatarInitial.textContent = initial;
         avatarImg.referrerPolicy = 'no-referrer';
@@ -559,8 +552,6 @@ import {
       const image = values.get('image');
       const tags = safeTags(values.get('tags'));
       if (image instanceof File && image.size) tags.push(await optimizeProjectImage(image));
-      const sharedLocationTag = locationTag(userLocation(user));
-      if (sharedLocationTag) tags.push(sharedLocationTag);
       const { data, error } = await supabase.from('projects').insert({
         owner_id: user.id,
         title: String(values.get('title')).trim(),
@@ -1517,7 +1508,7 @@ import {
         return;
       }
 
-      const alreadyShared = Boolean(accountUser && userLocation(accountUser));
+      const alreadyShared = Boolean(accountUser && profileLocation(accountProfile));
 
       // Visible even signed out — clicking it while signed out opens sign-in
       // first; once that completes, onAuthStateChange re-runs this function
@@ -1557,22 +1548,11 @@ import {
       navigator.geolocation.getCurrentPosition(async position => {
         const latitude = Number(position.coords.latitude.toFixed(2));
         const longitude = Number(position.coords.longitude.toFixed(2));
-        const location = { shared: true, label: '', latitude, longitude };
         try {
-          const authResult = await supabase.auth.updateUser({ data: { connected_location: location } });
-          if (authResult.error) throw authResult.error;
-          accountUser = authResult.data.user || accountUser;
           const profileResult = await supabase.from('profiles')
             .update({ location_label: null, location_latitude: latitude, location_longitude: longitude })
             .eq('id', accountUser.id);
-          if (profileResult.error && !/permission denied/i.test(profileResult.error.message)) throw profileResult.error;
-          const marker = locationTag(location);
-          const ownedProjects = projects.filter(project => project.owner_id === accountUser.id);
-          await Promise.all(ownedProjects.map(project => {
-            const tags = (project.tags || []).filter(tag => !String(tag).startsWith(PROJECT_LOCATION_PREFIX));
-            tags.push(marker);
-            return supabase.from('projects').update({ tags }).eq('id', project.id);
-          }));
+          if (profileResult.error) throw profileResult.error;
           toast('Pinned. Reloading the Earth…');
           window.setTimeout(() => window.location.reload(), 900);
         } catch (error) {
