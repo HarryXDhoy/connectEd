@@ -943,8 +943,8 @@ import {
 
         // Dot-matrix landmasses: fibonacci-sample the sphere, keep points that
         // fall on land. Land comes from Natural Earth 110m coastlines,
-        // rasterized once into a 0.5-degree mask; the stylized hulls below are
-        // only the offline fallback.
+        // rasterized once into a 0.25-degree mask; the stylized hulls below
+        // are only the offline fallback.
         const continentShapes = [
           [[-168, 71], [-140, 60], [-125, 49], [-117, 32], [-98, 18], [-82, 25], [-65, 45], [-82, 59], [-108, 72], [-140, 70], [-168, 71]],
           [[-81, 12], [-66, 9], [-51, -5], [-42, -23], [-57, -55], [-72, -40], [-79, -10], [-81, 12]],
@@ -972,10 +972,19 @@ import {
             import('https://cdn.jsdelivr.net/npm/topojson-client@3/+esm'),
             fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json').then(response => response.json())
           ]);
-          const geometry = feature(world, world.objects.land).geometry;
+          // world.objects.land is a GeometryCollection, so topojson's
+          // feature() returns a FeatureCollection (one Feature per land
+          // mass) rather than a single Feature — reading `.geometry` off
+          // the collection itself was always undefined, silently throwing
+          // and falling back to the six-hull approximation below on every
+          // load. Iterate the features instead.
+          const landFeatures = feature(world, world.objects.land).features;
           const rings = [];
-          (geometry.type === 'MultiPolygon' ? geometry.coordinates : [geometry.coordinates])
-            .forEach(polygon => polygon.forEach(ring => rings.push(ring)));
+          landFeatures.forEach(({ geometry }) => {
+            if (!geometry) return;
+            const polygons = geometry.type === 'MultiPolygon' ? geometry.coordinates : [geometry.coordinates];
+            polygons.forEach(polygon => polygon.forEach(ring => rings.push(ring)));
+          });
           const maskWidth = 1440;
           const maskHeight = 720;
           const mask = new Uint8Array(maskWidth * maskHeight);
