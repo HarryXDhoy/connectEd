@@ -517,7 +517,10 @@
     }
     .calendar-day {
       position: relative;
-      aspect-ratio: 1;
+      /* Fixed height, not aspect-ratio: with implicit 1fr grid columns,
+         aspect-ratio row sizing can spiral into a wildly oversized row in
+         some browsers — a known CSS grid + aspect-ratio interaction hazard. */
+      height: 40px;
       display: grid;
       place-items: center;
       border: 1px solid transparent;
@@ -527,7 +530,10 @@
       font: inherit;
       cursor: pointer;
     }
-    .calendar-day.empty { visibility: hidden; cursor: default; }
+    /* Named calendar-day-blank, not "empty" — that class already means a
+       heavily-padded no-results block elsewhere on the page, and colliding
+       with it here was blowing these cells up to ~150px tall. */
+    .calendar-day-blank { visibility: hidden; cursor: default; }
     .calendar-day:hover { background: var(--surface); }
     .calendar-day.today { border-color: var(--border); }
     .calendar-day.has-interview { color: var(--accent); font-weight: 500; }
@@ -3489,7 +3495,7 @@
       const grid = $('#calendar-grid');
       grid.innerHTML = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => `<span class="calendar-weekday">${day}</span>`).join('')
         + cells.map(day => {
-          if (!day) return '<span class="calendar-day empty"></span>';
+          if (!day) return '<span class="calendar-day calendar-day-blank"></span>';
           const dayItems = byDay.get(`${year}-${month}-${day}`) || [];
           const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
           return `<button type="button" class="calendar-day${dayItems.length ? ' has-interview' : ''}${isToday ? ' today' : ''}" data-day="${day}">${day}${dayItems.length ? '<span class="calendar-dot"></span>' : ''}</button>`;
