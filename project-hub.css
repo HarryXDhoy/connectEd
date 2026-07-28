@@ -176,6 +176,30 @@
     }
     .search span { position: absolute; right: 17px; top: 13px; color: var(--meta); }
     .nav-actions { display: flex; gap: var(--space-2); align-items: center; }
+    .nav-burger {
+      display: none;
+      flex: 0 0 auto;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: var(--radius-md);
+      background: transparent;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    .nav-burger span {
+      width: 20px;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--fg);
+      transition: transform var(--motion-fast) var(--ease-standard), opacity var(--motion-fast) var(--ease-standard);
+    }
+    .nav-burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+    .nav-burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
     .google-icon { flex-shrink: 0; }
     .btn {
       min-height: 44px;
@@ -1151,12 +1175,7 @@
         width: min(calc(100% - var(--container-gutter-phone) * 2), var(--container-max));
       }
       .nav { min-height: 64px; gap: var(--space-3); }
-      .nav-actions .btn-ghost { display: none; }
       .notification-wrap .btn { padding-inline: var(--space-3); }
-      /* Only collapse to icon-only once there's actually a photo to show —
-         otherwise a signed-out visitor gets a blank button with no "Sign
-         in" text and no avatar to replace it. */
-      .account-control:has(.account-photo:not([hidden])) .account-label { display: none; }
       .request-status { grid-column: 2; justify-self: start; }
       .applicant-group-head { align-items: flex-start; padding: var(--space-4); }
       .applicant-group-counts { justify-content: flex-end; }
@@ -1894,21 +1913,69 @@
         top: 0;
         width: 100%;
         border-radius: 0;
+        /* The rounded pill shape overflow:hidden protects is already gone
+           at this width (border-radius: 0 above), so it's free to stop
+           clipping the nav-actions dropdown that hangs below the header. */
+        overflow: visible;
       }
       .topbar .container { width: min(calc(100% - 32px), var(--container-max)); }
+      /* Post a project / Updates / Sign in all tucked behind the burger —
+         each has an equivalent reachable from the page body (the board's
+         own "Post a project" button, and auth prompts fire on demand when
+         a signed-out visitor tries to do something that needs it), so
+         nothing is actually lost by clearing them out of a crowded header. */
+      /* .nav is a CSS grid at every wider breakpoint (brand | search | nav-
+         actions columns), which has no equivalent of flex's margin-left:
+         auto to push a new trailing item to the edge. Switching to flex
+         here is simpler than fighting grid auto-placement for one new
+         element; .search is forced onto its own line same as before. */
+      .nav {
+        position: relative;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .search { flex: 1 1 100%; order: 3; padding-bottom: 0; }
+      .nav-burger { display: flex; margin-left: auto; order: 2; }
+      .nav-actions { order: 4; }
+      .nav-actions {
+        /* .topbar's overflow:hidden (for its rounded pill corners at wider
+           breakpoints) used to clip this the moment it hung below the
+           header's own box; set to overflow:visible above now that the
+           corners are square anyway, so plain absolute positioning works. */
+        position: absolute;
+        top: calc(100% + var(--space-2));
+        right: 0;
+        z-index: 40;
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-2);
+        min-width: 220px;
+        padding: var(--space-3);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        box-shadow: var(--elev-raised);
+      }
+      .nav-actions.open { display: flex; }
+      .nav-actions .btn { width: 100%; }
       .board-shell { border-radius: 0; }
       .board-shell > .container { padding: var(--space-6) var(--container-gutter-phone); }
       .board-status { align-self: flex-start; }
-      /* A single grid column just stacks cards top to bottom — switch to a
-         2-up CSS column layout so cards actually stagger like a masonry
-         feed on phones instead of one long list. */
+      /* A 2-up column feed crammed titles into a couple of words and forced
+         the Save/View buttons onto their own line every time — there just
+         wasn't room. A single, slightly taller card reads far better on a
+         phone-width screen than two cramped ones. */
       .masonry {
-        display: block;
-        columns: 2;
-        column-gap: var(--space-3);
+        grid-template-columns: 1fr;
+        gap: var(--space-4);
       }
-      .masonry > .pin { margin: 0 0 var(--space-3); break-inside: avoid; }
-      .masonry > .empty, .masonry > .auth-wall { column-span: all; }
+      .pin { min-height: 0; }
+      .pin-cover { height: 200px; min-height: 200px; }
+      .pin-body { padding: var(--space-5) var(--space-4); }
+      .pin-title { font-size: var(--text-xl); }
+      .pin-foot { padding-top: var(--space-4); }
       .applicant-group-head { flex-direction: column; }
       .applicant-group-counts { justify-content: flex-start; }
     }

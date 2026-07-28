@@ -2047,6 +2047,30 @@ import {
       };
     });
     $$('[data-close]').forEach(button => button.onclick = () => closeModal(button.dataset.close));
+
+    const navBurger = $('#nav-burger');
+    const navActions = $('#nav-actions');
+    if (navBurger && navActions) {
+      const closeNavMenu = () => {
+        navActions.classList.remove('open');
+        navBurger.setAttribute('aria-expanded', 'false');
+      };
+      navBurger.addEventListener('click', () => {
+        const open = navActions.classList.toggle('open');
+        navBurger.setAttribute('aria-expanded', String(open));
+      });
+      navActions.querySelectorAll('a, button').forEach(control => {
+        control.addEventListener('click', closeNavMenu);
+      });
+      document.addEventListener('click', event => {
+        if (!navActions.classList.contains('open')) return;
+        if (navActions.contains(event.target) || navBurger.contains(event.target)) return;
+        closeNavMenu();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeNavMenu();
+      });
+    }
     $$('.modal-backdrop').forEach(backdrop => {
       backdrop.onclick = event => {
         if (event.target === backdrop) closeModal(backdrop.id.replace('modal-', ''));

@@ -785,6 +785,32 @@ import {
     $$('[data-open]:not(#account-button)').forEach(button => {
       if (button.dataset.open) button.addEventListener('click', () => openModal(button.dataset.open));
     });
+
+    const navBurger = $('#nav-burger');
+    const navActions = $('#nav-actions');
+    if (navBurger && navActions) {
+      const closeNavMenu = () => {
+        navActions.classList.remove('open');
+        navBurger.setAttribute('aria-expanded', 'false');
+      };
+      navBurger.addEventListener('click', () => {
+        const open = navActions.classList.toggle('open');
+        navBurger.setAttribute('aria-expanded', String(open));
+      });
+      // Tapping any actual action (sign in, browse projects) should close
+      // the menu behind it rather than leaving it hanging open.
+      navActions.querySelectorAll('a, button').forEach(control => {
+        control.addEventListener('click', closeNavMenu);
+      });
+      document.addEventListener('click', event => {
+        if (!navActions.classList.contains('open')) return;
+        if (navActions.contains(event.target) || navBurger.contains(event.target)) return;
+        closeNavMenu();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeNavMenu();
+      });
+    }
     $$('[data-close]').forEach(button => {
       button.onclick = () => closeModal(button.dataset.close);
     });
@@ -1063,11 +1089,15 @@ import {
           })
         ));
 
-        const participantRouteMaterial = new THREE.LineBasicMaterial({
-          color: color('--accent'),
-          transparent: true,
-          opacity: .58
-        });
+        // One line style per application status, so an arc's color tells you
+        // where that connection actually stands: pending is a dim, static
+        // thread (nothing confirmed yet), interview is amber, accepted is
+        // full accent green. Declined applications draw no arc at all.
+        const routeMaterials = {
+          pending: new THREE.LineBasicMaterial({ color: color('--muted'), transparent: true, opacity: .22 }),
+          interview: new THREE.LineBasicMaterial({ color: color('--warn'), transparent: true, opacity: .55 }),
+          accepted: new THREE.LineBasicMaterial({ color: color('--accent'), transparent: true, opacity: .62 })
+        };
         // Shown in the tooltip so a member can verify the pin against a real
         // map themselves — the globe itself is a stylized dot matrix with no
         // labels or borders, so the raw numbers are the only precise check.
@@ -1146,23 +1176,28 @@ import {
           };
         });
 
-        const routeCurves = [];
-        function addRoute(from, to) {
+        // pulseRoutes only holds statuses worth animating — a pending
+        // application isn't a live connection yet, so its arc is a static,
+        // dim thread rather than something with a pulse traveling on it.
+        const pulseRoutes = [];
+        function addRoute(from, to, status) {
           const start = latLonToVector(from.latitude, from.longitude, globeRadius + .07);
           const end = latLonToVector(to.latitude, to.longitude, globeRadius + .07);
           const midpoint = start.clone().add(end).normalize().multiplyScalar(globeRadius + .62);
           const curve = new THREE.QuadraticBezierCurve3(start, midpoint, end);
-          routeCurves.push(curve);
           earth.add(new THREE.Line(
             new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),
-            participantRouteMaterial
+            routeMaterials[status] || routeMaterials.pending
           ));
+          if (status !== 'pending') pulseRoutes.push({ curve, status });
         }
-        // Real collaboration arcs: accepted participants ↔ the owner of the
-        // project they joined, connecting two member nodes rather than a
-        // member to a project (projects are no longer nodes on this map).
-        // Row-level security scopes the query — signed-out visitors keep the
-        // ambient member pins without arcs.
+        // Real collaboration arcs, one per application status: connecting
+        // two member nodes rather than a member to a project (projects are
+        // no longer nodes on this map). Row-level security scopes the
+        // query to the signed-in viewer's own applications (sent or
+        // received) — signed-out visitors keep the ambient member pins
+        // without arcs, and a signed-in member sees their own connections,
+        // not everyone's.
         if (accountUser && isSupabaseConfigured) {
           try {
             const ownerByProjectId = new Map(projects.map(project => [String(project.id), String(project.owner_id)]));
@@ -1173,9 +1208,9 @@ import {
             const { data: teamLinks, error: teamError } = await supabase
               .from('applications')
               .select('project_id,applicant_id,status')
-              .eq('status', 'accepted');
+              .in('status', ['pending', 'interview', 'accepted']);
             if (!teamError) {
-              const drawnPairs = new Set();
+              const drawnPairs = new Map();
               (teamLinks || []).forEach(link => {
                 const ownerId = ownerByProjectId.get(String(link.project_id));
                 const applicantId = String(link.applicant_id);
@@ -1185,10 +1220,14 @@ import {
                 if (!ownerNode || !participantNode) return;
                 // Same cluster — a zero-length arc would render as an artifact.
                 if (ownerNode === participantNode) return;
+                // One arc per pair even if the same two people share more than
+                // one application — keep whichever status is furthest along.
+                const statusRank = { pending: 0, interview: 1, accepted: 2 };
                 const pairKey = [ownerId, applicantId].sort().join('|');
-                if (drawnPairs.has(pairKey)) return;
-                drawnPairs.add(pairKey);
-                addRoute(participantNode, ownerNode);
+                const existingRank = drawnPairs.get(pairKey);
+                if (existingRank !== undefined && existingRank >= statusRank[link.status]) return;
+                drawnPairs.set(pairKey, statusRank[link.status]);
+                addRoute(participantNode, ownerNode, link.status);
               });
             }
           } catch (_) {
@@ -1197,16 +1236,16 @@ import {
         }
 
         // Data packets travelling the routes — the "live network" signal.
-        const pulseMaterial = new THREE.MeshBasicMaterial({
-          color: color('--accent'),
-          transparent: true,
-          opacity: .9,
-          depthWrite: false
-        });
+        // Colored to match each arc's status so a moving accepted pulse
+        // doesn't look like it belongs to an amber interview thread.
+        const pulseMaterials = {
+          interview: new THREE.MeshBasicMaterial({ color: color('--warn'), transparent: true, opacity: .9, depthWrite: false }),
+          accepted: new THREE.MeshBasicMaterial({ color: color('--accent'), transparent: true, opacity: .9, depthWrite: false })
+        };
         const pulseGeometry = new THREE.SphereGeometry(.035, 12, 10);
-        const pulses = routeCurves.map((curve, index) => {
-          const pulse = new THREE.Mesh(pulseGeometry, pulseMaterial);
-          pulse.userData = { curve, offset: routeCurves.length ? index / routeCurves.length : 0 };
+        const pulses = pulseRoutes.map(({ curve, status }, index) => {
+          const pulse = new THREE.Mesh(pulseGeometry, pulseMaterials[status] || pulseMaterials.accepted);
+          pulse.userData = { curve, offset: pulseRoutes.length ? index / pulseRoutes.length : 0 };
           earth.add(pulse);
           return pulse;
         });

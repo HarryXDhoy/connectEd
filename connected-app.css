@@ -183,6 +183,35 @@
       font-size: var(--text-sm);
     }
     .nav-actions { display: flex; align-items: center; gap: var(--space-2); }
+    .nav-burger {
+      display: none;
+      flex: 0 0 auto;
+      /* Pushes the burger to the header's right edge on its own — .nav has
+         no justify-content, and normally .nav-search (flex:1) is what
+         eats the remaining space and shoves trailing items rightward, but
+         nav-search is hidden well before this button ever appears. */
+      margin-left: auto;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: var(--radius-md);
+      background: transparent;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    .nav-burger span {
+      width: 20px;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--fg);
+      transition: transform var(--motion-fast) var(--ease-standard), opacity var(--motion-fast) var(--ease-standard);
+    }
+    .nav-burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+    .nav-burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
     .google-icon { flex-shrink: 0; }
     .btn {
       min-height: 44px;
@@ -742,7 +771,6 @@
         width: min(calc(100% - var(--container-gutter-phone) * 2), var(--container-max));
       }
       .nav { min-height: 64px; }
-      .nav-actions .btn-ghost { display: none; }
       .hero { padding: var(--section-y-tablet) 0; }
       h1 { font-size: clamp(44px, 14vw, 62px); }
       .stage { min-height: 460px; margin-inline: -8px; }
@@ -1768,8 +1796,36 @@
         top: 0;
         width: 100%;
         border-radius: 0;
+        /* The rounded pill shape overflow:hidden protects is already gone
+           at this width (border-radius: 0 above), so it's free to stop
+           clipping the nav-actions dropdown that hangs below the header. */
+        overflow: visible;
       }
       .topbar .container { width: min(calc(100% - 32px), var(--container-max)); }
+      /* Everything that isn't the logo tucks behind the burger — Browse
+         projects and Sign in were either invisible or crowding a 375px
+         header before; a native-feeling menu button reads cleaner than
+         cramming pills into the same row as the logo. */
+      .nav { position: relative; }
+      .nav-burger { display: flex; }
+      .nav-actions {
+        position: absolute;
+        top: calc(100% + var(--space-2));
+        right: 0;
+        z-index: 40;
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-2);
+        min-width: 220px;
+        padding: var(--space-3);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        box-shadow: var(--elev-raised);
+      }
+      .nav-actions.open { display: flex; }
+      .nav-actions .btn { width: 100%; }
       .hero-grid {
         width: min(calc(100% - var(--container-gutter-phone) * 2), var(--container-max));
       }
