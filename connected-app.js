@@ -513,13 +513,17 @@ import {
     function showMemberProjects(node) {
       const projectCard = project => {
         const seatCount = Number(project.seats_total) || 0;
+        const cover = projectImageData(project) || projectCover(project);
         return `
           <article class="member-project-item">
-            <h3>${escapeHtml(project.title)}</h3>
-            <p>${escapeHtml(project.summary)}</p>
-            <div class="tags">${projectTags(project).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
+            <img class="member-project-cover" src="${cover}" alt="" loading="lazy" decoding="async">
+            <div class="member-project-info">
+              <h3>${escapeHtml(project.title)}</h3>
+              <p>${escapeHtml(project.summary)}</p>
+              <div class="tags">${projectTags(project).slice(0, 3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
+            </div>
             <div class="member-project-foot">
-              <span class="owner">${seatCount ? `${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}` : ''}</span>
+              ${seatCount ? `<span class="owner">${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}</span>` : ''}
               <button class="btn btn-primary btn-small" data-apply-project="${escapeHtml(project.id)}">Apply</button>
             </div>
           </article>
