@@ -473,6 +473,15 @@ import {
       $('#project-title').textContent = activeProject.title;
       const detailSeats = Number(activeProject.seats_total) || 0;
       $('#project-owner').textContent = `Shared by ${activeProject.owner}${detailSeats ? ` · ${detailSeats} ${detailSeats === 1 ? 'seat' : 'seats'}` : ''}`;
+      const detailCover = $('#project-detail-cover');
+      const fallbackCover = projectCover(activeProject);
+      detailCover.onerror = () => {
+        detailCover.onerror = null;
+        detailCover.src = fallbackCover;
+      };
+      detailCover.src = projectImageData(activeProject) || fallbackCover;
+      detailCover.alt = `${activeProject.title} project cover`;
+      detailCover.hidden = false;
       $('#project-description').textContent = activeProject.description;
       $('#project-tags').innerHTML = projectTags(activeProject)
         .map(tag => `<span class="tag">${escapeHtml(tag)}</span>`)
@@ -563,14 +572,16 @@ import {
       }).select('id').single();
       if (error) return toast(error.message);
 
-      const question = String(values.get('question')).trim();
-      const questionResult = await supabase.from('project_questions').insert({
-        project_id: data.id,
-        prompt: question,
-        position: 0,
-        required: true
-      });
-      if (questionResult.error) return toast(questionResult.error.message);
+      const question = String(values.get('question') || '').trim();
+      if (question) {
+        const questionResult = await supabase.from('project_questions').insert({
+          project_id: data.id,
+          prompt: question,
+          position: 0,
+          required: true
+        });
+        if (questionResult.error) return toast(questionResult.error.message);
+      }
 
       form.reset();
       resetProjectImagePreview();
@@ -753,12 +764,21 @@ import {
     bindAsyncForm('#join-form', submitApplication, 'Sending…');
     $('#plus-checkout').onclick = startCheckout;
     const projectSearchInputs = [$('#nav-search'), $('#mobile-project-search')];
+    let hadSearchQuery = false;
     projectSearchInputs.forEach(input => {
       input.oninput = () => {
         projectSearchInputs.forEach(peer => {
           if (peer !== input) peer.value = input.value;
         });
         renderProjects();
+        // Jump to the board the moment someone starts typing — the search
+        // box lives in the header above the hero/globe, so without this the
+        // filtered results render off-screen and look like nothing happened.
+        const hasQuery = Boolean(input.value.trim());
+        if (hasQuery && !hadSearchQuery) {
+          $('#discover')?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+        }
+        hadSearchQuery = hasQuery;
       };
     });
 
@@ -1200,7 +1220,20 @@ import {
 
         const markerGeometry = new THREE.SphereGeometry(.028, 20, 16);
         const markerHitGeometry = new THREE.SphereGeometry(.11, 16, 12);
-        const haloGeometry = new THREE.RingGeometry(.044, .07, 32);
+        // A soft radial-gradient sprite reads as a gentle glow; the flat
+        // ring geometry this replaced had a hard, uniform edge that's a
+        // dead giveaway for a generic "AI dashboard" globe.
+        const glowCanvas = document.createElement('canvas');
+        glowCanvas.width = 128;
+        glowCanvas.height = 128;
+        const glowCtx = glowCanvas.getContext('2d');
+        const glowGradient = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+        glowGradient.addColorStop(0, 'rgba(255,255,255,.85)');
+        glowGradient.addColorStop(.45, 'rgba(255,255,255,.28)');
+        glowGradient.addColorStop(1, 'rgba(255,255,255,0)');
+        glowCtx.fillStyle = glowGradient;
+        glowCtx.fillRect(0, 0, 128, 128);
+        const glowTexture = new THREE.CanvasTexture(glowCanvas);
         // Radius scales with the square root of member count, so the node's
         // visual area (not its radius) is proportional to how many people
         // are there — the standard bubble-map convention, and a much more
@@ -1221,16 +1254,15 @@ import {
               roughness: .5
             })
           );
-          const halo = new THREE.Mesh(
-            haloGeometry,
-            new THREE.MeshBasicMaterial({
-              color: color(highlighted ? '--accent' : location.cluster ? '--accent' : '--fg-2'),
-              transparent: true,
-              opacity: baseHaloOpacity(location),
-              side: THREE.DoubleSide,
-              depthWrite: false
-            })
-          );
+          const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: glowTexture,
+            color: color(highlighted ? '--accent' : location.cluster ? '--accent' : '--fg-2'),
+            transparent: true,
+            opacity: baseHaloOpacity(location),
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          }));
+          halo.scale.set(.2, .2, 1);
           const hitTarget = new THREE.Mesh(
             markerHitGeometry,
             new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })

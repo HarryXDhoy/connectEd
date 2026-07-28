@@ -260,7 +260,7 @@
           </div>
         </div>
         <label>Skills and topics<input class="field" name="tags" maxlength="240" placeholder="design, mobile, education"></label>
-        <label>Application question<input class="field" name="question" minlength="8" maxlength="500" required></label>
+        <label>Application question · optional<input class="field" name="question" minlength="8" maxlength="500" placeholder="Ask applicants something, or leave this blank"></label>
         <label>Open seats<input class="field" name="seats" type="number" min="1" max="50" value="3" required></label>
         <div class="form-actions">
           <button class="btn" type="button" data-close="create">Cancel</button>
@@ -276,6 +276,7 @@
         <div><p class="eyebrow" id="project-owner">Project</p><h2 id="project-title">Project detail</h2></div>
         <button class="close" data-close="project" aria-label="Close">×</button>
       </div>
+      <img id="project-detail-cover" class="project-detail-cover" alt="" hidden>
       <p id="project-description" class="section-copy"></p>
       <div id="project-tags" class="tags"></div>
       <form id="join-form" class="form">

@@ -453,6 +453,16 @@
     }
     .modal-head { display: flex; justify-content: space-between; gap: var(--space-5); }
     .modal h2 { font-size: var(--text-2xl); }
+    .project-detail-cover {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      margin: var(--space-5) 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface-warm);
+      object-fit: cover;
+    }
     .close {
       width: 44px;
       height: 44px;

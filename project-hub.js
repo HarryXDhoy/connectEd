@@ -1446,6 +1446,14 @@ import {
         form.description.value = project.description;
         form.tags.value = projectTags(project).join(', ');
         form.seats.value = project.seats_total;
+        // Without this, the edit form always opened looking like the
+        // project had no thumbnail at all — there was no way to see (let
+        // alone deliberately keep or replace) the image it already had.
+        const existingImage = projectImageData(project);
+        if (existingImage) {
+          $('#hub-image-preview-img').src = existingImage;
+          $('#hub-image-preview').hidden = false;
+        }
         // Legacy invite-only projects keep their status until the owner changes it;
         // the option itself is archived from the picker.
         if (project.status === 'invite_only') {
@@ -1496,10 +1504,17 @@ import {
       if (result.error) return toast(result.error.message);
 
       const projectId = result.data.id;
-      const question = String(values.get('question')).trim();
-      const questionResult = editingQuestionId
-        ? await supabase.from('project_questions').update({ prompt: question }).eq('id', editingQuestionId)
-        : await supabase.from('project_questions').insert({ project_id: projectId, prompt: question, position: 0, required: true });
+      const question = String(values.get('question') || '').trim();
+      // The screening question is optional — only touch project_questions
+      // when there's actually something to save, update, or clear.
+      let questionResult = { error: null };
+      if (question && editingQuestionId) {
+        questionResult = await supabase.from('project_questions').update({ prompt: question }).eq('id', editingQuestionId);
+      } else if (question) {
+        questionResult = await supabase.from('project_questions').insert({ project_id: projectId, prompt: question, position: 0, required: true });
+      } else if (editingQuestionId) {
+        questionResult = await supabase.from('project_questions').delete().eq('id', editingQuestionId);
+      }
       if (questionResult.error) return toast(questionResult.error.message);
 
       closeModal('project-form');
@@ -1919,6 +1934,14 @@ import {
         maximumAge: 300000
       });
     };
+
+    // Typing a city without also ticking the box below was a silent no-op —
+    // shareLocation read as false, so saveProfile treated it as "no
+    // location" and discarded the typed label entirely. Checking the box
+    // automatically once there's text to share removes that trap.
+    $('#profile-form [name=location_label]').addEventListener('input', event => {
+      if (event.target.value.trim()) $('#location-shared').checked = true;
+    });
 
     $('#location-shared').onchange = event => {
       if (event.currentTarget.checked) return;

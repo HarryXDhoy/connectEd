@@ -170,7 +170,7 @@
                 <input name="location_longitude" type="hidden">
                 <label class="location-consent">
                   <input id="location-shared" name="location_shared" type="checkbox">
-                  <span>Share my approximate location on projects I publish. Turning this off removes the stored project-location markers.</span>
+                  <span>Show me on the live member globe. Turning this off removes your pin.</span>
                 </label>
                 <div class="location-actions">
                   <button class="btn btn-small" id="use-current-location" type="button">Use my current location</button>
@@ -276,7 +276,7 @@
           <!-- Archived for later: <option value="invite_only">Invite only</option> — restore when invitations ship. -->
           <label>Status<select class="field" name="status"><option value="open">Open</option><option value="closed">Closed</option></select></label>
         </div>
-        <label>Application question<input class="field" name="question" minlength="8" maxlength="500" required></label>
+        <label>Application question · optional<input class="field" name="question" minlength="8" maxlength="500" placeholder="Ask applicants something, or leave this blank"></label>
         <div class="form-actions">
           <button class="btn" type="button" data-close="project-form">Cancel</button>
           <button class="btn btn-primary" type="submit">Save project</button>
