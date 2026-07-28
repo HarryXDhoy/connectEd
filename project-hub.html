@@ -279,7 +279,16 @@
           <!-- Archived for later: <option value="invite_only">Invite only</option> — restore when invitations ship. -->
           <label>Status<select class="field" name="status"><option value="open">Open</option><option value="closed">Closed</option></select></label>
         </div>
-        <label>Application question · optional<input class="field" name="question" minlength="8" maxlength="500" placeholder="Ask applicants something, or leave this blank"></label>
+        <fieldset class="question-fieldset">
+          <legend>Application questions · optional</legend>
+          <div class="question-list" id="question-list">
+            <div class="question-row">
+              <input class="field" name="question" maxlength="500" placeholder="Ask applicants something, or leave this blank">
+              <button class="btn btn-small remove-question" type="button" aria-label="Remove question" hidden>×</button>
+            </div>
+          </div>
+          <button class="btn btn-small" type="button" id="add-question">+ Add another question</button>
+        </fieldset>
         <div class="form-actions">
           <button class="btn" type="button" data-close="project-form">Cancel</button>
           <button class="btn btn-primary" type="submit">Save project</button>

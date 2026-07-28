@@ -22,6 +22,7 @@ import {
       .filter(Boolean)
       .slice(0, 8);
     const PROJECT_IMAGE_PREFIX = '__image__:';
+    const MAX_PROJECT_QUESTIONS = 8;
     const PROJECT_LOCATION_PREFIX = '__location__:';
     const APPLICATIONS_PAUSED_TAG = '__applications_paused__';
     const projectTags = project => (project?.tags || [])
@@ -529,19 +530,20 @@ import {
           </article>
         `;
       };
+      // Every member who shared a location gets listed here, project or
+      // not — a member with nothing published yet used to get the whole
+      // node silenced behind a toast, which made them effectively
+      // invisible even though they showed up fine as a dot.
       const members = node.members.map(member => ({
         member,
         projects: member.projectIds.map(id => projects.find(project => String(project.id) === id)).filter(Boolean)
       }));
-      if (!members.some(entry => entry.projects.length)) {
-        return toast(node.cluster
-          ? "None of the members at this spot have published a project yet."
-          : `${node.name} hasn't published a project yet.`);
-      }
       $('#member-projects-name').textContent = node.cluster ? node.meta.split(' · ')[0] : node.name;
       $('#member-projects-list').innerHTML = members.map(({ member, projects: memberProjects }) => {
-        if (!memberProjects.length) return '';
         const heading = node.cluster ? `<h4 class="member-project-group">${escapeHtml(member.name)}</h4>` : '';
+        if (!memberProjects.length) {
+          return `${heading}<p class="member-no-projects">${member.headline ? `${escapeHtml(member.headline)} · ` : ''}Hasn't published a project yet.</p>`;
+        }
         return `${heading}${memberProjects.map(projectCard).join('')}`;
       }).join('');
       $$('[data-apply-project]').forEach(button => {
@@ -576,19 +578,22 @@ import {
       }).select('id').single();
       if (error) return toast(error.message);
 
-      const question = String(values.get('question') || '').trim();
-      if (question) {
-        const questionResult = await supabase.from('project_questions').insert({
-          project_id: data.id,
-          prompt: question,
-          position: 0,
-          required: true
-        });
-        if (questionResult.error) return toast(questionResult.error.message);
+      const newQuestions = values.getAll('question')
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .slice(0, MAX_PROJECT_QUESTIONS);
+      if (newQuestions.length) {
+        const questionResults = await Promise.all(newQuestions.map((prompt, position) =>
+          supabase.from('project_questions').insert({ project_id: data.id, prompt, position, required: true })
+        ));
+        const questionError = questionResults.find(item => item.error)?.error;
+        if (questionError) return toast(questionError.message);
       }
 
       form.reset();
       resetProjectImagePreview();
+      $('#question-list').innerHTML = questionRowMarkup();
+      bindQuestionRowButtons();
       closeModal('create');
       toast('Your project is live.');
       await loadProjects();
@@ -764,6 +769,34 @@ import {
         }
       };
     }
+    function questionRowMarkup() {
+      return `
+        <div class="question-row">
+          <input class="field" name="question" maxlength="500" placeholder="Ask applicants something, or leave this blank">
+          <button class="btn btn-small remove-question" type="button" aria-label="Remove question">×</button>
+        </div>
+      `;
+    }
+    function bindQuestionRowButtons() {
+      const rows = $$('#question-list .question-row');
+      rows.forEach(row => {
+        const button = row.querySelector('.remove-question');
+        button.hidden = rows.length <= 1;
+        button.onclick = () => {
+          row.remove();
+          bindQuestionRowButtons();
+        };
+      });
+    }
+    bindQuestionRowButtons();
+    $('#add-question').onclick = () => {
+      const list = $('#question-list');
+      if (list.children.length >= MAX_PROJECT_QUESTIONS) {
+        return toast(`Up to ${MAX_PROJECT_QUESTIONS} questions per project.`);
+      }
+      list.insertAdjacentHTML('beforeend', questionRowMarkup());
+      bindQuestionRowButtons();
+    };
     bindAsyncForm('#create-form', createProject, 'Publishing…');
     bindAsyncForm('#join-form', submitApplication, 'Sending…');
     $('#plus-checkout').onclick = startCheckout;
@@ -1184,11 +1217,47 @@ import {
         // application isn't a live connection yet, so its arc is a static,
         // dim thread rather than something with a pulse traveling on it.
         const pulseRoutes = [];
+        // The old control point — the midpoint of (start + end), normalized
+        // — degenerates for anything far apart on the sphere: two nodes
+        // ~150-180° apart make that sum nearly zero, so its normalized
+        // direction becomes unstable and can point toward totally the
+        // wrong side of the globe, sending the "arc" straight through it.
+        // A proper spherical (SLERP) interpolation between the two surface
+        // directions, bulged outward along the way, always stays above the
+        // correct great-circle path no matter how far apart the endpoints
+        // are — and the bulge height scales with the angular separation so
+        // a near-antipodal arc rises well clear instead of skimming the
+        // surface where it's most likely to clip.
+        function buildArc(from, to) {
+          const startDir = latLonToVector(from.latitude, from.longitude, 1);
+          const endDir = latLonToVector(to.latitude, to.longitude, 1);
+          const dot = THREE.MathUtils.clamp(startDir.dot(endDir), -1, 1);
+          const angle = Math.acos(dot);
+          const sinAngle = Math.sin(angle);
+          const height = Math.min(.95, .12 + (angle / Math.PI) * .8);
+          function getPoint(t) {
+            let dir;
+            if (sinAngle < 1e-6) {
+              // Same spot or exactly antipodal — SLERP direction is
+              // undefined; a plain lerp is a safe, rare-case fallback.
+              dir = startDir.clone().lerp(endDir, t).normalize();
+            } else {
+              const a = Math.sin((1 - t) * angle) / sinAngle;
+              const b = Math.sin(t * angle) / sinAngle;
+              dir = startDir.clone().multiplyScalar(a).add(endDir.clone().multiplyScalar(b));
+            }
+            const bulge = Math.sin(t * Math.PI) * height;
+            return dir.multiplyScalar(globeRadius + .07 + bulge);
+          }
+          function getPoints(segments) {
+            const points = [];
+            for (let i = 0; i <= segments; i += 1) points.push(getPoint(i / segments));
+            return points;
+          }
+          return { getPoint, getPoints };
+        }
         function addRoute(from, to, status) {
-          const start = latLonToVector(from.latitude, from.longitude, globeRadius + .07);
-          const end = latLonToVector(to.latitude, to.longitude, globeRadius + .07);
-          const midpoint = start.clone().add(end).normalize().multiplyScalar(globeRadius + .62);
-          const curve = new THREE.QuadraticBezierCurve3(start, midpoint, end);
+          const curve = buildArc(from, to);
           earth.add(new THREE.Line(
             new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),
             routeMaterials[status] || routeMaterials.pending
@@ -1282,24 +1351,34 @@ import {
         // are there — the standard bubble-map convention, and a much more
         // legible read than a small linear bump per extra member.
         const baseScale = location => Math.min(3, Math.sqrt(location.cluster ? location.members.length : 1));
-        const baseHaloOpacity = location => location.viewer ? .38 : location.cluster ? .3 : .18;
+        // Node color scales from a muted neutral up to full accent green as
+        // member count rises, instead of a flat "cluster vs. solo" binary —
+        // so at a glance, greener/brighter dots mark the busier hubs rather
+        // than every cluster (2 people or 20) looking identical.
+        const MAX_COUNT_FOR_COLOR = 6;
+        const countRatio = location => Math.min(1, ((location.cluster ? location.members.length : 1) - 1) / (MAX_COUNT_FOR_COLOR - 1));
+        const neutralColor = new THREE.Color(color('--fg-2'));
+        const accentColor = new THREE.Color(color('--accent'));
+        const nodeColor = location => `#${neutralColor.clone().lerp(accentColor, countRatio(location)).getHexString()}`;
+        const baseHaloOpacity = location => location.viewer ? .38 : .16 + countRatio(location) * .22;
         const markerTargets = [];
         const markers = locations.map(location => {
           const highlighted = location.viewer;
           const clusterScale = baseScale(location);
+          const baseColorHex = nodeColor(location);
           const marker = new THREE.Group();
           const core = new THREE.Mesh(
             markerGeometry,
             new THREE.MeshStandardMaterial({
-              color: color(highlighted ? '--accent' : location.cluster ? '--accent' : '--fg'),
-              emissive: color(highlighted ? '--accent' : location.cluster ? '--accent' : '--fg-2'),
-              emissiveIntensity: highlighted ? .72 : location.cluster ? .5 : .28,
+              color: highlighted ? color('--accent') : baseColorHex,
+              emissive: highlighted ? color('--accent') : baseColorHex,
+              emissiveIntensity: highlighted ? .72 : .28 + countRatio(location) * .35,
               roughness: .5
             })
           );
           const halo = new THREE.Sprite(new THREE.SpriteMaterial({
             map: glowTexture,
-            color: color(highlighted ? '--accent' : location.cluster ? '--accent' : '--fg-2'),
+            color: highlighted ? color('--accent') : baseColorHex,
             transparent: true,
             opacity: baseHaloOpacity(location),
             depthWrite: false,

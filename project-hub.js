@@ -150,7 +150,7 @@ import {
     let activeProject = null;
     let activeFilter = 'all';
     let editingProjectId = null;
-    let editingQuestionId = null;
+    let editingQuestionIds = [];
     let loadError = '';
     let requestSubscription = null;
     let requestSubscriptionUserId = null;
@@ -1431,14 +1431,48 @@ import {
       openModal('project-detail');
     }
 
+    const MAX_PROJECT_QUESTIONS = 8;
+    function questionRowMarkup(value = '') {
+      return `
+        <div class="question-row">
+          <input class="field" name="question" maxlength="500" placeholder="Ask applicants something, or leave this blank" value="${escapeHtml(value)}">
+          <button class="btn btn-small remove-question" type="button" aria-label="Remove question">×</button>
+        </div>
+      `;
+    }
+    function bindQuestionRowButtons() {
+      const rows = $$('#question-list .question-row');
+      rows.forEach(row => {
+        const button = row.querySelector('.remove-question');
+        button.hidden = rows.length <= 1;
+        button.onclick = () => {
+          row.remove();
+          bindQuestionRowButtons();
+        };
+      });
+    }
+    function renderQuestionRows(prompts) {
+      $('#question-list').innerHTML = (prompts.length ? prompts : ['']).map(questionRowMarkup).join('');
+      bindQuestionRowButtons();
+    }
+    $('#add-question').onclick = () => {
+      const list = $('#question-list');
+      if (list.children.length >= MAX_PROJECT_QUESTIONS) {
+        return toast(`Up to ${MAX_PROJECT_QUESTIONS} questions per project.`);
+      }
+      list.insertAdjacentHTML('beforeend', questionRowMarkup());
+      bindQuestionRowButtons();
+    };
+
     async function openProjectForm(project = null) {
       if (!(await requireUser())) return;
       editingProjectId = project?.id || null;
-      editingQuestionId = null;
+      editingQuestionIds = [];
       const form = $('#project-form');
       form.reset();
       form.status.querySelector('option[value="invite_only"]')?.remove();
       resetProjectImagePreview();
+      renderQuestionRows([]);
       $('#project-form-title').textContent = project ? 'Edit your project' : 'Post a project';
       if (project) {
         form.title.value = project.title;
@@ -1463,11 +1497,14 @@ import {
           form.status.append(legacyOption);
         }
         form.status.value = project.status;
+        // Owners can publish more than one screening question — fetch all
+        // of them (not just the first) so editing doesn't silently drop
+        // the rest.
         const result = await supabase.from('project_questions')
-          .select('id,prompt').eq('project_id', project.id).order('position').limit(1).maybeSingle();
-        if (result.data) {
-          editingQuestionId = result.data.id;
-          form.question.value = result.data.prompt;
+          .select('id,prompt').eq('project_id', project.id).order('position');
+        if (result.data?.length) {
+          editingQuestionIds = result.data.map(row => row.id);
+          renderQuestionRows(result.data.map(row => row.prompt));
         }
       }
       openModal('project-form');
@@ -1504,23 +1541,38 @@ import {
       if (result.error) return toast(result.error.message);
 
       const projectId = result.data.id;
-      const question = String(values.get('question') || '').trim();
-      // The screening question is optional — only touch project_questions
-      // when there's actually something to save, update, or clear.
-      let questionResult = { error: null };
-      if (question && editingQuestionId) {
-        questionResult = await supabase.from('project_questions').update({ prompt: question }).eq('id', editingQuestionId);
-      } else if (question) {
-        questionResult = await supabase.from('project_questions').insert({ project_id: projectId, prompt: question, position: 0, required: true });
-      } else if (editingQuestionId) {
-        questionResult = await supabase.from('project_questions').delete().eq('id', editingQuestionId);
+      // Questions are optional and there can be several. Diff positionally
+      // against what was already there (editingQuestionIds, fetched in
+      // openProjectForm) rather than delete-and-recreate everything: a
+      // slot that still has text in the same position keeps its existing
+      // row's id, since applicants' saved answers are keyed by question id
+      // — recreating rows would orphan their answers from the question
+      // they were actually written for.
+      const newQuestions = values.getAll('question')
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .slice(0, MAX_PROJECT_QUESTIONS);
+      const questionOps = [];
+      const questionSlots = Math.max(newQuestions.length, editingQuestionIds.length);
+      for (let index = 0; index < questionSlots; index += 1) {
+        const text = newQuestions[index];
+        const existingId = editingQuestionIds[index];
+        if (text && existingId) {
+          questionOps.push(supabase.from('project_questions').update({ prompt: text, position: index }).eq('id', existingId));
+        } else if (text) {
+          questionOps.push(supabase.from('project_questions').insert({ project_id: projectId, prompt: text, position: index, required: true }));
+        } else if (existingId) {
+          questionOps.push(supabase.from('project_questions').delete().eq('id', existingId));
+        }
       }
-      if (questionResult.error) return toast(questionResult.error.message);
+      const questionResults = await Promise.all(questionOps);
+      const questionError = questionResults.find(item => item.error)?.error;
+      if (questionError) return toast(questionError.message);
 
       closeModal('project-form');
       toast(editingProjectId ? 'Project updated.' : 'Project published.');
       editingProjectId = null;
-      editingQuestionId = null;
+      editingQuestionIds = [];
       await loadAll();
     }
 

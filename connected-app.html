@@ -263,7 +263,16 @@
           </div>
         </div>
         <label>Skills and topics<input class="field" name="tags" maxlength="240" placeholder="design, mobile, education"></label>
-        <label>Application question · optional<input class="field" name="question" minlength="8" maxlength="500" placeholder="Ask applicants something, or leave this blank"></label>
+        <fieldset class="question-fieldset">
+          <legend>Application questions · optional</legend>
+          <div class="question-list" id="question-list">
+            <div class="question-row">
+              <input class="field" name="question" maxlength="500" placeholder="Ask applicants something, or leave this blank">
+              <button class="btn btn-small remove-question" type="button" aria-label="Remove question" hidden>×</button>
+            </div>
+          </div>
+          <button class="btn btn-small" type="button" id="add-question">+ Add another question</button>
+        </fieldset>
         <label>Open seats<input class="field" name="seats" type="number" min="1" max="50" value="3" required></label>
         <div class="form-actions">
           <button class="btn" type="button" data-close="create">Cancel</button>
