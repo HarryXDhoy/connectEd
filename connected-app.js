@@ -1427,8 +1427,7 @@ import {
           if (reducedMotion || userPaused || !visible) render(performance.now());
         }
 
-        canvas.addEventListener('pointerdown', event => {
-          if (event.pointerType === 'mouse' && event.button !== 0) return;
+        function beginDrag(event) {
           dragging = true;
           dragMoved = 0;
           inertia = 0;
@@ -1441,8 +1440,52 @@ import {
           canvas.style.cursor = 'grabbing';
           focus.classList.remove('is-tooltip');
           focus.innerHTML = defaultFocusMarkup;
+        }
+        // A touch/pen pointerdown doesn't commit to a rotate-drag right
+        // away. On a phone the globe fills most of the screen, so an
+        // ordinary scroll-down swipe usually starts right over it — the
+        // board below looked like it didn't exist because there was no way
+        // to reach it. touch-action: pan-y is supposed to hand vertical
+        // gestures to native scrolling, but WebKit doesn't reliably honor
+        // touch-action on a WebGL canvas, so this drives the scroll
+        // manually once a gesture reads as vertical rather than trusting
+        // that CSS alone. Mouse has no such ambiguity and drags immediately.
+        let pendingTouch = null;
+        let manualScroll = false;
+        canvas.addEventListener('pointerdown', event => {
+          if (event.pointerType === 'mouse') {
+            if (event.button !== 0) return;
+            beginDrag(event);
+            return;
+          }
+          pendingTouch = event;
+          manualScroll = false;
         });
         canvas.addEventListener('pointermove', event => {
+          if (pendingTouch && !dragging && !manualScroll) {
+            const dx = event.clientX - pendingTouch.clientX;
+            const dy = event.clientY - pendingTouch.clientY;
+            // Wait for a clearer signal than a few px and bias the tie
+            // toward scroll — a real thumb swiping "straight down" still
+            // drifts sideways, and scroll is the safer default to fall
+            // back on than eating the gesture into a globe spin.
+            if (Math.hypot(dx, dy) < 12) return;
+            if (Math.abs(dx) > Math.abs(dy) * 1.3) {
+              beginDrag(pendingTouch);
+            } else {
+              manualScroll = true;
+              lastPointerY = pendingTouch.clientY;
+            }
+          }
+          if (manualScroll) {
+            // Own the scroll outright — if pan-y also engages natively on
+            // some platform, letting both act at once would double up and
+            // feel jittery.
+            event.preventDefault();
+            window.scrollBy(0, lastPointerY - event.clientY);
+            lastPointerY = event.clientY;
+            return;
+          }
           if (dragging) {
             const deltaX = event.clientX - lastPointerX;
             const deltaY = event.clientY - lastPointerY;
@@ -1461,6 +1504,8 @@ import {
           inspect(event);
         });
         function endDrag(event) {
+          pendingTouch = null;
+          manualScroll = false;
           if (!dragging) return;
           dragging = false;
           try { canvas.releasePointerCapture(event.pointerId); } catch (_) {}
