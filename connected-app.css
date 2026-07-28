@@ -899,9 +899,9 @@
     .network-focus,
     .network-step {
       position: absolute;
-      border: 1px solid var(--border);
-      background: color-mix(in oklab, var(--bg), transparent 8%);
-      color: var(--fg-2);
+      border: 1px solid color-mix(in oklab, var(--fg), transparent 72%);
+      background: color-mix(in oklab, var(--bg), transparent 2%);
+      color: var(--fg);
       font: var(--text-xs)/1.35 var(--font-mono);
       letter-spacing: .08em;
       text-transform: uppercase;
@@ -959,7 +959,7 @@
     .network-focus span {
       display: block;
       margin-top: var(--space-1);
-      color: var(--muted);
+      color: var(--fg-2);
       letter-spacing: .02em;
     }
     .network-focus small {

@@ -532,12 +532,6 @@ import {
         }
         interviews = interviewResult.error ? [] : interviewResult.data || [];
 
-        const reviewResult = await supabase
-          .from('project_reviews')
-          .select('id,project_id,reviewer_id,reviewee_id,rating,comment,created_at,updated_at,reviewer:reviewer_id(display_name),projects:project_id(title)')
-          .order('created_at', { ascending: false });
-        reviewsAvailable = !reviewResult.error;
-        projectReviews = reviewResult.error ? [] : reviewResult.data || [];
         await updateAccount();
         subscribeToRequestUpdates();
       } else {
@@ -545,10 +539,20 @@ import {
         applications = [];
         sentApplications = [];
         interviews = [];
-        projectReviews = [];
-        reviewsAvailable = false;
         subscribeToRequestUpdates();
       }
+
+      // Reviews are publicly readable (reputation is meant to be visible to
+      // anyone browsing, signed in or not) so this fetch must not be gated
+      // behind `if (user)` — otherwise every profile looks review-less to
+      // signed-out visitors even when real reviews exist.
+      const reviewResult = await supabase
+        .from('project_reviews')
+        .select('id,project_id,reviewer_id,reviewee_id,rating,comment,created_at,updated_at,reviewer:reviewer_id(display_name),projects:project_id(title)')
+        .order('created_at', { ascending: false });
+      reviewsAvailable = !reviewResult.error;
+      projectReviews = reviewResult.error ? [] : reviewResult.data || [];
+
       renderAll();
       discoveryBoard.setAttribute('aria-busy', 'false');
     }
