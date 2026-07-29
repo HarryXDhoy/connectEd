@@ -1333,28 +1333,26 @@ import {
           ));
           if (status !== 'pending') pulseRoutes.push({ curve, status });
         }
-        // Real collaboration arcs, one per application status: connecting
-        // two member nodes rather than a member to a project (projects are
-        // no longer nodes on this map). Row-level security scopes the
-        // query to the signed-in viewer's own applications (sent or
-        // received) — signed-out visitors keep the ambient member pins
-        // without arcs, and a signed-in member sees their own connections,
-        // not everyone's.
-        if (accountUser && isSupabaseConfigured) {
+        // Real collaboration arcs, one per confirmed team-up: connecting two
+        // member nodes rather than a member to a project (projects are no
+        // longer nodes on this map). public_team_connections() is a
+        // security-definer function that exposes only who's paired with
+        // whom for CONFIRMED relationships (accepted/interview) — never a
+        // pending application (that's a private "did I apply" signal) and
+        // never the application message/answers — so this draws for every
+        // visitor, signed in or not, instead of only the viewer's own
+        // connections.
+        if (isSupabaseConfigured) {
           try {
-            const ownerByProjectId = new Map(projects.map(project => [String(project.id), String(project.owner_id)]));
             // Any member maps to the node for their cluster, so an arc lands
             // on the shared pin when collaborators sit at the same spot.
             const nodeByUserId = new Map();
             locations.forEach(node => node.members.forEach(member => nodeByUserId.set(member.userId, node)));
-            const { data: teamLinks, error: teamError } = await supabase
-              .from('applications')
-              .select('project_id,applicant_id,status')
-              .in('status', ['pending', 'interview', 'accepted']);
+            const { data: teamLinks, error: teamError } = await supabase.rpc('public_team_connections');
             if (!teamError) {
               const drawnPairs = new Map();
               (teamLinks || []).forEach(link => {
-                const ownerId = ownerByProjectId.get(String(link.project_id));
+                const ownerId = String(link.owner_id);
                 const applicantId = String(link.applicant_id);
                 if (!ownerId || ownerId === applicantId) return;
                 const ownerNode = nodeByUserId.get(ownerId);
@@ -1363,8 +1361,9 @@ import {
                 // Same cluster — a zero-length arc would render as an artifact.
                 if (ownerNode === participantNode) return;
                 // One arc per pair even if the same two people share more than
-                // one application — keep whichever status is furthest along.
-                const statusRank = { pending: 0, interview: 1, accepted: 2 };
+                // one confirmed project together — keep whichever status is
+                // furthest along.
+                const statusRank = { interview: 0, accepted: 1 };
                 const pairKey = [ownerId, applicantId].sort().join('|');
                 const existingRank = drawnPairs.get(pairKey);
                 if (existingRank !== undefined && existingRank >= statusRank[link.status]) return;
