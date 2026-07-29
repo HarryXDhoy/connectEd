@@ -1377,16 +1377,39 @@ import {
         }
 
         // Data packets travelling the routes — the "live network" signal.
-        // Colored to match each arc's status so a moving accepted pulse
-        // doesn't look like it belongs to an amber interview thread.
-        const pulseMaterials = {
-          interview: new THREE.MeshBasicMaterial({ color: color('--warn'), transparent: true, opacity: .9, depthWrite: false }),
-          accepted: new THREE.MeshBasicMaterial({ color: color('--accent'), transparent: true, opacity: .9, depthWrite: false })
-        };
-        const pulseGeometry = new THREE.SphereGeometry(.035, 12, 10);
+        // Distinguished by shape, not just color, so the difference reads
+        // even in a screenshot or to someone who can't tell amber from
+        // green at a glance: accepted is a solid, filled dot (a done deal),
+        // interview is a hollow ring (in progress, not yet confirmed).
+        const ringCanvas = document.createElement('canvas');
+        ringCanvas.width = 128;
+        ringCanvas.height = 128;
+        const ringCtx = ringCanvas.getContext('2d');
+        ringCtx.strokeStyle = 'rgba(255,255,255,1)';
+        ringCtx.lineWidth = 16;
+        ringCtx.beginPath();
+        ringCtx.arc(64, 64, 44, 0, Math.PI * 2);
+        ringCtx.stroke();
+        const ringTexture = new THREE.CanvasTexture(ringCanvas);
+        const acceptedPulseGeometry = new THREE.SphereGeometry(.035, 12, 10);
+        const acceptedPulseMaterial = new THREE.MeshBasicMaterial({ color: color('--accent'), transparent: true, opacity: .9, depthWrite: false });
+        const interviewPulseMaterial = new THREE.SpriteMaterial({
+          map: ringTexture,
+          color: color('--warn'),
+          transparent: true,
+          opacity: .95,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending
+        });
         const pulses = pulseRoutes.map(({ curve, status }, index) => {
-          const pulse = new THREE.Mesh(pulseGeometry, pulseMaterials[status] || pulseMaterials.accepted);
-          pulse.userData = { curve, offset: pulseRoutes.length ? index / pulseRoutes.length : 0 };
+          const pulse = status === 'interview'
+            ? new THREE.Sprite(interviewPulseMaterial)
+            : new THREE.Mesh(acceptedPulseGeometry, acceptedPulseMaterial);
+          pulse.userData = {
+            curve,
+            offset: pulseRoutes.length ? index / pulseRoutes.length : 0,
+            baseScale: status === 'interview' ? .09 : 1
+          };
           earth.add(pulse);
           return pulse;
         });
@@ -1394,7 +1417,8 @@ import {
           pulses.forEach(pulse => {
             const progress = (time * .00005 + pulse.userData.offset) % 1;
             pulse.position.copy(pulse.userData.curve.getPoint(progress));
-            pulse.scale.setScalar(.5 + Math.sin(progress * Math.PI) * .9);
+            const pulseSize = pulse.userData.baseScale * (.5 + Math.sin(progress * Math.PI) * .9);
+            pulse.scale.set(pulseSize, pulseSize, 1);
           });
         }
 
