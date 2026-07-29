@@ -140,6 +140,7 @@
           <div class="message-thread-head">
             <button class="btn btn-small" id="message-thread-back" type="button">&larr; All messages</button>
             <strong id="message-thread-name"></strong>
+            <a class="btn btn-small message-thread-handoff" id="message-thread-handoff" target="_blank" rel="noopener noreferrer" hidden></a>
           </div>
           <div id="message-thread-body" class="message-thread-body" aria-live="polite"></div>
           <form id="message-form" class="message-form">
@@ -184,6 +185,12 @@
               <label>Headline<input class="field" name="headline" maxlength="160" placeholder="Product designer · Community builder"></label>
               <label>Bio<textarea class="field" name="bio" maxlength="1200" placeholder="What do you care about building?"></textarea></label>
               <label>Skills<input class="field" name="skills" maxlength="400" placeholder="research, React, storytelling"></label>
+              <fieldset class="location-panel">
+                <legend>External chat link · optional</legend>
+                <p class="field-help">Shown only to people you already have an in-app conversation with — not on your public profile.</p>
+                <label>Platform<input class="field" name="chat_link_label" maxlength="40" placeholder="Messenger, WhatsApp, Google Chat…"></label>
+                <label>Link<input class="field" name="chat_link" type="url" maxlength="300" placeholder="https://m.me/yourname"></label>
+              </fieldset>
               <fieldset class="location-panel">
                 <legend>Approximate location · optional</legend>
                 <p class="field-help">Type a city and check the box below, or use your current location instead — either way, only an approximate (~1 km) position is stored.</p>

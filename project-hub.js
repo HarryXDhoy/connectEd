@@ -16,6 +16,18 @@ import {
       /[&<>"']/g,
       char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]
     );
+    // A stored chat_link is free text a member typed into their own profile —
+    // escapeHtml() only neutralizes HTML metacharacters, not a
+    // javascript:/data: URL scheme, so an href built from it needs its own
+    // check. Only http(s) is ever considered safe to render as a link.
+    const safeExternalUrl = value => {
+      try {
+        const url = new URL(String(value || ''));
+        return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '';
+      } catch (_) {
+        return '';
+      }
+    };
     const normalizeTags = value => String(value || '')
       .split(',')
       .map(tag => tag.trim().toLowerCase().replace(/[^a-z0-9 +#.-]/g, ''))
@@ -379,6 +391,16 @@ import {
 
     function renderMessageThread() {
       $('#message-thread-name').textContent = activeConversationName;
+      const handoff = $('#message-thread-handoff');
+      const chatLink = partnerChatLink(activeConversationUserId);
+      if (chatLink) {
+        handoff.href = chatLink.url;
+        handoff.textContent = `Continue on ${chatLink.label}`;
+        handoff.hidden = false;
+      } else {
+        handoff.hidden = true;
+        handoff.removeAttribute('href');
+      }
       const thread = messages.filter(message => otherParticipantId(message) === activeConversationUserId);
       const body = $('#message-thread-body');
       body.innerHTML = thread.map(message => `
@@ -398,6 +420,20 @@ import {
       renderMessageThread();
       markConversationRead(partnerId);
       window.setTimeout(() => $('#message-form [name=body]').focus(), 0);
+    }
+
+    // The hand-off link is only ever read from an embedded message row
+    // (sender/recipient profile), never from a public profile fetch — that's
+    // what keeps it scoped to "people you're already talking to in-app"
+    // instead of exposing it to anyone who views the profile.
+    function partnerChatLink(partnerId) {
+      const withPartner = messages.find(message => otherParticipantId(message) === partnerId);
+      const partnerProfile = withPartner
+        ? (withPartner.sender_id === partnerId ? withPartner.sender : withPartner.recipient)
+        : null;
+      const safeUrl = safeExternalUrl(partnerProfile?.chat_link);
+      if (!safeUrl) return null;
+      return { url: safeUrl, label: partnerProfile?.chat_link_label || 'chat' };
     }
 
     function closeConversation() {
@@ -645,7 +681,7 @@ import {
       if (user) {
         let profileResult = await supabase
           .from('profiles')
-          .select('id,display_name,headline,bio,skills,avatar_url,banner_url,custom_avatar,priority_match_active')
+          .select('id,display_name,headline,bio,skills,avatar_url,banner_url,custom_avatar,priority_match_active,chat_link,chat_link_label')
           .eq('id', user.id)
           .maybeSingle();
         if (profileResult.error && /permission denied/i.test(profileResult.error.message)) {
@@ -703,11 +739,20 @@ import {
         // The messages table may not exist yet if this migration hasn't
         // rolled out to every environment — fail soft (empty inbox) rather
         // than breaking the whole board.
-        const messageResult = await supabase
+        let messageResult = await supabase
           .from('messages')
-          .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url),recipient:recipient_id(display_name,avatar_url)')
+          .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url,chat_link,chat_link_label),recipient:recipient_id(display_name,avatar_url,chat_link,chat_link_label)')
           .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
           .order('created_at', { ascending: true });
+        if (messageResult.error && /permission denied/i.test(messageResult.error.message)) {
+          // chat_link/chat_link_label migration not applied yet — messages
+          // themselves still work, just without the hand-off link.
+          messageResult = await supabase
+            .from('messages')
+            .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url),recipient:recipient_id(display_name,avatar_url)')
+            .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+            .order('created_at', { ascending: true });
+        }
         messagesAvailable = !messageResult.error;
         messages = messageResult.error ? [] : messageResult.data || [];
 
@@ -1339,6 +1384,8 @@ import {
         $(`#profile-form [name=${key}]`).value = profile?.[key] || '';
       }
       $('#profile-form [name=skills]').value = (profile?.skills || []).join(', ');
+      $('#profile-form [name=chat_link_label]').value = profile?.chat_link_label || '';
+      $('#profile-form [name=chat_link]').value = profile?.chat_link || '';
       const location = profileLocation(profile);
       $('#profile-form [name=location_label]').value = location?.label || '';
       $('#profile-form [name=location_latitude]').value = location?.latitude ?? '';
@@ -2148,7 +2195,9 @@ import {
         display_name: String(values.get('display_name')).trim(),
         headline: String(values.get('headline')).trim(),
         bio: String(values.get('bio')).trim(),
-        skills: normalizeTags(values.get('skills'))
+        skills: normalizeTags(values.get('skills')),
+        chat_link: String(values.get('chat_link') || '').trim().slice(0, 300) || null,
+        chat_link_label: String(values.get('chat_link_label') || '').trim().slice(0, 40) || null
       };
       const imageUpdates = {
         ...(pendingAvatarDataUrl ? { avatar_url: pendingAvatarDataUrl, custom_avatar: true } : {}),
@@ -2175,6 +2224,12 @@ import {
         // profile rather than blocking the whole form on it.
         result = await supabase.from('profiles').update(profileBase).eq('id', user.id);
         savedMessage = 'Profile saved, but photo/cover updates need a database migration first.';
+      }
+      if (result.error && /permission denied/i.test(result.error.message)) {
+        // chat_link/chat_link_label migration not applied yet either.
+        const { chat_link, chat_link_label, ...withoutChatLink } = profileBase;
+        result = await supabase.from('profiles').update(withoutChatLink).eq('id', user.id);
+        savedMessage = 'Profile saved, but the chat link needs a database migration first.';
       }
       if (result.error) return toast(result.error.message);
       pendingAvatarDataUrl = null;
