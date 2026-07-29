@@ -379,6 +379,8 @@
       border-bottom: 1px solid var(--border);
       background: var(--surface);
     }
+    .applicant-group-identity { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+    .applicant-group-identity .avatar { flex-shrink: 0; }
     .applicant-group-head h3 {
       margin: 0 0 3px;
       color: var(--fg);

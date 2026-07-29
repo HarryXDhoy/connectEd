@@ -762,14 +762,14 @@ import {
 
         const applicationResult = await supabase
           .from('applications')
-          .select('id,project_id,applicant_id,message,answers,status,created_at,updated_at,projects!inner(id,title,owner_id),profiles:applicant_id(id,display_name,headline,bio,skills,avatar_url,priority_match_active)')
+          .select('id,project_id,applicant_id,message,answers,status,created_at,updated_at,projects!inner(id,title,summary,tags,owner_id),profiles:applicant_id(id,display_name,headline,bio,skills,avatar_url,priority_match_active)')
           .eq('projects.owner_id', user.id)
           .order('created_at', { ascending: false });
         applications = applicationResult.error ? [] : applicationResult.data || [];
 
         const sentApplicationResult = await supabase
           .from('applications')
-          .select('id,project_id,applicant_id,message,status,created_at,updated_at,projects(id,title,owner_id,profiles:owner_id(display_name))')
+          .select('id,project_id,applicant_id,message,status,created_at,updated_at,projects(id,title,tags,owner_id,profiles:owner_id(display_name))')
           .eq('applicant_id', user.id)
           .order('created_at', { ascending: false });
         sentApplications = sentApplicationResult.error ? [] : sentApplicationResult.data || [];
@@ -1151,9 +1151,18 @@ import {
             const project = application.projects || {};
             const owner = project.profiles?.display_name || 'Project owner';
             const interview = interviews.find(item => String(item.application_id) === String(application.id));
+            // Reuses the same cover image a project owner already sets when
+            // creating/editing a project (projectImageData/projectCover) —
+            // rather than a separate "logo" upload, the existing cover just
+            // also serves as this row's project identity instead of plain
+            // initials. Same delegated fallback listener as pinMarkup()'s
+            // .pin-thumb handles a broken/missing image.
+            const projectBadge = project.id
+              ? `<span class="avatar"><img class="pin-thumb" src="${escapeHtml(projectImageData(project) || projectCover(project))}" alt="" loading="lazy" decoding="async" data-fallback-cover="${escapeHtml(projectCover(project))}"></span>`
+              : `<span class="avatar">${escapeHtml((project.title || 'cE').slice(0, 2).toUpperCase())}</span>`;
             return `
               <article class="applicant glass" data-od-id="sent-request-${escapeHtml(application.id)}">
-                <span class="avatar">${escapeHtml((project.title || 'cE').slice(0, 2).toUpperCase())}</span>
+                ${projectBadge}
                 <div>
                   <h3>${escapeHtml(project.title || 'Project request')}</h3>
                   <p>Sent to ${project.owner_id
@@ -1306,9 +1315,12 @@ import {
             return `
               <section class="applicant-group" data-od-id="project-request-group-${escapeHtml(group.project.id)}">
                 <div class="applicant-group-head">
-                  <div>
-                    <h3>${escapeHtml(group.project.title || 'Project')}</h3>
-                    <p>${escapeHtml(group.project.summary || 'Requests from people who want to contribute.')}</p>
+                  <div class="applicant-group-identity">
+                    <span class="avatar"><img class="pin-thumb" src="${escapeHtml(projectImageData(group.project) || projectCover(group.project))}" alt="" loading="lazy" decoding="async" data-fallback-cover="${escapeHtml(projectCover(group.project))}"></span>
+                    <div>
+                      <h3>${escapeHtml(group.project.title || 'Project')}</h3>
+                      <p>${escapeHtml(group.project.summary || 'Requests from people who want to contribute.')}</p>
+                    </div>
                   </div>
                   <div class="applicant-group-counts" aria-label="Request counts">
                     <span class="applicant-group-count">${group.applications.length} ${group.applications.length === 1 ? 'request' : 'requests'}</span>

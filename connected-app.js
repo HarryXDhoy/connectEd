@@ -1336,7 +1336,7 @@ import {
         // are — and the bulge height scales with the angular separation so
         // a near-antipodal arc rises well clear instead of skimming the
         // surface where it's most likely to clip.
-        function buildArc(from, to) {
+        function buildArc(from, to, heightBoost = 0) {
           const startDir = latLonToVector(from.latitude, from.longitude, 1);
           const endDir = latLonToVector(to.latitude, to.longitude, 1);
           const dot = THREE.MathUtils.clamp(startDir.dot(endDir), -1, 1);
@@ -1346,7 +1346,10 @@ import {
           // globeRadius) made long-haul arcs balloon into towering loops
           // instead of clean domes. A sqrt curve rises fast for nearby
           // pairs, then flattens — every arc reads as a dome, not a loop.
-          const height = Math.min(.4, .06 + Math.sqrt(angle / Math.PI) * .34);
+          // heightBoost fans out extra arcs between the same two people
+          // (multiple applications, or one in each direction) so they
+          // don't sit on the exact same curve and z-fight.
+          const height = Math.min(.4, .06 + Math.sqrt(angle / Math.PI) * .34) + heightBoost;
           function getPoint(t) {
             let dir;
             if (sinAngle < 1e-6) {
@@ -1368,22 +1371,24 @@ import {
           }
           return { getPoint, getPoints };
         }
-        function addRoute(from, to, status) {
-          const curve = buildArc(from, to);
+        function addRoute(from, to, status, heightBoost = 0) {
+          const curve = buildArc(from, to, heightBoost);
           earth.add(new THREE.Line(
             new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),
-            routeMaterials[status] || routeMaterials.pending
+            routeMaterials[status]
           ));
-          // Declined is a dead thread, not a live connection — no pulse.
-          if (status !== 'declined') pulseRoutes.push({ curve, status });
+          // Every status gets a traveling pulse now, including declined
+          // (a red X) — nothing is drawn as a pulse-less dead thread
+          // anymore.
+          pulseRoutes.push({ curve, status });
         }
-        // Real collaboration arcs, one per confirmed team-up: connecting two
+        // Real collaboration arcs, one per application: connecting two
         // member nodes rather than a member to a project (projects are no
         // longer nodes on this map). public_team_connections() is a
         // security-definer function that exposes only who's paired with
-        // whom for CONFIRMED relationships (accepted/interview) — never a
-        // pending application (that's a private "did I apply" signal) and
-        // never the application message/answers — so this draws for every
+        // whom, and the status of each pairing — never a pending
+        // application (that's a private "did I apply" signal) and never
+        // the application message/answers — so this draws for every
         // visitor, signed in or not, instead of only the viewer's own
         // connections.
         if (isSupabaseConfigured) {
@@ -1394,14 +1399,14 @@ import {
             locations.forEach(node => node.members.forEach(member => nodeByUserId.set(member.userId, node)));
             const { data: teamLinks, error: teamError } = await supabase.rpc('public_team_connections');
             if (!teamError) {
-              // One arc per pair even if the same two people share more than
-              // one project together — pick whichever status is furthest
-              // along BEFORE drawing anything. Calling addRoute per link as
-              // they were found (the old approach) drew every status that
-              // came up for a pair, one arc stacked on top of another,
-              // since nothing ever removed an earlier, lower-ranked line.
-              const statusRank = { declined: 0, interview: 1, accepted: 2 };
-              const bestByPair = new Map();
+              // Every application between two people draws its own arc —
+              // if they applied to each other, each direction gets its own
+              // pulse traveling applicant-to-owner (naturally opposite
+              // directions, since the two links swap which side is which).
+              // A height offset per extra arc between the same two nodes
+              // keeps them from sitting on the identical curve and
+              // z-fighting when there's more than one.
+              const arcCountByPair = new Map();
               (teamLinks || []).forEach(link => {
                 const ownerId = String(link.owner_id);
                 const applicantId = String(link.applicant_id);
@@ -1412,12 +1417,9 @@ import {
                 // Same cluster — a zero-length arc would render as an artifact.
                 if (ownerNode === participantNode) return;
                 const pairKey = [ownerId, applicantId].sort().join('|');
-                const existing = bestByPair.get(pairKey);
-                if (existing && statusRank[existing.status] >= statusRank[link.status]) return;
-                bestByPair.set(pairKey, { ownerNode, participantNode, status: link.status });
-              });
-              bestByPair.forEach(({ ownerNode, participantNode, status }) => {
-                addRoute(participantNode, ownerNode, status);
+                const arcIndex = arcCountByPair.get(pairKey) || 0;
+                arcCountByPair.set(pairKey, arcIndex + 1);
+                addRoute(participantNode, ownerNode, link.status, arcIndex * .07);
               });
             }
           } catch (_) {
@@ -1428,8 +1430,9 @@ import {
         // Data packets travelling the routes — the "live network" signal.
         // Distinguished by shape, not just color, so the difference reads
         // even in a screenshot or to someone who can't tell amber from
-        // green at a glance: accepted is a solid, filled dot (a done deal),
-        // interview is a hollow ring (in progress, not yet confirmed).
+        // green from red at a glance: accepted is a solid, filled dot (a
+        // done deal), interview is a hollow ring (in progress, not yet
+        // confirmed), declined is a red X (didn't work out).
         const ringCanvas = document.createElement('canvas');
         ringCanvas.width = 128;
         ringCanvas.height = 128;
@@ -1440,6 +1443,20 @@ import {
         ringCtx.arc(64, 64, 44, 0, Math.PI * 2);
         ringCtx.stroke();
         const ringTexture = new THREE.CanvasTexture(ringCanvas);
+        const crossCanvas = document.createElement('canvas');
+        crossCanvas.width = 128;
+        crossCanvas.height = 128;
+        const crossCtx = crossCanvas.getContext('2d');
+        crossCtx.strokeStyle = 'rgba(255,255,255,1)';
+        crossCtx.lineWidth = 16;
+        crossCtx.lineCap = 'round';
+        crossCtx.beginPath();
+        crossCtx.moveTo(34, 34);
+        crossCtx.lineTo(94, 94);
+        crossCtx.moveTo(94, 34);
+        crossCtx.lineTo(34, 94);
+        crossCtx.stroke();
+        const crossTexture = new THREE.CanvasTexture(crossCanvas);
         const acceptedPulseGeometry = new THREE.SphereGeometry(.035, 12, 10);
         const acceptedPulseMaterial = new THREE.MeshBasicMaterial({ color: color('--accent'), transparent: true, opacity: .9, depthWrite: false });
         const interviewPulseMaterial = new THREE.SpriteMaterial({
@@ -1450,14 +1467,27 @@ import {
           depthWrite: false,
           blending: THREE.AdditiveBlending
         });
+        const declinedPulseMaterial = new THREE.SpriteMaterial({
+          map: crossTexture,
+          color: color('--danger'),
+          transparent: true,
+          opacity: .95,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending
+        });
+        const pulseShape = {
+          interview: { material: interviewPulseMaterial, baseScale: .09 },
+          declined: { material: declinedPulseMaterial, baseScale: .09 }
+        };
         const pulses = pulseRoutes.map(({ curve, status }, index) => {
-          const pulse = status === 'interview'
-            ? new THREE.Sprite(interviewPulseMaterial)
+          const shape = pulseShape[status];
+          const pulse = shape
+            ? new THREE.Sprite(shape.material)
             : new THREE.Mesh(acceptedPulseGeometry, acceptedPulseMaterial);
           pulse.userData = {
             curve,
             offset: pulseRoutes.length ? index / pulseRoutes.length : 0,
-            baseScale: status === 'interview' ? .09 : 1
+            baseScale: shape ? shape.baseScale : 1
           };
           earth.add(pulse);
           return pulse;

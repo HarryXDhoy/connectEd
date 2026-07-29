@@ -1105,9 +1105,17 @@
       box-shadow: 0 0 6px color-mix(in oklab, var(--accent), transparent 30%);
     }
     .legend-line { align-self: center; height: 2px; background: var(--accent); }
-    .legend-line-declined { align-self: center; height: 2px; background: var(--muted); opacity: .5; }
     .legend-pulse-accepted { border-radius: 50%; background: var(--accent); }
     .legend-pulse-interview { border-radius: 50%; border: 2px solid var(--warn); background: transparent; }
+    .legend-pulse-declined {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--danger);
+      font-weight: 700;
+      line-height: 1;
+    }
+    .legend-pulse-declined::before { content: '\2715'; }
     .network-motion-toggle:active { transform: translateY(1px); }
     .network-focus {
       right: var(--space-4);
