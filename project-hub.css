@@ -412,9 +412,21 @@
       border-radius: 0;
       background: transparent;
       box-shadow: none;
+      /* Every applicant row carried the same padding/spacing as a
+         standalone card — reviewing a project with a dozen applicants
+         meant a dozen full-height cards to scroll through. Tightened
+         padding and inter-element spacing here only (not the shared
+         .applicant/.avatar rules other tabs still use at full size). */
+      padding: var(--space-3) var(--space-4);
+      gap: var(--space-3);
     }
     .applicant-group-list .applicant:last-child { border-bottom: 0; }
     .applicant-group-list .applicant:hover { background: color-mix(in oklab, var(--surface), var(--fg) 3%); }
+    .applicant-group-list .applicant .avatar { width: 38px; height: 38px; font-size: var(--text-sm); }
+    .applicant-group-list .applicant h3 { margin-bottom: 2px; font-size: var(--text-base); }
+    .applicant-group-list .applicant p { margin-bottom: 4px; }
+    .applicant-group-list .applicant .tags { margin-bottom: 4px; }
+    .applicant-group-list .applicant .answer-list { margin-top: var(--space-2); }
     .applicant {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
@@ -499,13 +511,19 @@
     .profile-layout {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 340px;
+      grid-template-rows: auto auto;
       gap: var(--space-6);
     }
     .profile-card, .membership-card {
       border-radius: var(--radius-lg);
       padding: clamp(24px, 4vw, 42px);
     }
-    .calendar-card { grid-column: 1 / -1; }
+    /* Was full-width, which put it below the entire (long) profile-editing
+       form — someone had to scroll past every field just to see their own
+       schedule. Stacking it in the sidebar under Membership means it's
+       visible as soon as the tab opens, not after scrolling. */
+    .profile-card { grid-row: 1 / 3; }
+    .calendar-card { grid-column: 2; grid-row: 2; }
     .calendar-card[hidden] { display: none; }
     .calendar-head {
       display: flex;
@@ -1245,7 +1263,9 @@
       }
       .nav { grid-template-columns: auto 1fr; }
       .search { grid-column: 1 / -1; grid-row: 2; padding-bottom: var(--space-3); }
-      .profile-layout { grid-template-columns: 1fr; }
+      .profile-layout { grid-template-columns: 1fr; grid-template-rows: none; }
+      .profile-card { grid-row: auto; }
+      .calendar-card { grid-column: auto; grid-row: auto; }
       .membership-card { position: static; }
       .applicant { grid-template-columns: auto minmax(0, 1fr); }
       .applicant-actions { grid-column: 1 / -1; justify-content: flex-start; }
