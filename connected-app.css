@@ -1025,7 +1025,7 @@
          rendered globe. A translucent light tint (with the backdrop blur
          below) reads as an actual frosted pill regardless of what's
          rendering behind it. */
-      background: color-mix(in oklab, var(--fg), transparent 85%);
+      background: color-mix(in oklab, var(--fg) 18%, var(--bg));
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       box-shadow: 0 4px 16px color-mix(in oklab, black, transparent 45%);
@@ -1050,7 +1050,7 @@
       border: 1px solid color-mix(in oklab, var(--fg), transparent 45%);
       border-radius: var(--radius-pill);
       padding: 0 var(--space-3);
-      background: var(--surface-warm);
+      background: color-mix(in oklab, var(--fg) 18%, var(--bg));
       box-shadow: 0 4px 16px color-mix(in oklab, black, transparent 45%);
       color: var(--fg);
       font: 600 var(--text-xs)/1 var(--font-mono);
@@ -1077,7 +1077,7 @@
       pointer-events: auto;
       border: 1px solid color-mix(in oklab, var(--fg), transparent 45%);
       border-radius: var(--radius-md);
-      background: color-mix(in oklab, var(--fg), transparent 85%);
+      background: color-mix(in oklab, var(--fg) 18%, var(--bg));
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       box-shadow: 0 4px 16px color-mix(in oklab, black, transparent 45%);
@@ -1571,7 +1571,7 @@
     .network-kicker,
     .network-motion-toggle,
     .network-step {
-      background: color-mix(in oklab, var(--fg), transparent 85%);
+      background: color-mix(in oklab, var(--fg) 18%, var(--bg));
     }
     section:not(.hero) { padding-block: var(--section-y-desktop); }
     .section-head,
