@@ -1231,11 +1231,12 @@ import {
         ));
 
         // One line style per application status, so an arc's color tells you
-        // where that connection actually stands: declined is a very dim,
-        // static thread (didn't work out), interview is amber, accepted is
+        // where that connection actually stands: declined is red (matches
+        // its red-X pulse — a faint grey line read as "nothing here" and
+        // was too easy to miss entirely), interview is amber, accepted is
         // full accent green.
         const routeMaterials = {
-          declined: new THREE.LineBasicMaterial({ color: color('--muted'), transparent: true, opacity: .16 }),
+          declined: new THREE.LineBasicMaterial({ color: color('--danger'), transparent: true, opacity: .5 }),
           interview: new THREE.LineBasicMaterial({ color: color('--warn'), transparent: true, opacity: .55 }),
           accepted: new THREE.LineBasicMaterial({ color: color('--accent'), transparent: true, opacity: .62 })
         };
@@ -1477,7 +1478,11 @@ import {
         });
         const pulseShape = {
           interview: { material: interviewPulseMaterial, baseScale: .09 },
-          declined: { material: declinedPulseMaterial, baseScale: .09 }
+          // Slightly larger than the ring — an X drawn at the same size
+          // reads smaller than a filled ring/dot because more of its
+          // bounding square is empty, so it needs the extra size to carry
+          // the same visual weight and not disappear against the globe.
+          declined: { material: declinedPulseMaterial, baseScale: .12 }
         };
         const pulses = pulseRoutes.map(({ curve, status }, index) => {
           const shape = pulseShape[status];

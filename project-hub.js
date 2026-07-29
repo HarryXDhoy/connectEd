@@ -2123,8 +2123,20 @@ import {
       calendarLink.hidden = !data.htmlLink;
       calendarLink.href = data.htmlLink || '#';
       $('#interview-result-time').textContent = `${startsAt.toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })} · ${durationMinutes} minutes`;
+      // meetLinkFailed distinguishes "no video call was requested" from
+      // "one was requested and Google couldn't create it" — both end up
+      // with meetUrl: null, but only the second one is worth surfacing as
+      // its own, more specific message instead of the generic fallback.
+      $('#interview-result-title').textContent = data.meetUrl
+        ? 'Your Google Meet is ready'
+        : 'Interview added to Google Calendar';
+      $('#interview-meet-failure-note').hidden = !data.meetLinkFailed;
       result.hidden = false;
-      toast(data.meetUrl ? 'Interview scheduled. Your Meet link is ready.' : 'Interview added to Google Calendar.');
+      toast(data.meetUrl
+        ? 'Interview scheduled. Your Meet link is ready.'
+        : data.meetLinkFailed
+          ? 'Interview scheduled, but the video call link could not be created.'
+          : 'Interview added to Google Calendar.');
       await loadAll();
     }
 

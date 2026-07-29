@@ -186,13 +186,21 @@ async function scheduleInterview(req, res) {
     });
   }
 
+  const meetUrl = data.conferenceData?.entryPoints?.find(
+    entry => entry.entryPointType === 'video'
+  )?.uri || null;
+  // Google can return 200 with the event created but the Meet room itself
+  // failed (createRequest.status.statusCode !== 'success') — meetUrl ends
+  // up null either way, so without this the caller can't tell "no video
+  // call was requested" apart from "one was requested and failed."
+  const conferenceStatus = data.conferenceData?.createRequest?.status?.statusCode;
+  const meetLinkFailed = !meetUrl && conferenceStatus && conferenceStatus !== 'success';
+
   return json(res, 200, {
     eventId: data.id,
     htmlLink: data.htmlLink,
-    meetUrl:
-      data.conferenceData?.entryPoints?.find(
-        entry => entry.entryPointType === 'video'
-      )?.uri || null,
+    meetUrl,
+    meetLinkFailed,
     candidateId: applications[0].applicant_id
   });
 }

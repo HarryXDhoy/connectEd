@@ -382,9 +382,10 @@
       <section class="meeting-result" id="interview-result" aria-live="polite" hidden>
         <div>
           <p class="eyebrow">Interview scheduled</p>
-          <h3>Your Google Meet is ready</h3>
+          <h3 id="interview-result-title">Your Google Meet is ready</h3>
         </div>
         <p id="interview-result-time"></p>
+        <p id="interview-meet-failure-note" class="field-help" hidden>Google couldn't create the video call for this event — add one manually in Google Calendar, or share another link with the candidate.</p>
         <div class="form-actions">
           <a class="btn btn-primary" id="interview-meet-link" href="#" target="_blank" rel="noopener">Open Google Meet</a>
           <button class="btn" id="copy-meet-link" type="button">Copy Meet link</button>
