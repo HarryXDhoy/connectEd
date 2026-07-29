@@ -1016,8 +1016,7 @@
       pointer-events: none;
     }
     .network-kicker,
-    .network-focus,
-    .network-step {
+    .network-focus {
       position: absolute;
       border: 1px solid color-mix(in oklab, var(--fg), transparent 45%);
       /* --surface-warm resolves to #1c1c1c against a #171717 page bg — a
@@ -1142,36 +1141,49 @@
       letter-spacing: .08em;
       text-transform: uppercase;
     }
-    .network-steps {
-      position: absolute;
-      left: var(--space-4);
-      bottom: var(--space-4);
+    /* Moved out of the floating stage-hud entirely — these pills kept
+       reading as invisible or barely-there no matter how the overlay
+       tint was tuned, because their contrast depended on what happened
+       to be rendering behind them on the globe/gradient. Sitting in
+       normal flow on the plain hero-copy background instead means their
+       contrast is fixed and guaranteed, not conditional. */
+    .hero-quicklinks {
       display: flex;
+      flex-wrap: wrap;
       gap: var(--space-2);
+      margin-top: var(--space-5);
     }
-    .network-step {
-      position: static;
-      pointer-events: auto;
+    .hero-quicklink {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 6px 14px;
+      border: 1px solid color-mix(in oklab, var(--fg), transparent 45%);
       border-radius: var(--radius-pill);
-      padding: 6px 10px;
-      cursor: pointer;
+      background: color-mix(in oklab, var(--fg) 18%, var(--bg));
+      color: var(--fg);
+      font: 600 var(--text-xs)/1.35 var(--font-mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
       text-decoration: none;
+      cursor: pointer;
       transition:
         transform var(--motion-fast) var(--ease-standard),
         border-color var(--motion-fast) var(--ease-standard),
         color var(--motion-fast) var(--ease-standard);
     }
-    .network-step:hover {
+    .hero-quicklink:hover {
       border-color: color-mix(in oklab, var(--fg), transparent 62%);
       color: var(--fg);
       transform: translateY(-1px);
     }
-    .network-step:active { transform: translateY(1px); }
-    .network-step:focus-visible {
+    .hero-quicklink:active { transform: translateY(1px); }
+    .hero-quicklink:focus-visible {
       outline: none;
       box-shadow: var(--focus-ring);
     }
-    .network-step:first-child {
+    .hero-quicklink:first-child {
       border-color: color-mix(in oklab, var(--accent), transparent 55%);
       color: var(--accent);
     }
@@ -1563,15 +1575,13 @@
     }
     .network-kicker,
     .network-motion-toggle,
-    .network-focus,
-    .network-step {
+    .network-focus {
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
     }
     .network-focus { max-width: 240px; }
     .network-kicker,
-    .network-motion-toggle,
-    .network-step {
+    .network-motion-toggle {
       background: color-mix(in oklab, var(--fg) 18%, var(--bg));
     }
     section:not(.hero) { padding-block: var(--section-y-desktop); }
@@ -1969,7 +1979,6 @@
       section:not(.hero) { padding-block: var(--section-y-phone); }
       .masonry { grid-template-columns: 1fr; }
       .stage { margin-inline: 0; }
-      .network-steps { display: none; }
       .network-motion-toggle { display: none; }
       .network-focus { max-width: 180px; }
       .account-control.account-signed-in {
