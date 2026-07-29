@@ -667,6 +667,8 @@
       cursor: pointer;
     }
     .conversation-item:hover { border-color: color-mix(in oklab, var(--fg), transparent 68%); }
+    .conversation-item-avatar { flex-shrink: 0; width: 40px; height: 40px; font-size: var(--text-sm); }
+    .conversation-item-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
     .conversation-item-name { font-weight: 600; }
     .conversation-item-preview {
       display: block;
@@ -699,6 +701,20 @@
       border-radius: var(--radius-md);
       background: var(--bg);
     }
+    .message-row {
+      display: flex;
+      align-items: flex-end;
+      gap: var(--space-2);
+    }
+    .message-row.sent { justify-content: flex-end; }
+    .message-row.received { justify-content: flex-start; }
+    .message-bubble-avatar {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      font-size: 10px;
+    }
+    .message-bubble-avatar-spacer { visibility: hidden; }
     .message-bubble {
       max-width: 70%;
       padding: var(--space-2) var(--space-3);
@@ -708,12 +724,10 @@
       word-break: break-word;
     }
     .message-bubble.sent {
-      align-self: flex-end;
       background: var(--accent);
       color: var(--bg);
     }
     .message-bubble.received {
-      align-self: flex-start;
       background: var(--surface-warm);
       color: var(--fg);
     }
@@ -721,6 +735,11 @@
       display: block;
       margin-top: var(--space-1);
       opacity: .7;
+      font-size: var(--text-xs);
+    }
+    .message-seen {
+      align-self: flex-end;
+      color: var(--muted);
       font-size: var(--text-xs);
     }
     .message-form { display: flex; gap: var(--space-2); }

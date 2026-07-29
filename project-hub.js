@@ -28,6 +28,9 @@ import {
         return '';
       }
     };
+    const avatarMarkup = (url, name) => url
+      ? `<img src="${escapeHtml(url)}" alt="">`
+      : escapeHtml((name || 'cE').slice(0, 2).toUpperCase());
     const normalizeTags = value => String(value || '')
       .split(',')
       .map(tag => tag.trim().toLowerCase().replace(/[^a-z0-9 +#.-]/g, ''))
@@ -313,6 +316,15 @@ import {
           if (!alreadyOpen) toast('New message received.');
           window.setTimeout(loadAll, 0);
         })
+        // A message I sent gets its read_at flipped by the RECIPIENT, not
+        // me — without this, "Seen" would only ever update after some
+        // unrelated reload, not live like the rest of the thread.
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `sender_id=eq.${user.id}`
+        }, () => window.setTimeout(loadAll, 0))
         .subscribe();
     }
 
@@ -330,6 +342,7 @@ import {
           byPartner.set(partnerId, {
             partnerId,
             partnerName: partnerProfile?.display_name || 'connectEd member',
+            partnerAvatar: partnerProfile?.avatar_url || '',
             lastMessage: message
           });
         }
@@ -363,7 +376,8 @@ import {
       }
       list.innerHTML = summaries.map(summary => `
         <button type="button" class="conversation-item${summary.unreadCount ? ' conversation-item-unread' : ''}" data-open-conversation="${escapeHtml(summary.partnerId)}" data-partner-name="${escapeHtml(summary.partnerName)}">
-          <span>
+          <span class="avatar conversation-item-avatar">${avatarMarkup(summary.partnerAvatar, summary.partnerName)}</span>
+          <span class="conversation-item-text">
             <span class="conversation-item-name">${escapeHtml(summary.partnerName)}</span>
             <span class="conversation-item-preview">${summary.lastMessage.sender_id === user.id ? 'You: ' : ''}${escapeHtml(summary.lastMessage.body)}</span>
           </span>
@@ -403,12 +417,34 @@ import {
       }
       const thread = messages.filter(message => otherParticipantId(message) === activeConversationUserId);
       const body = $('#message-thread-body');
-      body.innerHTML = thread.map(message => `
-        <div class="message-bubble ${message.sender_id === user.id ? 'sent' : 'received'}">
-          <span>${escapeHtml(message.body)}</span>
-          <time datetime="${escapeHtml(message.created_at)}">${new Date(message.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</time>
-        </div>
-      `).join('') || '<p class="muted">Say hello — this is the start of your conversation.</p>';
+      const partnerProfile = partnerProfileFromMessages(activeConversationUserId);
+      const lastMineIndex = thread.map(message => message.sender_id).lastIndexOf(user.id);
+      const lastMineRead = lastMineIndex !== -1 && Boolean(thread[lastMineIndex].read_at);
+      body.innerHTML = thread.map((message, index) => {
+        const isMine = message.sender_id === user.id;
+        // Messenger-style grouping: an avatar only appears next to the last
+        // bubble in a run of consecutive messages from the same sender, not
+        // on every single message — a run of quick replies reads as one
+        // block instead of a repeated wall of identical avatars.
+        const nextMessage = thread[index + 1];
+        const isLastInGroup = !nextMessage || nextMessage.sender_id !== message.sender_id;
+        const avatarSlot = isMine
+          ? ''
+          : `<span class="avatar message-bubble-avatar${isLastInGroup ? '' : ' message-bubble-avatar-spacer'}">${isLastInGroup ? avatarMarkup(partnerProfile?.avatar_url, activeConversationName) : ''}</span>`;
+        const seenReceipt = isMine && index === lastMineIndex && lastMineRead
+          ? '<span class="message-seen">Seen</span>'
+          : '';
+        return `
+          <div class="message-row ${isMine ? 'sent' : 'received'}">
+            ${avatarSlot}
+            <div class="message-bubble ${isMine ? 'sent' : 'received'}">
+              <span>${escapeHtml(message.body)}</span>
+              <time datetime="${escapeHtml(message.created_at)}">${new Date(message.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</time>
+            </div>
+            ${seenReceipt}
+          </div>
+        `;
+      }).join('') || '<p class="muted">Say hello — this is the start of your conversation.</p>';
       body.scrollTop = body.scrollHeight;
     }
 
@@ -426,11 +462,14 @@ import {
     // (sender/recipient profile), never from a public profile fetch — that's
     // what keeps it scoped to "people you're already talking to in-app"
     // instead of exposing it to anyone who views the profile.
-    function partnerChatLink(partnerId) {
+    function partnerProfileFromMessages(partnerId) {
       const withPartner = messages.find(message => otherParticipantId(message) === partnerId);
-      const partnerProfile = withPartner
-        ? (withPartner.sender_id === partnerId ? withPartner.sender : withPartner.recipient)
-        : null;
+      if (!withPartner) return null;
+      return withPartner.sender_id === partnerId ? withPartner.sender : withPartner.recipient;
+    }
+
+    function partnerChatLink(partnerId) {
+      const partnerProfile = partnerProfileFromMessages(partnerId);
       const safeUrl = safeExternalUrl(partnerProfile?.chat_link);
       if (!safeUrl) return null;
       return { url: safeUrl, label: partnerProfile?.chat_link_label || 'chat' };
