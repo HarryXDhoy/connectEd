@@ -1106,6 +1106,7 @@
       box-shadow: 0 0 6px color-mix(in oklab, var(--accent), transparent 30%);
     }
     .legend-line { align-self: center; height: 2px; background: var(--accent); }
+    .legend-line-declined { align-self: center; height: 2px; background: var(--muted); opacity: .5; }
     .legend-pulse-accepted { border-radius: 50%; background: var(--accent); }
     .legend-pulse-interview { border-radius: 50%; border: 2px solid var(--warn); background: transparent; }
     .network-motion-toggle:active { transform: translateY(1px); }

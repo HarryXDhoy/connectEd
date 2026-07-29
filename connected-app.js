@@ -1213,11 +1213,11 @@ import {
         ));
 
         // One line style per application status, so an arc's color tells you
-        // where that connection actually stands: pending is a dim, static
-        // thread (nothing confirmed yet), interview is amber, accepted is
-        // full accent green. Declined applications draw no arc at all.
+        // where that connection actually stands: declined is a very dim,
+        // static thread (didn't work out), interview is amber, accepted is
+        // full accent green.
         const routeMaterials = {
-          pending: new THREE.LineBasicMaterial({ color: color('--muted'), transparent: true, opacity: .22 }),
+          declined: new THREE.LineBasicMaterial({ color: color('--muted'), transparent: true, opacity: .16 }),
           interview: new THREE.LineBasicMaterial({ color: color('--warn'), transparent: true, opacity: .55 }),
           accepted: new THREE.LineBasicMaterial({ color: color('--accent'), transparent: true, opacity: .62 })
         };
@@ -1299,6 +1299,10 @@ import {
           };
         });
 
+        const viewerLocation = locations.find(location => location.viewer);
+        const findMeButton = $('#network-step-find-me');
+        if (findMeButton) findMeButton.hidden = !viewerLocation;
+
         // pulseRoutes only holds statuses worth animating — a pending
         // application isn't a live connection yet, so its arc is a static,
         // dim thread rather than something with a pulse traveling on it.
@@ -1352,7 +1356,8 @@ import {
             new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),
             routeMaterials[status] || routeMaterials.pending
           ));
-          if (status !== 'pending') pulseRoutes.push({ curve, status });
+          // Declined is a dead thread, not a live connection — no pulse.
+          if (status !== 'declined') pulseRoutes.push({ curve, status });
         }
         // Real collaboration arcs, one per confirmed team-up: connecting two
         // member nodes rather than a member to a project (projects are no
@@ -1371,7 +1376,14 @@ import {
             locations.forEach(node => node.members.forEach(member => nodeByUserId.set(member.userId, node)));
             const { data: teamLinks, error: teamError } = await supabase.rpc('public_team_connections');
             if (!teamError) {
-              const drawnPairs = new Map();
+              // One arc per pair even if the same two people share more than
+              // one project together — pick whichever status is furthest
+              // along BEFORE drawing anything. Calling addRoute per link as
+              // they were found (the old approach) drew every status that
+              // came up for a pair, one arc stacked on top of another,
+              // since nothing ever removed an earlier, lower-ranked line.
+              const statusRank = { declined: 0, interview: 1, accepted: 2 };
+              const bestByPair = new Map();
               (teamLinks || []).forEach(link => {
                 const ownerId = String(link.owner_id);
                 const applicantId = String(link.applicant_id);
@@ -1381,15 +1393,13 @@ import {
                 if (!ownerNode || !participantNode) return;
                 // Same cluster — a zero-length arc would render as an artifact.
                 if (ownerNode === participantNode) return;
-                // One arc per pair even if the same two people share more than
-                // one confirmed project together — keep whichever status is
-                // furthest along.
-                const statusRank = { interview: 0, accepted: 1 };
                 const pairKey = [ownerId, applicantId].sort().join('|');
-                const existingRank = drawnPairs.get(pairKey);
-                if (existingRank !== undefined && existingRank >= statusRank[link.status]) return;
-                drawnPairs.set(pairKey, statusRank[link.status]);
-                addRoute(participantNode, ownerNode, link.status);
+                const existing = bestByPair.get(pairKey);
+                if (existing && statusRank[existing.status] >= statusRank[link.status]) return;
+                bestByPair.set(pairKey, { ownerNode, participantNode, status: link.status });
+              });
+              bestByPair.forEach(({ ownerNode, participantNode, status }) => {
+                addRoute(participantNode, ownerNode, status);
               });
             }
           } catch (_) {
@@ -1800,6 +1810,31 @@ import {
 
         resize();
         stage.classList.add('webgl-ready');
+        if (findMeButton && viewerLocation) {
+          findMeButton.onclick = () => {
+            // Rotating earth.rotation.y by -longitude brings a point at that
+            // longitude to face the fixed camera (derived from the standard
+            // Y-axis rotation matrix: it's the angle that zeroes out the
+            // point's rotated X component while keeping Z positive, i.e.
+            // pointed at the camera rather than the antipodal side).
+            // rotation.x by +latitude does the same for vertical centering.
+            spin = -THREE.MathUtils.degToRad(viewerLocation.longitude);
+            pitch = THREE.MathUtils.clamp(THREE.MathUtils.degToRad(viewerLocation.latitude), -.7, .85);
+            inertia = 0;
+            hoverPaused = false;
+            // The animation loop eases toward spin/pitch a few percent per
+            // frame — great for a drag release, but with motion paused (or
+            // reduced-motion) there's no loop running any of those frames,
+            // so it would barely nudge instead of visibly moving. Snap
+            // straight there in that case instead.
+            if (userPaused || reducedMotion) {
+              earth.rotation.y = spin;
+              earth.rotation.x = pitch;
+              render(performance.now());
+            }
+            startAnimation();
+          };
+        }
         if (motionToggle && !reducedMotion) {
           motionToggle.hidden = false;
           motionToggle.onclick = () => {
