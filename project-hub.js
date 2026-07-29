@@ -28,6 +28,19 @@ import {
         return '';
       }
     };
+    // Every /api/* endpoint here always responds with JSON on every path —
+    // but an unhandled crash in one (a timeout, a network blip reaching a
+    // third-party API) can still make the platform return an empty or
+    // non-JSON body underneath it. response.json() on that throws
+    // "Unexpected end of JSON input", a meaningless error to show someone
+    // mid-task. This never throws — worst case, a generic message.
+    async function safeJson(response) {
+      try {
+        return await response.json();
+      } catch (_) {
+        return { error: 'Something went wrong. Please try again.' };
+      }
+    }
     const avatarMarkup = (url, name) => url
       ? `<img src="${escapeHtml(url)}" alt="">`
       : escapeHtml((name || 'cE').slice(0, 2).toUpperCase());
@@ -2056,7 +2069,7 @@ import {
           attendeeEmail: values.get('email')
         })
       });
-      const data = await response.json();
+      const data = await safeJson(response);
       if (!response.ok) {
         if (data.needsGoogleReconnect) {
           toast(data.error || 'Reconnect Google to grant Calendar access.');
@@ -2157,7 +2170,7 @@ import {
           headers: await authHeaders(),
           body: JSON.stringify({ plan: 'connected_plus', projectId })
         });
-        const data = await response.json();
+        const data = await safeJson(response);
         if (!response.ok) throw new Error(data.error || 'Checkout is unavailable.');
         window.location.href = data.url;
       } catch (error) {
@@ -2180,7 +2193,7 @@ import {
           method: 'POST',
           headers: await authHeaders()
         });
-        const data = await response.json();
+        const data = await safeJson(response);
         if (!response.ok) throw new Error(data.error || 'Billing management is unavailable.');
         window.location.href = data.url;
       } catch (error) {
@@ -2386,7 +2399,15 @@ import {
         try {
           await handler(form);
         } catch (error) {
-          toast(error.message || 'Something went wrong. Please try again.');
+          // A SyntaxError here means some response.json() call choked on an
+          // empty/non-JSON body (a serverless function crashing before it
+          // could send its usual JSON reply) — its .message is literally
+          // "Unexpected end of JSON input", which is meaningless to show
+          // someone mid-task. This is what actually happened when
+          // scheduling an interview hit exactly this failure mode.
+          toast(error instanceof SyntaxError
+            ? 'Something went wrong on our end. Please try again.'
+            : (error.message || 'Something went wrong. Please try again.'));
         } finally {
           form.setAttribute('aria-busy', 'false');
           if (submit) {

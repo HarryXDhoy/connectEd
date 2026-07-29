@@ -6,6 +6,19 @@ import {
 } from './_supabase.js';
 
 export default async function handler(req, res) {
+  try {
+    return await createCheckoutSession(req, res);
+  } catch (error) {
+    // An uncaught throw here (network blip, Stripe hiccup) crashes the
+    // function with no JSON body, which turns into "Unexpected end of
+    // JSON input" on the client instead of a real message — same class of
+    // bug found in api/google-calendar.js.
+    console.error('create-checkout-session handler failed:', error);
+    return json(res, 500, { error: 'Checkout could not be started. Please try again.' });
+  }
+}
+
+async function createCheckoutSession(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
 
   const identity = await requireSupabaseUser(req);

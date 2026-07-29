@@ -4,6 +4,15 @@ import { json, requireSupabaseUser } from './_supabase.js';
 // (see the initial schema migration) — it's only ever readable here, with
 // the service role, never by the client directly.
 export default async function handler(req, res) {
+  try {
+    return await createPortalSession(req, res);
+  } catch (error) {
+    console.error('create-portal-session handler failed:', error);
+    return json(res, 500, { error: 'Billing management could not be opened. Please try again.' });
+  }
+}
+
+async function createPortalSession(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
 
   const identity = await requireSupabaseUser(req);

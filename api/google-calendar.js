@@ -72,6 +72,23 @@ async function organizerGoogleAccessToken(userId) {
 }
 
 export default async function handler(req, res) {
+  try {
+    return await scheduleInterview(req, res);
+  } catch (error) {
+    // This handler chains four sequential external calls (candidate email
+    // lookup, profile lookup, Google OAuth token refresh, then the Calendar
+    // API itself) with nothing catching a failure in any of them — a
+    // timeout, network blip, or unexpected Google response used to crash
+    // the function uncaught, which Vercel turns into an empty/non-JSON
+    // body. The frontend's response.json() then throws "Unexpected end of
+    // JSON input", a meaningless error to show someone scheduling an
+    // interview. Every path now returns real JSON, even this one.
+    console.error('google-calendar handler failed:', error);
+    return json(res, 500, { error: 'Something went wrong creating the calendar event. Please try again.' });
+  }
+}
+
+async function scheduleInterview(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
 
   const identity = await requireSupabaseUser(req);

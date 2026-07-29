@@ -5,6 +5,15 @@ import { json, requireSupabaseUser } from './_supabase.js';
 // scheduler never has to send the user back through Google sign-in just
 // because their short-lived access token expired.
 export default async function handler(req, res) {
+  try {
+    return await storeGoogleToken(req, res);
+  } catch (error) {
+    console.error('store-google-token handler failed:', error);
+    return json(res, 500, { error: 'Google credentials could not be stored. Please try again.' });
+  }
+}
+
+async function storeGoogleToken(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
 
   const identity = await requireSupabaseUser(req);
