@@ -1076,6 +1076,7 @@ import {
                 <button class="btn btn-small" data-edit="${escapeHtml(project.id)}">Edit</button>
                 ${project.status === 'open' ? `<button class="btn btn-small" data-toggle-intake="${escapeHtml(project.id)}" aria-pressed="${!acceptingApplications}">${acceptingApplications ? 'Pause applications' : 'Resume applications'}</button>` : ''}
                 <button class="btn btn-small" data-boost="${escapeHtml(project.id)}"${!profile?.priority_match_active && !paymentsConfigured ? ' disabled title="Coming soon"' : ''}>${profile?.priority_match_active ? 'Use Plus boost' : 'Get Plus'}</button>
+                <button class="btn btn-small btn-ghost" data-delete="${escapeHtml(project.id)}">Delete</button>
               </div>
             ` : ''}
           </div>
@@ -1110,6 +1111,7 @@ import {
       ));
       $$('[data-boost]').forEach(button => button.onclick = () => activateBoost(button.dataset.boost));
       $$('[data-toggle-intake]').forEach(button => button.onclick = () => toggleProjectIntake(button.dataset.toggleIntake));
+      $$('[data-delete]').forEach(button => button.onclick = () => deleteProject(button.dataset.delete));
       applyPaymentsGating();
     }
 
@@ -1927,6 +1929,27 @@ import {
       const result = await supabase.from('projects').update({ tags }).eq('id', project.id);
       if (result.error) return toast(result.error.message);
       toast(currentlyAccepting ? 'New applications paused.' : 'New applications resumed.');
+      await loadAll();
+    }
+
+    // Cascades at the database level (project_questions, applications,
+    // interviews, project_reviews all reference project_id on delete
+    // cascade) — this genuinely removes every application, review, and
+    // scheduled interview tied to it, including other people's, not just
+    // the project row itself. Irreversible, so it needs a clear,
+    // specific confirmation, not a generic "are you sure?".
+    async function deleteProject(projectId) {
+      if (!(await requireUser())) return;
+      const project = ownedProjects.find(item => String(item.id) === String(projectId));
+      if (!project) return;
+      const applicationCount = applications.filter(item => String(item.project_id) === String(projectId)).length;
+      const warning = applicationCount
+        ? `Delete "${project.title}"? This permanently removes the project and all ${applicationCount} ${applicationCount === 1 ? 'application' : 'applications'}, reviews, and scheduled interviews tied to it. This can't be undone.`
+        : `Delete "${project.title}"? This can't be undone.`;
+      if (!window.confirm(warning)) return;
+      const result = await supabase.from('projects').delete().eq('id', projectId);
+      if (result.error) return toast(result.error.message);
+      toast('Project deleted.');
       await loadAll();
     }
 
