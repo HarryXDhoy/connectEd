@@ -1850,7 +1850,13 @@ import {
         message: String(values.get('message')).trim(),
         answers
       });
-      if (result.error) return toast(result.error.code === '23505' ? 'You already applied to this project.' : result.error.message);
+      if (result.error) {
+        if (result.error.code === '23505') return toast('You already applied to this project.');
+        if (result.error.code === '42501' || /row-level security/i.test(result.error.message || '')) {
+          return toast('This application could not be sent — the project may no longer be accepting applications.');
+        }
+        return toast(result.error.message);
+      }
       form.reset();
       closeModal('project-detail');
       toast('Application sent.');

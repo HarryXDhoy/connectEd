@@ -25,6 +25,8 @@ import {
     const MAX_PROJECT_QUESTIONS = 8;
     const PROJECT_LOCATION_PREFIX = '__location__:';
     const APPLICATIONS_PAUSED_TAG = '__applications_paused__';
+    const isAcceptingApplications = project =>
+      project?.status === 'open' && !(project?.tags || []).includes(APPLICATIONS_PAUSED_TAG);
     const projectTags = project => (project?.tags || [])
       .filter(tag =>
         !String(tag).startsWith(PROJECT_IMAGE_PREFIX) &&
@@ -645,6 +647,18 @@ import {
         return toast('Preview projects do not accept applications.');
       }
       if (activeProject.owner_id === user.id) return toast('You already own this project.');
+      // The database enforces these same conditions via a row-level security
+      // policy, which is the right place to enforce them — but an insert it
+      // rejects surfaces as a raw "new row violates row-level security
+      // policy" error with no explanation. Check them here first so a
+      // paused or closed project gives an answer instead of a stack trace.
+      if (!isAcceptingApplications(activeProject)) {
+        return toast(
+          activeProject.status !== 'open'
+            ? 'This project is no longer accepting applications.'
+            : 'This project has paused new applications for now.'
+        );
+      }
 
       const values = new FormData(form);
       const answers = {};
@@ -657,7 +671,13 @@ import {
         message: String(values.get('message')).trim(),
         answers
       });
-      if (error) return toast(error.code === '23505' ? 'You already applied to this project.' : error.message);
+      if (error) {
+        if (error.code === '23505') return toast('You already applied to this project.');
+        if (error.code === '42501' || /row-level security/i.test(error.message || '')) {
+          return toast('This application could not be sent — the project may no longer be accepting applications.');
+        }
+        return toast(error.message);
+      }
       form.reset();
       closeModal('project');
       toast('Application sent to the project owner.');
