@@ -1372,7 +1372,7 @@ import {
           }
           return { getPoint, getPoints };
         }
-        function addRoute(from, to, status, heightBoost = 0) {
+        function addRoute(from, to, status, heightBoost = 0, participantName = '', ownerName = '') {
           const curve = buildArc(from, to, heightBoost);
           earth.add(new THREE.Line(
             new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),
@@ -1380,8 +1380,10 @@ import {
           ));
           // Every status gets a traveling pulse now, including declined
           // (a red X) — nothing is drawn as a pulse-less dead thread
-          // anymore.
-          pulseRoutes.push({ curve, status });
+          // anymore. Carrying the two names lets a click on the pulse
+          // itself explain the connection without having to go find and
+          // click each endpoint node separately.
+          pulseRoutes.push({ curve, status, participantName, ownerName });
         }
         // Real collaboration arcs, one per application: connecting two
         // member nodes rather than a member to a project (projects are no
@@ -1420,7 +1422,9 @@ import {
                 const pairKey = [ownerId, applicantId].sort().join('|');
                 const arcIndex = arcCountByPair.get(pairKey) || 0;
                 arcCountByPair.set(pairKey, arcIndex + 1);
-                addRoute(participantNode, ownerNode, link.status, arcIndex * .07);
+                const participantName = participantNode.members.find(member => member.userId === applicantId)?.name || participantNode.name;
+                const ownerName = ownerNode.members.find(member => member.userId === ownerId)?.name || ownerNode.name;
+                addRoute(participantNode, ownerNode, link.status, arcIndex * .07, participantName, ownerName);
               });
             }
           } catch (_) {
@@ -1497,10 +1501,26 @@ import {
           earth.add(pulse);
           return pulse;
         });
+        // The visible pulse shapes are small (and moving), which makes them
+        // hard to actually land a click on — an invisible, generously sized
+        // sphere trailing each one is what pointer/click hit-testing
+        // actually targets, same "bigger invisible hit area than the
+        // visible thing" pattern already used for the node markers
+        // (markerGeometry vs markerHitGeometry below).
+        const pulseHitGeometry = new THREE.SphereGeometry(.15, 8, 6);
+        const pulseHitMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+        const pulseHitTargets = pulseRoutes.map(({ status, participantName, ownerName }) => {
+          const hitTarget = new THREE.Mesh(pulseHitGeometry, pulseHitMaterial);
+          hitTarget.userData = { status, participantName, ownerName };
+          earth.add(hitTarget);
+          return hitTarget;
+        });
         function updatePulses(time) {
-          pulses.forEach(pulse => {
+          pulses.forEach((pulse, index) => {
             const progress = (time * .00005 + pulse.userData.offset) % 1;
-            pulse.position.copy(pulse.userData.curve.getPoint(progress));
+            const position = pulse.userData.curve.getPoint(progress);
+            pulse.position.copy(position);
+            pulseHitTargets[index].position.copy(position);
             const pulseSize = pulse.userData.baseScale * (.5 + Math.sin(progress * Math.PI) * .9);
             pulse.scale.set(pulseSize, pulseSize, 1);
           });
@@ -1686,12 +1706,20 @@ import {
           }
         }
 
+        const connectionStatusLabel = {
+          accepted: 'Accepted — confirmed team-up',
+          interview: 'Interview in progress',
+          declined: 'Declined — didn\'t work out'
+        };
+        function connectionTooltip({ participantName, ownerName, status }) {
+          return `<small>${escapeHtml(connectionStatusLabel[status] || status)}</small>${escapeHtml(participantName)} → ${escapeHtml(ownerName)}<span>Applied to ${escapeHtml(ownerName)}'s project.</span>`;
+        }
         function inspect(event) {
           const rect = canvas.getBoundingClientRect();
           pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
           pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
           raycaster.setFromCamera(pointer, camera);
-          const hit = raycaster.intersectObjects([globeSurface, ...markerTargets], false)[0];
+          const hit = raycaster.intersectObjects([globeSurface, ...markerTargets, ...pulseHitTargets], false)[0];
           // Freeze the auto-spin while the pointer studies the planet so
           // markers hold still under the cursor.
           hoverPaused = Boolean(hit);
@@ -1707,6 +1735,23 @@ import {
             focus.innerHTML = `<small>${escapeHtml(location.meta)}</small>${escapeHtml(location.name)}<span>${escapeHtml(location.detail)}</span>`;
             // Ride beside the cursor, clamped inside the HUD bounds and
             // flipped to the opposite side near an edge.
+            const hudRect = focus.parentElement.getBoundingClientRect();
+            const cardWidth = focus.offsetWidth;
+            const cardHeight = focus.offsetHeight;
+            let tooltipX = event.clientX - hudRect.left + 18;
+            let tooltipY = event.clientY - hudRect.top + 18;
+            if (tooltipX + cardWidth > hudRect.width) tooltipX = event.clientX - hudRect.left - cardWidth - 18;
+            if (tooltipY + cardHeight > hudRect.height) tooltipY = event.clientY - hudRect.top - cardHeight - 18;
+            focus.style.setProperty('--tooltip-x', `${Math.max(0, tooltipX)}px`);
+            focus.style.setProperty('--tooltip-y', `${Math.max(0, tooltipY)}px`);
+            focus.classList.add('is-tooltip');
+          } else if (hit && pulseHitTargets.includes(hit.object)) {
+            // Same tooltip element/positioning as a node, so hovering a
+            // pulse reads as the same kind of interaction — the point is
+            // seeing what a connection is without hunting down both of its
+            // endpoint nodes individually.
+            canvas.style.cursor = 'pointer';
+            focus.innerHTML = connectionTooltip(hit.object.userData);
             const hudRect = focus.parentElement.getBoundingClientRect();
             const cardWidth = focus.offsetWidth;
             const cardHeight = focus.offsetHeight;
@@ -1831,7 +1876,16 @@ import {
           pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
           pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
           raycaster.setFromCamera(pointer, camera);
-          const hit = raycaster.intersectObjects(markerTargets, false)[0];
+          const hit = raycaster.intersectObjects([...markerTargets, ...pulseHitTargets], false)[0];
+          if (hit && pulseHitTargets.includes(hit.object)) {
+            // Touch has no hover, so a tap needs its own confirmation
+            // beyond the tooltip inspect() already shows on desktop hover —
+            // this is the actual "click a pulse to see what's going on"
+            // interaction on a phone.
+            const { participantName, ownerName, status } = hit.object.userData;
+            toast(`${participantName} → ${ownerName} · ${connectionStatusLabel[status] || status}`);
+            return;
+          }
           const location = hit?.object?.userData?.location;
           if (location) showMemberProjects(location);
         });
