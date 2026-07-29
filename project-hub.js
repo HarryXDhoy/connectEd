@@ -65,6 +65,16 @@ import {
       const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_IMAGE_PREFIX));
       return marker ? String(marker).slice(PROJECT_IMAGE_PREFIX.length) : '';
     };
+    // seats_total is the static capacity set at creation — it never moved
+    // as people were actually accepted, so a full project looked identical
+    // to an empty one. seatCounts (from the project_seat_counts() RPC) is
+    // the real count of accepted applications per project.
+    const seatsLabel = project => {
+      const total = Number(project?.seats_total) || 0;
+      if (!total) return '';
+      const filled = seatCounts.get(String(project.id)) || 0;
+      return `${filled}/${total} ${total === 1 ? 'seat' : 'seats'}`;
+    };
     // profiles.location_* columns are the single source of truth for a
     // member's shared location. An earlier version also mirrored this into
     // auth user_metadata and into a hidden tag on every owned project —
@@ -169,6 +179,7 @@ import {
     let user = null;
     let profile = null;
     let projects = [];
+    let seatCounts = new Map();
     let ownedProjects = [];
     let applications = [];
     let sentApplications = [];
@@ -729,6 +740,8 @@ import {
         owner: project.profiles?.display_name || 'connectEd member'
       }));
       ownedProjects = user ? projects.filter(project => project.owner_id === user.id) : [];
+      const seatCountResult = await supabase.rpc('project_seat_counts');
+      seatCounts = new Map((seatCountResult.data || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
 
       if (user) {
         let profileResult = await supabase
@@ -1022,13 +1035,13 @@ import {
         : project.status === 'invite_only'
         ? 'Invite only'
         : 'Open project';
-      const seatCount = Number(project.seats_total) || 0;
       const ownerLine = owned
         ? escapeHtml(project.status.replace('_', ' '))
         : project.owner_id
           ? `By <button type="button" class="link-button" data-view-profile="${escapeHtml(project.owner_id)}">${escapeHtml(project.owner)}</button>`
           : escapeHtml(`By ${project.owner}`);
-      const seatSuffix = seatCount ? ` · ${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}` : '';
+      const seatLabel = seatsLabel(project);
+      const seatSuffix = seatLabel ? ` · ${seatLabel}` : '';
       return `
         <article class="pin glass" data-od-id="${owned ? 'owned' : 'discover'}-project-${escapeHtml(project.id)}">
           <div class="pin-cover">
@@ -1685,8 +1698,8 @@ import {
       activeProject = projects.find(project => String(project.id) === String(id));
       if (!activeProject) return;
       $('#detail-title').textContent = activeProject.title;
-      const detailSeats = Number(activeProject.seats_total) || 0;
-      const detailSeatSuffix = detailSeats ? ` · ${detailSeats} ${detailSeats === 1 ? 'seat' : 'seats'}` : '';
+      const detailSeatLabel = seatsLabel(activeProject);
+      const detailSeatSuffix = detailSeatLabel ? ` · ${detailSeatLabel}` : '';
       $('#detail-owner').innerHTML = activeProject.owner_id
         ? `Shared by <button type="button" class="link-button" data-view-profile="${escapeHtml(activeProject.owner_id)}">${escapeHtml(activeProject.owner)}</button>${escapeHtml(detailSeatSuffix)}`
         : escapeHtml(`Shared by ${activeProject.owner}${detailSeatSuffix}`);

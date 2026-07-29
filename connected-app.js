@@ -49,6 +49,17 @@ import {
       const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_IMAGE_PREFIX));
       return marker ? String(marker).slice(PROJECT_IMAGE_PREFIX.length) : '';
     };
+    // seats_total is the static capacity set at creation — it never moved
+    // as people were actually accepted, so a project with every seat
+    // filled looked identical to one with none. seatCounts (populated from
+    // the public_team_connections-style project_seat_counts() RPC) is the
+    // real count of accepted applications per project.
+    const seatsLabel = project => {
+      const total = Number(project?.seats_total) || 0;
+      if (!total) return '';
+      const filled = seatCounts.get(String(project.id)) || 0;
+      return `${filled}/${total} ${total === 1 ? 'seat' : 'seats'}`;
+    };
     // profiles.location_* columns are the single source of truth for a
     // member's shared location. An earlier version also mirrored this into
     // auth user_metadata and into a hidden tag on every owned project —
@@ -153,6 +164,7 @@ import {
     ];
 
     let projects = [];
+    let seatCounts = new Map();
     let activeFilter = 'all';
     let activeProject = null;
     let authMode = 'signin';
@@ -337,6 +349,8 @@ import {
           owner: project.profiles?.display_name || 'connectEd member'
         }));
       }
+      const { data: seatData } = await supabase.rpc('project_seat_counts');
+      seatCounts = new Map((seatData || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
       renderProjectFilters();
       renderProjects();
       board.setAttribute('aria-busy', 'false');
@@ -362,8 +376,8 @@ import {
             const boosted = project.boost_until && new Date(project.boost_until) > new Date();
             const statusClass = boosted ? 'is-boosted' : project.status === 'invite_only' ? 'is-invite' : 'is-open';
             const statusLabel = boosted ? 'Boosted idea' : project.status === 'invite_only' ? 'Invite only' : 'Open project';
-            const seatCount = Number(project.seats_total) || 0;
-            const seatSuffix = seatCount ? ` · ${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}` : '';
+            const seatLabel = seatsLabel(project);
+            const seatSuffix = seatLabel ? ` · ${seatLabel}` : '';
             return `
               <article class="pin glass" data-od-id="project-card-${escapeHtml(project.id)}">
                 <div class="pin-cover">
@@ -496,8 +510,8 @@ import {
       activeProject = projects.find(project => String(project.id) === id);
       if (!activeProject) return;
       $('#project-title').textContent = activeProject.title;
-      const detailSeats = Number(activeProject.seats_total) || 0;
-      $('#project-owner').textContent = `Shared by ${activeProject.owner}${detailSeats ? ` · ${detailSeats} ${detailSeats === 1 ? 'seat' : 'seats'}` : ''}`;
+      const detailSeatLabel = seatsLabel(activeProject);
+      $('#project-owner').textContent = `Shared by ${activeProject.owner}${detailSeatLabel ? ` · ${detailSeatLabel}` : ''}`;
       const detailCover = $('#project-detail-cover');
       const fallbackCover = projectCover(activeProject);
       detailCover.onerror = () => {
@@ -537,7 +551,7 @@ import {
     // members sharing one spot, so this can't just jump into one apply form.
     function showMemberProjects(node) {
       const projectCard = project => {
-        const seatCount = Number(project.seats_total) || 0;
+        const seatLabel = seatsLabel(project);
         const cover = escapeHtml(projectImageData(project) || projectCover(project));
         return `
           <article class="member-project-item">
@@ -548,7 +562,7 @@ import {
               <div class="tags">${projectTags(project).slice(0, 3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
             </div>
             <div class="member-project-foot">
-              ${seatCount ? `<span class="owner">${seatCount} ${seatCount === 1 ? 'seat' : 'seats'}</span>` : ''}
+              ${seatLabel ? `<span class="owner">${escapeHtml(seatLabel)}</span>` : ''}
               <button class="btn btn-primary btn-small" data-apply-project="${escapeHtml(project.id)}">Apply</button>
             </div>
           </article>
@@ -1651,6 +1665,15 @@ import {
         let lastPointerY = 0;
         let lastDragTime = 0;
         let previousTime = performance.now();
+        // updatePulses used to take the raw wall-clock time directly, so
+        // pausing froze the rotation (spin/pitch are correctly gated on
+        // userPaused) but not the pulses — any manual render() call while
+        // paused (hover, zoom, the end of a drag) still passed the current
+        // real performance.now(), which made a paused pulse visibly jump
+        // ahead to wherever it "should" be by now instead of staying put.
+        // Accumulating a separate, pause-aware clock and only advancing it
+        // when actually running fixes that.
+        let pulseTime = 0;
 
         function resize() {
           const width = Math.max(1, stage.clientWidth);
@@ -1689,7 +1712,11 @@ import {
           const ease = dragging ? .3 : .045;
           earth.rotation.y += (spin - earth.rotation.y) * ease;
           earth.rotation.x += (pitch - earth.rotation.x) * ease;
-          updatePulses(time);
+          // Pulses respect Pause motion / reduced-motion directly, same as
+          // rotation — not drag/hover, which only freeze the camera spin
+          // for interaction, not the underlying "live network" data motion.
+          if (!reducedMotion && !userPaused) pulseTime += elapsed;
+          updatePulses(pulseTime);
           renderer.render(scene, camera);
         }
 
