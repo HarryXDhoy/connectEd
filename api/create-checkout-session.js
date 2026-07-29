@@ -18,6 +18,21 @@ export default async function handler(req, res) {
     return json(res, 503, { error: 'Payments are not configured yet.' });
   }
 
+  // Defense in depth: the frontend already routes an existing Plus member
+  // to "choose a project to boost" instead of this endpoint, but that
+  // relies on client-side state staying fresh (e.g. a second tab open
+  // during checkout could still reach this with stale state). Without this
+  // check, a duplicate request here would create a second Stripe
+  // subscription and double-charge them.
+  const profileResponse = await userQuery(
+    `profiles?select=priority_match_active&id=eq.${identity.user.id}&limit=1`,
+    identity.token
+  );
+  const profiles = profileResponse.ok ? await profileResponse.json() : [];
+  if (profiles[0]?.priority_match_active) {
+    return json(res, 409, { error: 'You already have connectEd Plus active.' });
+  }
+
   let ownedProjectId = '';
   if (projectId) {
     if (!validUuid(projectId)) return json(res, 400, { error: 'Invalid project.' });

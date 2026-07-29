@@ -110,7 +110,11 @@ export default async function handler(req, res) {
     if (event.type === 'checkout.session.completed' && object.metadata?.plan === 'priority_match') {
       const userId = object.metadata.user_id;
       if (!userId) throw new Error('Webhook is missing user metadata.');
-      await supabaseWrite('billing_entitlements', {
+      // Stripe can and does redeliver this event (timeout, non-2xx, etc.),
+      // and this handler must be idempotent — on_conflict targets the
+      // (user_id, plan) unique constraint so a retry updates the existing
+      // row via merge-duplicates instead of inserting a second one.
+      await supabaseWrite('billing_entitlements?on_conflict=user_id,plan', {
         user_id: userId,
         plan: 'priority_match',
         stripe_customer_id: object.customer || null,

@@ -1438,6 +1438,7 @@ import {
         ? 'Priority applications are active. Choose one project in My projects to boost.'
         : 'Applications and project sharing are free. Plus adds visibility in both roles.';
       $('#membership-action').textContent = profile?.priority_match_active ? 'Choose project to boost' : 'Get connectEd Plus';
+      $('#membership-manage').hidden = !profile?.priority_match_active;
       const reputation = reviewSummary(user.id);
       $('#reputation-score').textContent = reputation.received.length ? reputation.average.toFixed(1) : '—';
       $('#reputation-stars').textContent = reputation.received.length ? starText(reputation.average) : '';
@@ -2167,6 +2168,29 @@ import {
       }
     }
 
+    let portalPending = false;
+    async function manageBilling() {
+      if (portalPending) return;
+      if (!(await requireUser())) return;
+      portalPending = true;
+      const button = $('#membership-manage');
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/create-portal-session', {
+          method: 'POST',
+          headers: await authHeaders()
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Billing management is unavailable.');
+        window.location.href = data.url;
+      } catch (error) {
+        toast(error.message || 'Billing management is unavailable.');
+      } finally {
+        portalPending = false;
+        button.disabled = false;
+      }
+    }
+
     async function activateBoost(projectId) {
       if (!profile?.priority_match_active) return startCheckout(projectId);
       const result = await supabase.rpc('activate_plus_boost', { target_project: projectId });
@@ -2393,6 +2417,7 @@ import {
     $('#membership-action').onclick = () => profile?.priority_match_active
       ? switchPanel('owned')
       : startCheckout();
+    $('#membership-manage').onclick = manageBilling;
     $('#notification-action').onclick = event => {
       event.stopPropagation();
       const panel = $('#notification-panel');
@@ -2478,6 +2503,13 @@ import {
     const authIntent = query.get('auth');
     if (checkoutState === 'success') toast('Payment received. Plus activates after Stripe confirms it.');
     if (checkoutState === 'cancelled') toast('Checkout cancelled. Nothing was charged.');
+    if (checkoutState) {
+      // Left in the URL, a refresh (or just navigating back) would re-fire
+      // the toast above as if a new payment had just happened.
+      const cleanCheckoutUrl = new URL(window.location.href);
+      cleanCheckoutUrl.searchParams.delete('checkout');
+      window.history.replaceState(null, '', cleanCheckoutUrl);
+    }
 
     // Register auth listener BEFORE the first loadAll so initial session
     // restoration triggers a UI refresh — without this, signing in works but
@@ -2499,6 +2531,23 @@ import {
     }
     await loadAll();
     refreshPaymentsStatus();
+    if (checkoutState === 'success') {
+      // Stripe's webhook flips priority_match_active asynchronously — the
+      // redirect back here can easily land before it's processed, so
+      // without this the membership card would keep showing "Free member"
+      // for several seconds with nothing prompting a refresh, right after
+      // someone just paid. Poll briefly instead of making them guess.
+      let attempts = 0;
+      const pollForPlus = window.setInterval(async () => {
+        attempts += 1;
+        if (profile?.priority_match_active || attempts >= 6) {
+          window.clearInterval(pollForPlus);
+          if (profile?.priority_match_active) toast('connectEd Plus is active.');
+          return;
+        }
+        await loadAll();
+      }, 3000);
+    }
     if (authIntent === 'google' && !user) {
       const cleanUrl = new URL(window.location.href);
       cleanUrl.searchParams.delete('auth');
