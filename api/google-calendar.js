@@ -5,6 +5,12 @@ import {
   validUuid
 } from './_supabase.js';
 
+// This handler chains several external calls (Supabase + Google) even
+// after parallelizing what can run concurrently — worth a longer budget
+// than the platform default where the plan allows it. Ignored on plans
+// that cap function duration below this regardless.
+export const config = { maxDuration: 30 };
+
 function validDate(value) {
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date : null;
@@ -108,17 +114,30 @@ async function scheduleInterview(req, res) {
     return json(res, 400, { error: 'Missing or invalid interview details.' });
   }
 
-  const projectResponse = await userQuery(
-    `projects?select=id,owner_id&id=eq.${projectId}&owner_id=eq.${identity.user.id}&limit=1`,
-    identity.token
-  );
+  // This handler used to run every external call one after another —
+  // project lookup, application lookup, candidate email lookup, profile
+  // lookup, OAuth token refresh, then the Calendar API itself — six
+  // sequential round trips. On a slow network that's enough to blow past
+  // the platform's function timeout, which kills the process before it
+  // can send any response at all (not something a try/catch inside the
+  // function can intercept). organizerGoogleAccessToken() only needs
+  // identity.user.id, already known this early, so it starts immediately
+  // and runs concurrently with everything else instead of waiting its turn.
+  const tokenPromise = organizerGoogleAccessToken(identity.user.id);
+
+  const [projectResponse, applicationResponse] = await Promise.all([
+    userQuery(
+      `projects?select=id,owner_id&id=eq.${projectId}&owner_id=eq.${identity.user.id}&limit=1`,
+      identity.token
+    ),
+    userQuery(
+      `applications?select=id,project_id,applicant_id&id=eq.${applicationId}&project_id=eq.${projectId}&limit=1`,
+      identity.token
+    )
+  ]);
   const projects = projectResponse.ok ? await projectResponse.json() : [];
   if (!projects.length) return json(res, 403, { error: 'Only the project owner can schedule interviews.' });
 
-  const applicationResponse = await userQuery(
-    `applications?select=id,project_id,applicant_id&id=eq.${applicationId}&project_id=eq.${projectId}&limit=1`,
-    identity.token
-  );
   const applications = applicationResponse.ok ? await applicationResponse.json() : [];
   if (!applications.length) return json(res, 403, { error: 'Application does not belong to this project.' });
 
@@ -133,7 +152,13 @@ async function scheduleInterview(req, res) {
     return json(res, 400, { error: 'Choose a future interview lasting 15 minutes to 3 hours.' });
   }
 
-  const { email: accountEmail, reason: lookupIssue } = await candidateEmail(applications[0].applicant_id);
+  // tokenPromise has had a head start since before the Promise.all above —
+  // this now overlaps with whatever's left of it instead of waiting for it
+  // to finish first.
+  const [{ email: accountEmail, reason: lookupIssue }, tokenResult] = await Promise.all([
+    candidateEmail(applications[0].applicant_id),
+    tokenPromise
+  ]);
   const resolvedEmail = accountEmail || String(attendeeEmail).trim();
   if (!resolvedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resolvedEmail)) {
     const detail = lookupIssue === 'unconfigured'
@@ -144,7 +169,6 @@ async function scheduleInterview(req, res) {
     return json(res, 400, { error: `Candidate email is unavailable or invalid. ${detail} Enter it manually to continue.` });
   }
 
-  const tokenResult = await organizerGoogleAccessToken(identity.user.id);
   if (tokenResult.error) {
     const message = tokenResult.error === 'not_connected'
       ? 'Connect Google Calendar to schedule interviews — sign in with Google once, and we will not ask again.'
