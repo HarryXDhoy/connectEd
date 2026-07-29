@@ -73,7 +73,12 @@ import {
       const total = Number(project?.seats_total) || 0;
       if (!total) return '';
       const filled = seatCounts.get(String(project.id)) || 0;
-      return `${filled}/${total} ${total === 1 ? 'seat' : 'seats'}`;
+      // A bare "3/5 seats" makes someone stop and work out which number is
+      // which — spelling it out reads correctly on first glance whether
+      // you're the owner checking progress or an applicant checking
+      // whether there's room left.
+      if (filled >= total) return `All ${total} ${total === 1 ? 'seat' : 'seats'} filled`;
+      return `${filled} of ${total} ${total === 1 ? 'seat' : 'seats'} filled`;
     };
     // profiles.location_* columns are the single source of truth for a
     // member's shared location. An earlier version also mirrored this into
