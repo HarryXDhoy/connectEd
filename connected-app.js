@@ -757,6 +757,23 @@ import {
     $('#auth-mode').onclick = () => setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
     function bindAsyncForm(selector, handler, pendingLabel) {
       const form = $(selector);
+      // The browser blocks the 'submit' event entirely when a required field
+      // (e.g. a dynamically added application question below the fold) is
+      // empty, and fires 'invalid' on that field instead — with only a native
+      // tooltip to show for it, which is easy to miss in a scrolling modal
+      // and invisible to headless testing. Surface it with a toast too, and
+      // debounce so several simultaneously-invalid fields still show one.
+      let invalidToastQueued = false;
+      form.addEventListener('invalid', event => {
+        event.target.classList.add('field-invalid');
+        if (invalidToastQueued) return;
+        invalidToastQueued = true;
+        window.setTimeout(() => {
+          invalidToastQueued = false;
+          toast('Please fill out the highlighted field before submitting.');
+        }, 0);
+      }, true);
+      form.addEventListener('input', event => event.target.classList.remove('field-invalid'));
       form.onsubmit = async event => {
         event.preventDefault();
         const submit = form.querySelector('[type="submit"]');
@@ -1244,7 +1261,11 @@ import {
           const dot = THREE.MathUtils.clamp(startDir.dot(endDir), -1, 1);
           const angle = Math.acos(dot);
           const sinAngle = Math.sin(angle);
-          const height = Math.min(.95, .12 + (angle / Math.PI) * .8);
+          // Linear angle-to-height scaling (old: up to .95, ~39% of
+          // globeRadius) made long-haul arcs balloon into towering loops
+          // instead of clean domes. A sqrt curve rises fast for nearby
+          // pairs, then flattens — every arc reads as a dome, not a loop.
+          const height = Math.min(.4, .06 + Math.sqrt(angle / Math.PI) * .34);
           function getPoint(t) {
             let dir;
             if (sinAngle < 1e-6) {

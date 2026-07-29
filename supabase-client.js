@@ -40,7 +40,11 @@ export async function currentUser() {
   if (!supabase) return null;
   const { data, error } = await supabase.auth.getUser();
   if (error) {
-    console.error('[connectEd] Failed to load user:', error.message || error);
+    // "Auth session missing" is the normal state for a signed-out visitor,
+    // not a failure — logging it as an error buries genuine problems under
+    // noise that fires on every page load and every auth-gated action.
+    const expected = error.message === 'Auth session missing!';
+    if (!expected) console.error('[connectEd] Failed to load user:', error.message || error);
     return null;
   }
   return data.user || null;

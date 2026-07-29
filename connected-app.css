@@ -559,6 +559,13 @@
     }
     textarea.field { min-height: 120px; padding-block: 13px; resize: vertical; }
     .field::placeholder { color: var(--meta); }
+    /* Native validation tooltips are easy to miss inside a scrolling modal
+       (and headless testing tools don't render them at all) — this makes an
+       invalid required field unmistakable without waiting on the browser. */
+    .field.field-invalid {
+      border-color: #e5484d;
+      box-shadow: 0 0 0 3px color-mix(in oklab, #e5484d, transparent 80%);
+    }
     .project-image-picker {
       display: grid;
       gap: var(--space-3);
@@ -1013,10 +1020,14 @@
     .network-step {
       position: absolute;
       border: 1px solid color-mix(in oklab, var(--fg), transparent 45%);
-      /* A background matching the page exactly reads as an outline, not a
-         button — the same lighter fill every other .btn uses makes these
-         pills actually look pressable instead of just labeled text. */
-      background: var(--surface-warm);
+      /* --surface-warm resolves to #1c1c1c against a #171717 page bg — a
+         5-shade difference that's imperceptible once it's sitting over a
+         rendered globe. A translucent light tint (with the backdrop blur
+         below) reads as an actual frosted pill regardless of what's
+         rendering behind it. */
+      background: color-mix(in oklab, var(--fg), transparent 85%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       box-shadow: 0 4px 16px color-mix(in oklab, black, transparent 45%);
       color: var(--fg);
       font: 600 var(--text-xs)/1.35 var(--font-mono);
@@ -1409,7 +1420,12 @@
       background:
         radial-gradient(ellipse 60% 52% at 66% 50%, color-mix(in oklab, var(--accent), transparent 91%), transparent 70%),
         linear-gradient(color-mix(in oklab, var(--bg), transparent 30%), transparent 22% 74%, color-mix(in oklab, var(--bg), transparent 8%)),
-        linear-gradient(90deg, color-mix(in oklab, var(--bg), transparent 22%), transparent 46%);
+        /* Was fully transparent by 46% width, but the lede paragraph runs
+           to ~40% at common laptop widths (1280-1440px) — the globe's
+           bright dot texture showed through right where the text sits.
+           Holding full opacity to 32% and fading out by 64% covers the
+           whole copy column with margin. */
+        linear-gradient(90deg, color-mix(in oklab, var(--bg), transparent 22%) 0%, color-mix(in oklab, var(--bg), transparent 22%) 32%, transparent 64%);
       pointer-events: none;
     }
     .hero-grid {
@@ -1504,7 +1520,8 @@
     }
     .network-kicker,
     .network-motion-toggle,
-    .network-focus {
+    .network-focus,
+    .network-step {
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
     }
@@ -1512,7 +1529,7 @@
     .network-kicker,
     .network-motion-toggle,
     .network-step {
-      background: var(--surface-warm);
+      background: color-mix(in oklab, var(--fg), transparent 85%);
     }
     section:not(.hero) { padding-block: var(--section-y-desktop); }
     .section-head,

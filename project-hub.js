@@ -2027,6 +2027,22 @@ import {
 
     function bindAsyncForm(selector, handler, pendingLabel) {
       const form = $(selector);
+      // The browser blocks the 'submit' event entirely when a required field
+      // is empty and fires 'invalid' on that field instead — with only a
+      // native tooltip to show for it, easy to miss in a scrolling modal.
+      // Surface it with a toast too, debounced so several simultaneously-
+      // invalid fields still show one.
+      let invalidToastQueued = false;
+      form.addEventListener('invalid', event => {
+        event.target.classList.add('field-invalid');
+        if (invalidToastQueued) return;
+        invalidToastQueued = true;
+        window.setTimeout(() => {
+          invalidToastQueued = false;
+          toast('Please fill out the highlighted field before submitting.');
+        }, 0);
+      }, true);
+      form.addEventListener('input', event => event.target.classList.remove('field-invalid'));
       form.onsubmit = async event => {
         event.preventDefault();
         const submit = form.querySelector('[type="submit"]');
