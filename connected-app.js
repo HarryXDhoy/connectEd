@@ -379,8 +379,26 @@ import {
       $('#project-pins').innerHTML = filtered.length
         ? filtered.map((project, index) => {
             const boosted = project.boost_until && new Date(project.boost_until) > new Date();
-            const statusClass = boosted ? 'is-boosted' : project.status === 'invite_only' ? 'is-invite' : 'is-open';
-            const statusLabel = boosted ? 'Boosted idea' : project.status === 'invite_only' ? 'Invite only' : 'Open project';
+            // Was missing the paused-applications check entirely (unlike
+            // project-hub.js's equivalent pinMarkup()) — a project with
+            // applications explicitly paused by its owner still showed
+            // "Open project" here, with nothing distinguishing it from one
+            // actually accepting applicants.
+            const acceptingApplications = isAcceptingApplications(project);
+            const statusClass = boosted
+              ? 'is-boosted'
+              : !acceptingApplications && project.status === 'open'
+              ? 'is-paused'
+              : project.status === 'invite_only'
+              ? 'is-invite'
+              : 'is-open';
+            const statusLabel = boosted
+              ? 'Boosted idea'
+              : !acceptingApplications && project.status === 'open'
+              ? 'Applications paused'
+              : project.status === 'invite_only'
+              ? 'Invite only'
+              : 'Open project';
             const seatLabel = seatsLabel(project);
             const seatSuffix = seatLabel ? ` · ${seatLabel}` : '';
             return `

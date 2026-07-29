@@ -195,6 +195,12 @@ import {
     let activeFilter = 'all';
     let editingProjectId = null;
     let editingQuestionIds = [];
+    // Explicit open/closed overrides for the Review applicants groups, set
+    // only once someone actually clicks a group's toggle — until then, a
+    // group's default state is computed from whether it still has pending
+    // applications (see isApplicantGroupExpanded), so groups needing
+    // attention open automatically and fully-reviewed ones stay tucked away.
+    let applicantGroupOverrides = new Map();
     let loadError = '';
     let paymentsConfigured = false;
     let messages = [];
@@ -1330,6 +1336,13 @@ import {
       $('#applicant-list').innerHTML = groups.size
         ? [...groups.values()].map(group => {
             const pending = group.applications.filter(application => application.status === 'pending').length;
+            const projectId = String(group.project.id);
+            // A group the owner hasn't touched yet defaults open if it
+            // still needs a decision, closed if it's already fully
+            // reviewed — a click always overrides that default from then on.
+            const expanded = applicantGroupOverrides.has(projectId)
+              ? applicantGroupOverrides.get(projectId)
+              : pending > 0;
             return `
               <section class="applicant-group" data-od-id="project-request-group-${escapeHtml(group.project.id)}">
                 <div class="applicant-group-head">
@@ -1341,14 +1354,16 @@ import {
                     </div>
                   </div>
                   <div class="applicant-group-counts" aria-label="Request counts">
-                    <span class="applicant-group-count">${group.applications.length} ${group.applications.length === 1 ? 'request' : 'requests'}</span>
                     ${pending ? `<span class="applicant-group-count pending">${pending} pending</span>` : ''}
                     ${reviewsAvailable && group.applications.some(application => ['accepted', 'interview'].includes(application.status))
                       ? `<button class="btn btn-small" data-review-project="${escapeHtml(group.project.id)}">Review participants</button>`
                       : ''}
+                    <button class="btn btn-small" data-toggle-group="${escapeHtml(projectId)}" aria-expanded="${expanded}">
+                      ${expanded ? 'Hide' : 'View'} ${group.applications.length} ${group.applications.length === 1 ? 'applicant' : 'applicants'}
+                    </button>
                   </div>
                 </div>
-                <div class="applicant-group-list">
+                <div class="applicant-group-list" ${expanded ? '' : 'hidden'}>
                   ${group.applications.map(applicantMarkup).join('')}
                 </div>
               </section>
@@ -1356,6 +1371,14 @@ import {
           }).join('')
         : '<div class="empty">No applications have reached your projects yet.</div>';
 
+      $$('[data-toggle-group]').forEach(button => {
+        button.onclick = () => {
+          const id = button.dataset.toggleGroup;
+          const currentlyExpanded = button.getAttribute('aria-expanded') === 'true';
+          applicantGroupOverrides.set(id, !currentlyExpanded);
+          renderApplicants();
+        };
+      });
       $$('[data-review]').forEach(button => {
         button.onclick = () => reviewApplication(button.dataset.id, button.dataset.review);
       });

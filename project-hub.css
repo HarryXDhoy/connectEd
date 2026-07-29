@@ -406,6 +406,12 @@
       color: var(--accent);
     }
     .applicant-group-list { display: grid; }
+    /* .applicant-group-list's own display:grid (an author rule) beats the
+       [hidden] attribute's UA-stylesheet display:none — author styles win
+       over user-agent styles regardless of selector specificity, so
+       without this explicit override the hidden attribute alone wouldn't
+       actually hide a collapsed group. */
+    .applicant-group-list[hidden] { display: none; }
     .applicant-group-list .applicant {
       border: 0;
       border-bottom: 1px solid var(--border-soft);

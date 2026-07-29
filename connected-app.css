@@ -1694,6 +1694,7 @@
       border-color: color-mix(in oklab, var(--accent), transparent 45%);
       color: var(--accent);
     }
+    .pin-status.is-paused,
     .pin-status.is-invite { color: var(--muted); }
     .pin-body { padding: var(--space-6); }
     section:not(.hero) .pin .pin-title {
