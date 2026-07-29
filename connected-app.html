@@ -91,6 +91,18 @@
             <button class="network-motion-toggle" id="network-motion-toggle" type="button" aria-pressed="false" aria-controls="project-network-canvas" hidden>
               Pause motion
             </button>
+            <button class="network-motion-toggle network-legend-toggle" id="network-legend-toggle" type="button" aria-expanded="false" aria-controls="network-legend">
+              What's this?
+            </button>
+            <div class="network-legend" id="network-legend" role="dialog" aria-label="How to read the globe" hidden>
+              <h3>Reading the globe</h3>
+              <ul>
+                <li><span class="legend-swatch legend-dot" aria-hidden="true"></span>Brighter, bigger dots mark locations with more members.</li>
+                <li><span class="legend-swatch legend-line" aria-hidden="true"></span>Lines connect members who are actually working together.</li>
+                <li><span class="legend-swatch legend-pulse-accepted" aria-hidden="true"></span>Solid green pulse — a confirmed team-up.</li>
+                <li><span class="legend-swatch legend-pulse-interview" aria-hidden="true"></span>Hollow amber ring — an interview in progress.</li>
+              </ul>
+            </div>
             <div class="network-steps" role="group" aria-label="Get started">
               <a class="network-step" href="#discover" data-od-id="network-step-discover">Discover</a>
               <a class="network-step" href="project-hub.html" data-od-id="network-step-connect">Connect</a>

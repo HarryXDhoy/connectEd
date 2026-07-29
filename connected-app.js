@@ -947,6 +947,27 @@ import {
       const motionToggle = $('#network-motion-toggle');
       if (!stage || !canvas) return;
 
+      const legendToggle = $('#network-legend-toggle');
+      const legend = $('#network-legend');
+      if (legendToggle && legend) {
+        const closeLegend = () => {
+          legend.hidden = true;
+          legendToggle.setAttribute('aria-expanded', 'false');
+        };
+        legendToggle.onclick = event => {
+          event.stopPropagation();
+          const opening = legend.hidden;
+          legend.hidden = !opening;
+          legendToggle.setAttribute('aria-expanded', String(opening));
+        };
+        document.addEventListener('click', event => {
+          if (!legend.hidden && !legend.contains(event.target) && event.target !== legendToggle) closeLegend();
+        });
+        document.addEventListener('keydown', event => {
+          if (event.key === 'Escape' && !legend.hidden) closeLegend();
+        });
+      }
+
       const openProjects = projects.filter(project => project.status !== 'closed');
       const heroMeta = $('#hero-live-meta');
       if (heroMeta) {
