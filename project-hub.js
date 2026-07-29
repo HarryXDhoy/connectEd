@@ -152,6 +152,14 @@ import {
     let editingProjectId = null;
     let editingQuestionIds = [];
     let loadError = '';
+    let paymentsConfigured = false;
+    let messages = [];
+    let messagesAvailable = false;
+    let viewingProfileId = null;
+    let activeConversationUserId = null;
+    let activeConversationName = '';
+    let messagesSubscription = null;
+    let messagesSubscriptionUserId = null;
     let requestSubscription = null;
     let requestSubscriptionUserId = null;
     const savedProjectsKey = 'connected:saved-projects';
@@ -268,6 +276,151 @@ import {
       if (changed) {
         toast(`Your request for ${changed.projects?.title || 'a project'} is now ${statusLabel(changed.status).toLowerCase()}.`);
       }
+    }
+
+    function subscribeToMessages() {
+      if (!supabase || !user) {
+        if (messagesSubscription) supabase?.removeChannel(messagesSubscription);
+        messagesSubscription = null;
+        messagesSubscriptionUserId = null;
+        return;
+      }
+      if (messagesSubscription && messagesSubscriptionUserId === user.id) return;
+      if (messagesSubscription) supabase.removeChannel(messagesSubscription);
+      messagesSubscriptionUserId = user.id;
+      messagesSubscription = supabase
+        .channel(`messages-${user.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `recipient_id=eq.${user.id}`
+        }, payload => {
+          const alreadyOpen = activeConversationUserId === payload.new.sender_id
+            && $('#tab-messages').classList.contains('active');
+          if (!alreadyOpen) toast('New message received.');
+          window.setTimeout(loadAll, 0);
+        })
+        .subscribe();
+    }
+
+    function otherParticipantId(message) {
+      return message.sender_id === user.id ? message.recipient_id : message.sender_id;
+    }
+
+    function conversationSummaries() {
+      const byPartner = new Map();
+      messages.forEach(message => {
+        const partnerId = otherParticipantId(message);
+        const partnerProfile = message.sender_id === user.id ? message.recipient : message.sender;
+        const existing = byPartner.get(partnerId);
+        if (!existing || new Date(message.created_at) > new Date(existing.lastMessage.created_at)) {
+          byPartner.set(partnerId, {
+            partnerId,
+            partnerName: partnerProfile?.display_name || 'connectEd member',
+            lastMessage: message
+          });
+        }
+      });
+      const summaries = [...byPartner.values()];
+      summaries.forEach(summary => {
+        summary.unreadCount = messages.filter(message =>
+          message.recipient_id === user.id && message.sender_id === summary.partnerId && !message.read_at
+        ).length;
+      });
+      summaries.sort((a, b) => new Date(b.lastMessage.created_at) - new Date(a.lastMessage.created_at));
+      return summaries;
+    }
+
+    function renderConversationList() {
+      const list = $('#conversation-list');
+      const unreadTotal = messages.filter(message => message.recipient_id === user?.id && !message.read_at).length;
+      $('#message-unread-count').textContent = unreadTotal;
+      if (!user) {
+        list.innerHTML = '<p class="muted">Sign in to message other members.</p>';
+        return;
+      }
+      if (!messagesAvailable) {
+        list.innerHTML = '<p class="muted">Messaging is not available yet.</p>';
+        return;
+      }
+      const summaries = conversationSummaries();
+      if (!summaries.length) {
+        list.innerHTML = '<p class="muted">No conversations yet — open a member\'s profile and choose Message to start one.</p>';
+        return;
+      }
+      list.innerHTML = summaries.map(summary => `
+        <button type="button" class="conversation-item${summary.unreadCount ? ' conversation-item-unread' : ''}" data-open-conversation="${escapeHtml(summary.partnerId)}" data-partner-name="${escapeHtml(summary.partnerName)}">
+          <span>
+            <span class="conversation-item-name">${escapeHtml(summary.partnerName)}</span>
+            <span class="conversation-item-preview">${summary.lastMessage.sender_id === user.id ? 'You: ' : ''}${escapeHtml(summary.lastMessage.body)}</span>
+          </span>
+          <span class="conversation-item-meta">
+            ${summary.unreadCount ? '<span class="conversation-unread-dot" aria-hidden="true"></span>' : ''}
+            <span>${new Date(summary.lastMessage.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+          </span>
+        </button>
+      `).join('');
+      $$('[data-open-conversation]').forEach(button => {
+        button.onclick = () => openConversation(button.dataset.openConversation, button.dataset.partnerName);
+      });
+    }
+
+    async function markConversationRead(partnerId) {
+      const unreadIds = messages
+        .filter(message => message.recipient_id === user.id && message.sender_id === partnerId && !message.read_at)
+        .map(message => message.id);
+      if (!unreadIds.length) return;
+      const nowIso = new Date().toISOString();
+      messages = messages.map(message => unreadIds.includes(message.id) ? { ...message, read_at: nowIso } : message);
+      renderConversationList();
+      await supabase.from('messages').update({ read_at: nowIso }).in('id', unreadIds);
+    }
+
+    function renderMessageThread() {
+      $('#message-thread-name').textContent = activeConversationName;
+      const thread = messages.filter(message => otherParticipantId(message) === activeConversationUserId);
+      const body = $('#message-thread-body');
+      body.innerHTML = thread.map(message => `
+        <div class="message-bubble ${message.sender_id === user.id ? 'sent' : 'received'}">
+          <span>${escapeHtml(message.body)}</span>
+          <time datetime="${escapeHtml(message.created_at)}">${new Date(message.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</time>
+        </div>
+      `).join('') || '<p class="muted">Say hello — this is the start of your conversation.</p>';
+      body.scrollTop = body.scrollHeight;
+    }
+
+    function openConversation(partnerId, partnerName) {
+      activeConversationUserId = partnerId;
+      activeConversationName = partnerName;
+      $('#conversation-list').hidden = true;
+      $('#message-thread').hidden = false;
+      renderMessageThread();
+      markConversationRead(partnerId);
+      window.setTimeout(() => $('#message-form [name=body]').focus(), 0);
+    }
+
+    function closeConversation() {
+      activeConversationUserId = null;
+      activeConversationName = '';
+      $('#conversation-list').hidden = false;
+      $('#message-thread').hidden = true;
+    }
+
+    async function sendMessage(form) {
+      if (!(await requireUser())) return;
+      if (!activeConversationUserId) return;
+      const values = new FormData(form);
+      const body = String(values.get('body') || '').trim();
+      if (!body) return;
+      const result = await supabase.from('messages').insert({
+        sender_id: user.id,
+        recipient_id: activeConversationUserId,
+        body
+      });
+      if (result.error) return toast(result.error.message || 'Message could not be sent.');
+      form.reset();
+      await loadAll();
     }
 
     let activeModal = null;
@@ -547,14 +700,31 @@ import {
         }
         interviews = interviewResult.error ? [] : interviewResult.data || [];
 
+        // The messages table may not exist yet if this migration hasn't
+        // rolled out to every environment — fail soft (empty inbox) rather
+        // than breaking the whole board.
+        const messageResult = await supabase
+          .from('messages')
+          .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url),recipient:recipient_id(display_name,avatar_url)')
+          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+          .order('created_at', { ascending: true });
+        messagesAvailable = !messageResult.error;
+        messages = messageResult.error ? [] : messageResult.data || [];
+
         await updateAccount();
         subscribeToRequestUpdates();
+        subscribeToMessages();
       } else {
         profile = null;
         applications = [];
         sentApplications = [];
         interviews = [];
+        messages = [];
+        messagesAvailable = false;
+        activeConversationUserId = null;
+        activeConversationName = '';
         subscribeToRequestUpdates();
+        subscribeToMessages();
       }
 
       // Reviews are publicly readable (reputation is meant to be visible to
@@ -619,6 +789,8 @@ import {
       renderProfile();
       renderNotifications();
       renderLocationNudge();
+      renderConversationList();
+      if (activeConversationUserId) renderMessageThread();
       // Global, not per-panel: every panel above can render a clickable
       // avatar or name, so bind them once after everything has painted
       // instead of repeating this call in each render function.
@@ -782,7 +954,7 @@ import {
               <div class="project-actions">
                 <button class="btn btn-small" data-edit="${escapeHtml(project.id)}">Edit</button>
                 ${project.status === 'open' ? `<button class="btn btn-small" data-toggle-intake="${escapeHtml(project.id)}" aria-pressed="${!acceptingApplications}">${acceptingApplications ? 'Pause applications' : 'Resume applications'}</button>` : ''}
-                <button class="btn btn-small" data-boost="${escapeHtml(project.id)}">${profile?.priority_match_active ? 'Use Plus boost' : 'Get Plus'}</button>
+                <button class="btn btn-small" data-boost="${escapeHtml(project.id)}"${!profile?.priority_match_active && !paymentsConfigured ? ' disabled title="Coming soon"' : ''}>${profile?.priority_match_active ? 'Use Plus boost' : 'Get Plus'}</button>
               </div>
             ` : ''}
           </div>
@@ -817,6 +989,7 @@ import {
       ));
       $$('[data-boost]').forEach(button => button.onclick = () => activateBoost(button.dataset.boost));
       $$('[data-toggle-intake]').forEach(button => button.onclick = () => toggleProjectIntake(button.dataset.toggleIntake));
+      applyPaymentsGating();
     }
 
     function renderDiscovery() {
@@ -1087,6 +1260,9 @@ import {
       if (target.error || !target.data) return toast('This profile could not be loaded.');
       const person = target.data;
       const displayName = person.display_name || 'connectEd member';
+      viewingProfileId = person.id;
+      const messageButton = $('#view-profile-message');
+      messageButton.hidden = !user || user.id === person.id || !messagesAvailable;
       $('#view-profile-name').textContent = displayName;
       $('#view-profile-headline').textContent = person.headline || 'No profile headline yet';
       const banner = $('#view-profile-banner');
@@ -1194,6 +1370,7 @@ import {
         </article>
       `).join('');
       renderInterviewCalendar();
+      applyPaymentsGating();
     }
 
     let calendarMonth = new Date();
@@ -1846,6 +2023,35 @@ import {
 
     let checkoutPending = false;
 
+    // Disabled by default (paymentsConfigured starts false) so nobody can
+    // click through to create-checkout-session's 503 before this resolves —
+    // only re-enabled once /api/payments-status actually confirms Stripe is
+    // configured. Boost buttons stay untouched for members who are already
+    // Plus, since activating a boost they already have doesn't call Stripe.
+    function applyPaymentsGating() {
+      const alreadyPlus = Boolean(profile?.priority_match_active);
+      const membershipButton = $('#membership-action');
+      if (membershipButton) {
+        membershipButton.disabled = !alreadyPlus && !paymentsConfigured;
+        membershipButton.title = alreadyPlus || paymentsConfigured ? '' : 'Coming soon';
+      }
+      $$('[data-boost]').forEach(button => {
+        button.disabled = !alreadyPlus && !paymentsConfigured;
+        button.title = alreadyPlus || paymentsConfigured ? '' : 'Coming soon';
+      });
+    }
+
+    async function refreshPaymentsStatus() {
+      try {
+        const response = await fetch('/api/payments-status');
+        const data = await response.json();
+        paymentsConfigured = Boolean(data.configured);
+      } catch (_) {
+        paymentsConfigured = false;
+      }
+      applyPaymentsGating();
+    }
+
     async function startCheckout(projectId = '') {
       if (checkoutPending) return;
       if (!(await requireUser())) return;
@@ -2023,6 +2229,7 @@ import {
       });
       if (name === 'profile') renderProfile();
       if (name === 'requests') renderRequests();
+      if (name === 'messages') { closeConversation(); renderConversationList(); }
     }
 
     function bindAsyncForm(selector, handler, pendingLabel) {
@@ -2074,6 +2281,15 @@ import {
     bindAsyncForm('#interview-form', scheduleInterview, 'Scheduling…');
     bindAsyncForm('#review-form', submitParticipantReview, 'Publishing…');
     bindAsyncForm('#profile-form', saveProfile, 'Saving…');
+    bindAsyncForm('#message-form', sendMessage, 'Sending…');
+    $('#message-thread-back').onclick = () => { closeConversation(); renderConversationList(); };
+    $('#view-profile-message').onclick = () => {
+      if (!viewingProfileId) return;
+      const name = $('#view-profile-name').textContent;
+      closeModal('view-profile');
+      switchPanel('messages');
+      openConversation(viewingProfileId, name);
+    };
     $('#membership-action').onclick = () => profile?.priority_match_active
       ? switchPanel('owned')
       : startCheckout();
@@ -2182,6 +2398,7 @@ import {
       });
     }
     await loadAll();
+    refreshPaymentsStatus();
     if (authIntent === 'google' && !user) {
       const cleanUrl = new URL(window.location.href);
       cleanUrl.searchParams.delete('auth');

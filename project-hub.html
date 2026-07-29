@@ -84,6 +84,7 @@
         <button id="tab-owned" class="tab" data-panel="owned" role="tab" aria-selected="false" aria-controls="panel-owned" tabindex="-1">My projects <span class="tab-count" id="owned-count">0</span></button>
         <button id="tab-requests" class="tab" data-panel="requests" role="tab" aria-selected="false" aria-controls="panel-requests" tabindex="-1">My requests <span class="tab-count" id="request-count">0</span></button>
         <button id="tab-applicants" class="tab" data-panel="applicants" role="tab" aria-selected="false" aria-controls="panel-applicants" tabindex="-1">Review applicants <span class="tab-count" id="applicant-count">0</span></button>
+        <button id="tab-messages" class="tab" data-panel="messages" role="tab" aria-selected="false" aria-controls="panel-messages" tabindex="-1">Messages <span class="tab-count" id="message-unread-count">0</span></button>
         <button id="tab-profile" class="tab" data-panel="profile" role="tab" aria-selected="false" aria-controls="panel-profile" tabindex="-1">My profile</button>
       </nav>
 
@@ -128,6 +129,24 @@
           <div><h2>Your join requests</h2><p class="muted">Track every request you sent and see when a project owner accepts, declines, or schedules an interview.</p></div>
         </div>
         <div id="request-list" class="applicants" aria-live="polite"></div>
+      </section>
+
+      <section id="panel-messages" class="panel" data-od-id="messages-panel" role="tabpanel" aria-labelledby="tab-messages" tabindex="0" hidden>
+        <div class="panel-head">
+          <div><h2>Messages</h2><p class="muted">Direct conversations with other members.</p></div>
+        </div>
+        <div id="conversation-list" class="conversation-list" aria-live="polite"></div>
+        <div id="message-thread" class="message-thread" hidden>
+          <div class="message-thread-head">
+            <button class="btn btn-small" id="message-thread-back" type="button">&larr; All messages</button>
+            <strong id="message-thread-name"></strong>
+          </div>
+          <div id="message-thread-body" class="message-thread-body" aria-live="polite"></div>
+          <form id="message-form" class="message-form">
+            <input class="field" name="body" maxlength="4000" placeholder="Write a message…" required autocomplete="off">
+            <button class="btn btn-primary" type="submit">Send</button>
+          </form>
+        </div>
       </section>
 
       <section id="panel-profile" class="panel" data-od-id="profile-panel" role="tabpanel" aria-labelledby="tab-profile" tabindex="0" hidden>
@@ -187,7 +206,7 @@
             <p class="eyebrow">Membership</p>
             <h3 id="membership-title">Free member</h3>
             <p class="muted" id="membership-copy">Applications and project sharing are free.</p>
-            <button class="btn btn-primary" id="membership-action">Get connectEd Plus</button>
+            <button class="btn btn-primary" id="membership-action" disabled>Get connectEd Plus</button>
             <div class="review-list" style="margin-top: var(--space-8);">
               <p class="eyebrow">Participant reputation</p>
               <div class="reputation-summary">
@@ -407,6 +426,7 @@
         <div><p class="eyebrow">Profile</p><h2 id="view-profile-name">Member</h2></div>
         <button class="close" data-close="view-profile" aria-label="Close">×</button>
       </div>
+      <button class="btn btn-small" id="view-profile-message" type="button">Message</button>
       <div class="profile-banner" id="view-profile-banner" hidden></div>
       <div class="profile-identity">
         <div class="profile-photo-wrap">

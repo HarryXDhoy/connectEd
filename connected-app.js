@@ -663,6 +663,19 @@ import {
       toast('Application sent to the project owner.');
     }
 
+    async function refreshPaymentsStatus() {
+      const button = $('#plus-checkout');
+      try {
+        const response = await fetch('/api/payments-status');
+        const data = await response.json();
+        button.disabled = !data.configured;
+        button.textContent = data.configured ? 'Get connectEd Plus' : 'connectEd Plus — coming soon';
+      } catch (_) {
+        button.disabled = true;
+        button.textContent = 'connectEd Plus — coming soon';
+      }
+    }
+
     async function startCheckout() {
       const button = $('#plus-checkout');
       if (button.disabled) return;
@@ -827,6 +840,11 @@ import {
     bindAsyncForm('#create-form', createProject, 'Publishing…');
     bindAsyncForm('#join-form', submitApplication, 'Sending…');
     $('#plus-checkout').onclick = startCheckout;
+    // Disabled until refreshPaymentsStatus() confirms Stripe is actually
+    // configured — a visitor clicking mid-setup would otherwise reach
+    // create-checkout-session's 503 and see a raw "not configured" error.
+    $('#plus-checkout').disabled = true;
+    refreshPaymentsStatus();
     const projectSearchInputs = [$('#nav-search'), $('#mobile-project-search')];
     let hadSearchQuery = false;
     projectSearchInputs.forEach(input => {

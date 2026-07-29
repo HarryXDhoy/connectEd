@@ -650,6 +650,80 @@
       letter-spacing: -.02em;
     }
     .reputation-stars { color: var(--accent); letter-spacing: .08em; }
+    .conversation-list { display: grid; gap: var(--space-2); }
+    .conversation-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: var(--space-3);
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      text-align: left;
+      cursor: pointer;
+    }
+    .conversation-item:hover { border-color: color-mix(in oklab, var(--fg), transparent 68%); }
+    .conversation-item-name { font-weight: 600; }
+    .conversation-item-preview {
+      display: block;
+      max-width: 46ch;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: var(--text-sm);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .conversation-item-unread .conversation-item-preview { color: var(--fg); font-weight: 600; }
+    .conversation-item-meta { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-1); color: var(--muted); font-size: var(--text-xs); }
+    .conversation-unread-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .message-thread { display: flex; flex-direction: column; gap: var(--space-3); }
+    .message-thread-head { display: flex; align-items: center; gap: var(--space-3); }
+    .message-thread-body {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      max-height: 50vh;
+      overflow-y: auto;
+      padding: var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+    }
+    .message-bubble {
+      max-width: 70%;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      font-size: var(--text-sm);
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .message-bubble.sent {
+      align-self: flex-end;
+      background: var(--accent);
+      color: var(--bg);
+    }
+    .message-bubble.received {
+      align-self: flex-start;
+      background: var(--surface-warm);
+      color: var(--fg);
+    }
+    .message-bubble time {
+      display: block;
+      margin-top: var(--space-1);
+      opacity: .7;
+      font-size: var(--text-xs);
+    }
+    .message-form { display: flex; gap: var(--space-2); }
+    .message-form .field { flex: 1; }
     .review-list { display: grid; gap: var(--space-3); }
     .review-entry {
       padding-top: var(--space-3);
