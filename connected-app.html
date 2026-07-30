@@ -28,7 +28,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="connectEd">
   <title>connectEd - Find your next project</title>
-  <link rel="stylesheet" href="connected-app.css?v=20260730-scrollable-descriptions">
+  <link rel="stylesheet" href="connected-app.css?v=20260730-clickable-profiles">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -384,6 +384,32 @@
     </div>
   </div>
 
+  <div id="modal-view-profile" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="view-profile-name" tabindex="-1">
+    <div class="modal glass public-profile-modal">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Public profile</p>
+          <h2 id="view-profile-name">Member</h2>
+        </div>
+        <button class="close" data-close="view-profile" aria-label="Close">×</button>
+      </div>
+      <div class="profile-banner" id="view-profile-banner" hidden></div>
+      <div class="profile-identity">
+        <div class="profile-photo-wrap">
+          <img class="profile-photo" id="view-profile-photo" alt="" hidden>
+          <span class="profile-photo-fallback" id="view-profile-photo-fallback" aria-hidden="true"></span>
+        </div>
+        <div>
+          <strong id="view-profile-headline"></strong>
+          <span id="view-profile-reputation"></span>
+        </div>
+      </div>
+      <p class="section-copy" id="view-profile-bio"></p>
+      <div class="tags" id="view-profile-skills"></div>
+      <div class="review-list" id="view-profile-reviews"></div>
+    </div>
+  </div>
+
   <div id="modal-report" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="report-title" tabindex="-1">
     <div class="modal glass report-modal">
       <div class="modal-head">
@@ -422,6 +448,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="app-config.js?v=20260727"></script>
-  <script type="module" src="connected-app.js?v=20260730-reporting"></script>
+  <script type="module" src="connected-app.js?v=20260730-clickable-profiles"></script>
 </body>
 </html>

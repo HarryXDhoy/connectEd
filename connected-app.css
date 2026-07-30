@@ -2697,3 +2697,111 @@
         max-height: 38vh;
       }
     }
+
+    .link-button {
+      border: 0;
+      padding: 0;
+      background: none;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      text-underline-offset: 3px;
+      cursor: pointer;
+    }
+    .link-button:hover,
+    .link-button:focus-visible {
+      color: var(--fg);
+      text-decoration-color: currentColor;
+    }
+
+    #modal-view-profile .public-profile-modal {
+      width: min(100%, 620px);
+    }
+    #modal-view-profile .profile-banner {
+      width: 100%;
+      height: 150px;
+      margin: var(--space-5) 0 0;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      background-position: center;
+      background-size: cover;
+    }
+    #modal-view-profile .profile-identity {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: var(--space-4);
+      align-items: center;
+      margin: var(--space-5) 0;
+      padding-bottom: var(--space-5);
+      border-bottom: 1px solid var(--border-soft);
+    }
+    #modal-view-profile .profile-photo-wrap {
+      position: relative;
+      width: 72px;
+      height: 72px;
+    }
+    #modal-view-profile .profile-photo,
+    #modal-view-profile .profile-photo-fallback {
+      position: absolute;
+      inset: 0;
+      width: 72px;
+      height: 72px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--surface);
+    }
+    #modal-view-profile .profile-photo {
+      display: block;
+      object-fit: cover;
+    }
+    #modal-view-profile .profile-photo-fallback {
+      display: grid;
+      place-items: center;
+      color: var(--fg);
+      font: 500 var(--text-lg)/1 var(--font-mono);
+    }
+    #modal-view-profile .profile-identity strong,
+    #modal-view-profile .profile-identity span {
+      display: block;
+    }
+    #modal-view-profile .profile-identity strong {
+      color: var(--fg);
+      font-size: var(--text-lg);
+      font-weight: 500;
+    }
+    #modal-view-profile .profile-identity span {
+      margin-top: var(--space-1);
+      color: var(--muted);
+      font-size: var(--text-sm);
+    }
+    #modal-view-profile #view-profile-bio {
+      margin-bottom: var(--space-4);
+    }
+    #modal-view-profile .review-list {
+      display: grid;
+      gap: var(--space-3);
+      margin-top: var(--space-5);
+    }
+    #modal-view-profile .review-entry {
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-soft);
+    }
+    #modal-view-profile .review-entry p {
+      margin: var(--space-2) 0 0;
+      color: var(--fg-2);
+      font-size: var(--text-sm);
+    }
+    #modal-view-profile .review-entry-meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: var(--space-2);
+      color: var(--muted);
+      font-size: var(--text-xs);
+    }
+    #modal-view-profile .reputation-stars {
+      color: var(--accent);
+      letter-spacing: .08em;
+    }

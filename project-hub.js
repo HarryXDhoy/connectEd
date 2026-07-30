@@ -1565,7 +1565,11 @@ import {
         </article>
       `).join('');
       bindProfileViewButtons();
-      openModal('view-profile');
+      if (activeModal?.id === 'modal-project-detail') {
+        replaceModal('project-detail', 'view-profile');
+      } else if (activeModal?.id !== 'modal-view-profile') {
+        openModal('view-profile');
+      }
     }
 
     function renderProfile() {

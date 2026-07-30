@@ -241,6 +241,11 @@ import {
       toast.timer = window.setTimeout(() => element.classList.remove('show'), 3200);
     }
 
+    function starText(rating) {
+      const rounded = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+      return '★'.repeat(rounded) + '☆'.repeat(5 - rounded);
+    }
+
     let activeModal = null;
     let modalReturnFocus = null;
     const modalBackground = [document.querySelector('header'), document.querySelector('main'), $('#preview-note')].filter(Boolean);
@@ -479,6 +484,9 @@ import {
               : 'Open project';
             const seatLabel = seatsLabel(project);
             const seatSuffix = seatLabel ? ` · ${seatLabel}` : '';
+            const ownerLine = project.owner_id
+              ? `By <button type="button" class="link-button" data-view-profile="${escapeHtml(project.owner_id)}">${escapeHtml(project.owner)}</button>${escapeHtml(seatSuffix)}`
+              : escapeHtml(`By ${project.owner}${seatSuffix}`);
             return `
               <article class="pin glass" data-od-id="project-card-${escapeHtml(project.id)}">
                 <div class="pin-cover">
@@ -493,7 +501,7 @@ import {
                     ${projectCardTagsMarkup(project)}
                   </div>
                   <div class="pin-foot">
-                    <span class="owner">${escapeHtml(`By ${project.owner}${seatSuffix}`)}</span>
+                    <span class="owner">${ownerLine}</span>
                     <button class="btn btn-small" data-project="${escapeHtml(project.id)}" aria-label="View ${escapeHtml(project.title)}">View project</button>
                   </div>
                 </div>
@@ -512,6 +520,7 @@ import {
       $$('[data-project]').forEach(button => {
         button.onclick = () => showProject(button.dataset.project);
       });
+      bindProfileViewButtons();
       // An inline onerror="..." attribute here would need script-src
       // 'unsafe-inline' in the CSP just for this one fallback; binding it
       // as a real listener after insertion means the CSP doesn't have to
@@ -613,7 +622,11 @@ import {
       const requestedProjectId = String(activeProject.id);
       $('#project-title').textContent = activeProject.title;
       const detailSeatLabel = seatsLabel(activeProject);
-      $('#project-owner').textContent = `Shared by ${activeProject.owner}${detailSeatLabel ? ` · ${detailSeatLabel}` : ''}`;
+      const detailSeatSuffix = detailSeatLabel ? ` · ${detailSeatLabel}` : '';
+      $('#project-owner').innerHTML = activeProject.owner_id
+        ? `Shared by <button type="button" class="link-button" data-view-profile="${escapeHtml(activeProject.owner_id)}">${escapeHtml(activeProject.owner)}</button>${escapeHtml(detailSeatSuffix)}`
+        : escapeHtml(`Shared by ${activeProject.owner}${detailSeatSuffix}`);
+      bindProfileViewButtons();
       const detailCover = $('#project-detail-cover');
       const fallbackCover = projectCover(activeProject);
       detailCover.onerror = () => {
@@ -700,6 +713,92 @@ import {
         </label>
       `).join('') : '<p class="muted">No additional questions for this project.</p>';
       if (submitButton) submitButton.disabled = !canApply;
+    }
+
+    function bindProfileViewButtons() {
+      $$('[data-view-profile]').forEach(button => {
+        button.onclick = () => openProfileView(button.dataset.viewProfile);
+      });
+    }
+
+    async function openProfileView(profileId) {
+      const sourceModalId = activeModal?.id || '';
+      let target = await supabase
+        .from('profiles')
+        .select('id,display_name,headline,bio,skills,avatar_url,banner_url,priority_match_active')
+        .eq('id', profileId)
+        .maybeSingle();
+      if (target.error && /permission denied/i.test(target.error.message || '')) {
+        target = await supabase
+          .from('profiles')
+          .select('id,display_name,headline,bio,skills,avatar_url,priority_match_active')
+          .eq('id', profileId)
+          .maybeSingle();
+      }
+      if (target.error || !target.data) return toast('This profile could not be loaded.');
+
+      const reviewResult = await supabase
+        .from('project_reviews')
+        .select('rating,comment,reviewer_id,reviewer:reviewer_id(display_name),projects:project_id(title)')
+        .eq('reviewee_id', profileId)
+        .order('created_at', { ascending: false });
+      const reviews = reviewResult.error ? [] : reviewResult.data || [];
+      const average = reviews.length
+        ? reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length
+        : 0;
+      const person = target.data;
+      const displayName = person.display_name || 'connectEd member';
+
+      $('#view-profile-name').textContent = displayName;
+      $('#view-profile-headline').textContent = person.headline || 'No profile headline yet';
+      $('#view-profile-reputation').textContent = reviews.length
+        ? `${starText(average)} ${average.toFixed(1)} from ${reviews.length} verified ${reviews.length === 1 ? 'review' : 'reviews'}`
+        : 'No verified reviews yet';
+      $('#view-profile-bio').textContent = person.bio || 'This member has not added a bio yet.';
+      $('#view-profile-skills').innerHTML = (person.skills || [])
+        .map(skill => `<span class="tag">${escapeHtml(skill)}</span>`)
+        .join('');
+
+      const banner = $('#view-profile-banner');
+      if (person.banner_url) {
+        banner.style.backgroundImage = `url("${person.banner_url}")`;
+        banner.hidden = false;
+      } else {
+        banner.style.backgroundImage = '';
+        banner.hidden = true;
+      }
+
+      const photo = $('#view-profile-photo');
+      const fallback = $('#view-profile-photo-fallback');
+      photo.referrerPolicy = 'no-referrer';
+      photo.onerror = () => {
+        photo.hidden = true;
+        fallback.hidden = false;
+      };
+      photo.hidden = !person.avatar_url;
+      fallback.hidden = Boolean(person.avatar_url);
+      if (person.avatar_url) photo.src = person.avatar_url;
+      else photo.removeAttribute('src');
+      photo.alt = person.avatar_url ? `${displayName} profile photo` : '';
+      fallback.textContent = displayName.slice(0, 2).toUpperCase();
+
+      $('#view-profile-reviews').innerHTML = reviews.length
+        ? reviews.slice(0, 4).map(review => `
+          <article class="review-entry">
+            <div class="review-entry-meta">
+              <span>${escapeHtml(review.reviewer?.display_name || 'Project participant')} · ${escapeHtml(review.projects?.title || 'Project')}</span>
+              <span class="reputation-stars">${starText(review.rating)}</span>
+            </div>
+            ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}
+          </article>
+        `).join('')
+        : '<p class="section-copy">No participant reviews have been published yet.</p>';
+
+      if (sourceModalId === 'modal-project' && activeModal?.id === 'modal-project') {
+        replaceModal('project', 'view-profile');
+      } else if (activeModal?.id !== 'modal-view-profile') {
+        openModal('view-profile');
+      }
     }
 
     async function openReportProject() {
