@@ -356,12 +356,16 @@
           <img id="detail-cover-image" alt="">
         </figure>
         <div class="project-detail-summary">
+          <p class="detail-section-label">About this project</p>
           <p id="detail-description" class="muted"></p>
           <div id="detail-tags" class="tags"></div>
           <div id="detail-links" class="project-links" hidden aria-label="Project links"></div>
         </div>
-        <div id="application-questions"></div>
-        <label class="application-message">What would you contribute?<textarea class="field" name="message" minlength="20" maxlength="3000" required></textarea></label>
+        <div class="project-questions-section">
+          <p class="detail-section-label">Application questions</p>
+          <div id="application-questions"></div>
+        </div>
+        <label class="application-message">Optional note for the project owner<textarea class="field" name="message" maxlength="3000" placeholder="Add context or anything else you would like to share."></textarea></label>
         <div class="form-actions">
           <button class="btn" type="button" data-close="project-detail">Cancel</button>
           <button class="btn btn-primary" type="submit">Send application</button>

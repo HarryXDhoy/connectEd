@@ -1058,6 +1058,8 @@
     #modal-project-detail .modal { width: min(100%, 920px); }
     .project-detail-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr); gap: var(--space-5) var(--space-6); align-items: start; margin-top: var(--space-5); }
     .project-detail-summary { min-width: 0; }
+    .detail-section-label { margin: 0 0 var(--space-2); color: var(--fg); font: 600 var(--text-xs)/1.2 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+    .project-questions-section { display: grid; gap: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--border-soft); }
     .project-detail-layout #application-questions { grid-column: 1; }
     .project-detail-layout .application-message { grid-column: 2; grid-row: 2; }
     .project-detail-layout .form-actions { grid-column: 2; grid-row: 3; }

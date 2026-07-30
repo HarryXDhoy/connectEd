@@ -717,7 +717,7 @@ import {
       const { error } = await supabase.from('applications').insert({
         project_id: activeProject.id,
         applicant_id: user.id,
-        message: String(values.get('message')).trim(),
+        message: String(values.get('message') || '').trim() || 'No additional note provided.',
         answers
       });
       if (error) {
