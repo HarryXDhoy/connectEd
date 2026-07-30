@@ -16,6 +16,14 @@ import {
       /[&<>"']/g,
       char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]
     );
+    const safeExternalUrl = value => {
+      try {
+        const url = new URL(String(value || ''));
+        return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '';
+      } catch (_) {
+        return '';
+      }
+    };
     // Every /api/* endpoint always responds with JSON on every path — but
     // an unhandled crash in one (timeout, network blip reaching a
     // third-party API) can still make the platform return an empty or
@@ -34,6 +42,7 @@ import {
       .filter(Boolean)
       .slice(0, 8);
     const PROJECT_IMAGE_PREFIX = '__image__:';
+    const PROJECT_LINK_PREFIX = '__link__:';
     const MAX_PROJECT_QUESTIONS = 8;
     const PROJECT_LOCATION_PREFIX = '__location__:';
     const APPLICATIONS_PAUSED_TAG = '__applications_paused__';
@@ -42,6 +51,7 @@ import {
     const projectTags = project => (project?.tags || [])
       .filter(tag =>
         !String(tag).startsWith(PROJECT_IMAGE_PREFIX) &&
+        !String(tag).startsWith(PROJECT_LINK_PREFIX) &&
         !String(tag).startsWith(PROJECT_LOCATION_PREFIX) &&
         String(tag) !== APPLICATIONS_PAUSED_TAG
       );
@@ -49,6 +59,24 @@ import {
       const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_IMAGE_PREFIX));
       return marker ? String(marker).slice(PROJECT_IMAGE_PREFIX.length) : '';
     };
+    const projectLinks = project => (project?.tags || [])
+      .filter(tag => String(tag).startsWith(PROJECT_LINK_PREFIX))
+      .map(tag => {
+        try {
+          const [label, url] = JSON.parse(String(tag).slice(PROJECT_LINK_PREFIX.length));
+          const safeUrl = safeExternalUrl(url);
+          return safeUrl ? { label: String(label || 'Project link').slice(0, 40), url: safeUrl } : null;
+        } catch (_) {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .slice(0, 6);
+    const projectLinkMarkup = project => projectLinks(project).map(link => `
+      <a class="project-link" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">
+        <span>${escapeHtml(link.label)}</span><span aria-hidden="true">↗</span>
+      </a>
+    `).join('');
     // seats_total is the static capacity set at creation — it never moved
     // as people were actually accepted, so a project with every seat
     // filled looked identical to one with none. seatCounts (populated from
@@ -548,6 +576,8 @@ import {
       $('#project-tags').innerHTML = projectTags(activeProject)
         .map(tag => `<span class="tag">${escapeHtml(tag)}</span>`)
         .join('');
+      $('#project-links').innerHTML = projectLinkMarkup(activeProject);
+      $('#project-links').hidden = !projectLinks(activeProject).length;
 
       let questions = [];
       if (isSupabaseConfigured && !id.startsWith('preview-')) {
