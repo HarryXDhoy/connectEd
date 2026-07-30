@@ -549,7 +549,7 @@
       background: var(--surface-warm);
       font-size: var(--text-xl);
     }
-    @media (max-width: 760px) {
+    @media (max-width: 560px) {
       #modal-project .modal { width: min(100%, 620px); }
       .project-detail-layout { grid-template-columns: 1fr; gap: var(--space-4); }
     }
