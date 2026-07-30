@@ -131,7 +131,7 @@ async function scheduleInterview(req, res) {
       identity.token
     ),
     userQuery(
-      `applications?select=id,project_id,applicant_id&id=eq.${applicationId}&project_id=eq.${projectId}&limit=1`,
+      `applications?select=id,project_id,applicant_id,status&id=eq.${applicationId}&project_id=eq.${projectId}&limit=1`,
       identity.token
     )
   ]);
@@ -140,6 +140,9 @@ async function scheduleInterview(req, res) {
 
   const applications = applicationResponse.ok ? await applicationResponse.json() : [];
   if (!applications.length) return json(res, 403, { error: 'Application does not belong to this project.' });
+  if (!['pending', 'accepted', 'interview'].includes(applications[0].status)) {
+    return json(res, 409, { error: 'Interviews cannot be scheduled for a declined or withdrawn application.' });
+  }
 
   if (!String(title || '').trim()) {
     return json(res, 400, { error: 'Missing or invalid interview details.' });

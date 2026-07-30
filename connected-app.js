@@ -833,7 +833,12 @@ import {
       const values = new FormData(form);
       const answers = {};
       for (const question of activeProject.questions || []) {
-        answers[question.id] = String(values.get(`question-${question.id}`) || '').trim();
+        const answer = String(values.get(`question-${question.id}`) || '').trim();
+        if (question.required && !answer) {
+          form.elements.namedItem(`question-${question.id}`)?.focus();
+          return toast('Please answer every required application question.');
+        }
+        answers[question.id] = answer;
       }
       const note = String(values.get('message') || '').trim();
       if (note && note.length < 20) {
