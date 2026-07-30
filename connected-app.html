@@ -280,7 +280,7 @@
           <label class="thumbnail-upload" for="create-project-image">
             <span class="thumbnail-upload-title">Choose your project thumbnail</span>
             <input class="field" id="create-project-image" name="image" type="file" accept="image/jpeg,image/png,image/webp">
-            <span class="field-help">Upload your own cover image · JPEG, PNG, or WebP · up to 8 MB. We optimize it before publishing.</span>
+            <span class="field-help">Upload your own cover image · 16:9 works best · JPEG, PNG, or WebP · up to 8 MB. We optimize it before publishing.</span>
           </label>
           <div class="image-preview" id="create-image-preview" hidden>
             <img id="create-image-preview-img" alt="Selected project thumbnail preview">
@@ -313,20 +313,24 @@
         <div><p class="eyebrow" id="project-owner">Project</p><h2 id="project-title">Project detail</h2></div>
         <button class="close" data-close="project" aria-label="Close">×</button>
       </div>
-      <img id="project-detail-cover" class="project-detail-cover" alt="" hidden>
-      <p id="project-description" class="section-copy"></p>
-      <div id="project-tags" class="tags"></div>
-      <form id="join-form" class="form">
-        <label>
-          Why are you a strong fit?
-          <textarea class="field" name="message" minlength="20" maxlength="3000" required></textarea>
-        </label>
-        <div id="project-questions"></div>
-        <div class="form-actions">
-          <button class="btn" type="button" data-close="project">Cancel</button>
-          <button class="btn btn-primary" type="submit">Send application</button>
+      <div class="project-detail-layout">
+        <img id="project-detail-cover" class="project-detail-cover" alt="" hidden>
+        <div class="project-detail-content">
+          <p id="project-description" class="section-copy"></p>
+          <div id="project-tags" class="tags"></div>
+          <form id="join-form" class="form">
+            <label>
+              Why are you a strong fit?
+              <textarea class="field" name="message" minlength="20" maxlength="3000" required></textarea>
+            </label>
+            <div id="project-questions"></div>
+            <div class="form-actions">
+              <button class="btn" type="button" data-close="project">Cancel</button>
+              <button class="btn btn-primary" type="submit">Send application</button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 
