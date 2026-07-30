@@ -350,16 +350,18 @@
         <div><p class="eyebrow" id="detail-owner">Project</p><h2 id="detail-title">Project detail</h2></div>
         <button class="close" data-close="project-detail" aria-label="Close">×</button>
       </div>
-      <figure class="detail-cover" data-od-id="project-detail-cover">
-        <img id="detail-cover-image" alt="">
-      </figure>
-      <p id="detail-description" class="muted"></p>
-      <div id="detail-tags" class="tags"></div>
-      <div id="detail-links" class="project-links" hidden aria-label="Project links"></div>
       <div class="empty" id="application-paused-message" hidden>This project is visible, but the initiator has paused new applications.</div>
-      <form id="application-form" class="form">
-        <label>What would you contribute?<textarea class="field" name="message" minlength="20" maxlength="3000" required></textarea></label>
+      <form id="application-form" class="form project-detail-layout">
+        <figure class="detail-cover" data-od-id="project-detail-cover">
+          <img id="detail-cover-image" alt="">
+        </figure>
+        <div class="project-detail-summary">
+          <p id="detail-description" class="muted"></p>
+          <div id="detail-tags" class="tags"></div>
+          <div id="detail-links" class="project-links" hidden aria-label="Project links"></div>
+        </div>
         <div id="application-questions"></div>
+        <label class="application-message">What would you contribute?<textarea class="field" name="message" minlength="20" maxlength="3000" required></textarea></label>
         <div class="form-actions">
           <button class="btn" type="button" data-close="project-detail">Cancel</button>
           <button class="btn btn-primary" type="submit">Send application</button>

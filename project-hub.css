@@ -993,6 +993,16 @@
     .project-link { display: inline-flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 44px; padding: 0 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--fg); background: var(--surface); text-decoration: none; font-size: var(--text-sm); }
     .project-link:hover { border-color: var(--fg-2); background: var(--surface-warm); }
     .project-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-2); margin: var(--space-4) 0; }
+    .project-detail-layout #application-questions,
+    .project-detail-layout #application-questions + .application-message,
+    .project-detail-layout .form-actions { min-width: 0; }
+    @media (max-width: 620px) {
+      #modal-project-detail .modal { width: min(100%, 620px); }
+      .project-detail-layout { grid-template-columns: 1fr; gap: var(--space-4); }
+      .project-detail-layout #application-questions,
+      .project-detail-layout .application-message,
+      .project-detail-layout .form-actions { grid-column: 1; grid-row: auto; }
+    }
     .form-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); }
     .empty, .auth-wall {
       padding: clamp(36px, 7vw, 88px);
@@ -1045,6 +1055,12 @@
     }
     .modal-head { display: flex; justify-content: space-between; gap: var(--space-5); }
     .modal h2 { font-size: var(--text-2xl); }
+    #modal-project-detail .modal { width: min(100%, 920px); }
+    .project-detail-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr); gap: var(--space-5) var(--space-6); align-items: start; margin-top: var(--space-5); }
+    .project-detail-summary { min-width: 0; }
+    .project-detail-layout #application-questions { grid-column: 1; }
+    .project-detail-layout .application-message { grid-column: 2; grid-row: 2; }
+    .project-detail-layout .form-actions { grid-column: 2; grid-row: 3; }
     .meeting-result {
       display: grid;
       gap: var(--space-4);
@@ -1059,7 +1075,7 @@
     .meeting-result p { color: var(--muted); }
     .meeting-result .form-actions { justify-content: flex-start; }
     .detail-cover {
-      margin: var(--space-5) 0;
+      margin: 0;
       overflow: hidden;
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
