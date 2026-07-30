@@ -587,6 +587,7 @@ import {
       detailCover.alt = `${activeProject.title} project cover`;
       detailCover.hidden = false;
       $('#project-description').textContent = activeProject.description;
+      $('#project-description').scrollTop = 0;
       $('#project-tags').innerHTML = projectTags(activeProject)
         .map(tag => `<span class="tag">${escapeHtml(tag)}</span>`)
         .join('');

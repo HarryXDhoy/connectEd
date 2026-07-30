@@ -1771,6 +1771,7 @@ import {
         : escapeHtml(`Shared by ${activeProject.owner}${detailSeatSuffix}`);
       bindProfileViewButtons();
       $('#detail-description').textContent = activeProject.description;
+      $('#detail-description').scrollTop = 0;
       $('#detail-tags').innerHTML = projectTags(activeProject).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
       $('#detail-links').innerHTML = projectLinkMarkup(activeProject);
       $('#detail-links').hidden = !projectLinks(activeProject).length;
