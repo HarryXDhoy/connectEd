@@ -2614,3 +2614,70 @@
         height: 340px;
       }
     }
+
+    /* Project cards should keep a card-like footprint even when a filtered
+       board contains only one result. */
+    #discover .masonry {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 360px));
+      align-items: start;
+      justify-content: start;
+    }
+    #discover .pin {
+      align-self: start;
+      height: auto;
+      min-height: 0;
+    }
+    #discover .pin-body {
+      min-height: 0;
+      flex: 0 0 auto;
+    }
+    #discover .pin-foot {
+      margin-top: var(--space-2);
+    }
+
+    .project-detail-tools {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: var(--space-4);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-soft);
+    }
+    .btn-report-project {
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+    }
+    .btn-report-project:hover {
+      border-color: color-mix(in oklab, var(--danger), transparent 58%);
+      background: color-mix(in oklab, var(--danger), transparent 92%);
+      color: color-mix(in oklab, var(--danger), white 12%);
+    }
+    .btn-danger-subtle {
+      border-color: color-mix(in oklab, var(--danger), transparent 45%);
+      background: color-mix(in oklab, var(--danger), transparent 90%);
+      color: color-mix(in oklab, var(--danger), white 12%);
+    }
+    .btn-danger-subtle:hover {
+      border-color: var(--danger);
+      background: color-mix(in oklab, var(--danger), transparent 82%);
+    }
+    #modal-report .report-modal {
+      width: min(100%, 540px);
+    }
+    #modal-report .report-project-context {
+      margin: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm);
+      background: color-mix(in oklab, var(--surface), transparent 20%);
+      color: var(--fg-2);
+    }
+    #modal-report textarea.field {
+      min-height: 128px;
+    }
+
+    @media (max-width: 640px) {
+      #discover .masonry {
+        grid-template-columns: 1fr;
+      }
+    }

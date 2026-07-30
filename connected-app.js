@@ -41,6 +41,14 @@ import {
       .map(tag => tag.trim().toLowerCase().replace(/[^a-z0-9 +#.-]/g, ''))
       .filter(Boolean)
       .slice(0, 8);
+    const REPORT_REASONS = new Set([
+      'spam_or_scam',
+      'harassment_or_hate',
+      'sexual_content',
+      'violence',
+      'copyright',
+      'other'
+    ]);
     const PROJECT_IMAGE_PREFIX = '__image__:';
     const PROJECT_LINK_PREFIX = '__link__:';
     const MAX_PROJECT_QUESTIONS = 8;
@@ -622,6 +630,8 @@ import {
         .join('');
       $('#project-links').innerHTML = projectLinkMarkup(activeProject);
       $('#project-links').hidden = !projectLinks(activeProject).length;
+      const reportButton = $('#report-project-button');
+      reportButton.hidden = id.startsWith('preview-');
 
       const questionContainer = $('#project-questions');
       const submitButton = $('#join-form [type="submit"]');
@@ -655,6 +665,7 @@ import {
         existingApplication = applicationResult.error ? null : applicationResult.data;
       }
       if (!activeProject || String(activeProject.id) !== requestedProjectId) return;
+      reportButton.hidden = id.startsWith('preview-') || activeProject.owner_id === viewer?.id;
       const applicationState = $('#landing-application-state');
       const canApply = activeProject.owner_id !== viewer?.id
         && isAcceptingApplications(activeProject)
@@ -689,6 +700,63 @@ import {
         </label>
       `).join('') : '<p class="muted">No additional questions for this project.</p>';
       if (submitButton) submitButton.disabled = !canApply;
+    }
+
+    async function openReportProject() {
+      if (!activeProject || String(activeProject.id).startsWith('preview-')) {
+        return toast('Preview projects cannot be reported.');
+      }
+      const viewer = await currentUser();
+      if (!viewer) {
+        replaceModal('project', 'auth');
+        toast('Sign in before submitting a report.');
+        return;
+      }
+      if (activeProject.owner_id === viewer.id) {
+        return toast('You cannot report your own project.');
+      }
+      const form = $('#report-form');
+      form.reset();
+      form.elements.project_id.value = activeProject.id;
+      $('#report-project-name').textContent = activeProject.title;
+      replaceModal('project', 'report');
+    }
+
+    async function submitProjectReport(form) {
+      const viewer = await currentUser();
+      if (!viewer) {
+        replaceModal('report', 'auth');
+        return toast('Sign in before submitting a report.');
+      }
+      const values = new FormData(form);
+      const projectId = String(values.get('project_id') || '');
+      const reason = String(values.get('reason') || '');
+      const details = String(values.get('details') || '').trim();
+      if (!activeProject || projectId !== String(activeProject.id)) {
+        return toast('Open the project again before reporting it.');
+      }
+      if (activeProject.owner_id === viewer.id) return toast('You cannot report your own project.');
+      if (!REPORT_REASONS.has(reason)) return toast('Choose a reason for the report.');
+      if (reason === 'other' && details.length < 10) {
+        form.elements.details.focus();
+        return toast('Please add a short explanation for this report.');
+      }
+      const { error } = await supabase.from('project_reports').insert({
+        project_id: projectId,
+        reporter_id: viewer.id,
+        reason,
+        details
+      });
+      if (error) {
+        if (error.code === '23505') return toast('You already reported this project.');
+        if (error.code === '42501' || /row-level security/i.test(error.message || '')) {
+          return toast('This project could not be reported from this account.');
+        }
+        return toast(error.message || 'The report could not be submitted.');
+      }
+      form.reset();
+      closeModal('report');
+      toast('Report submitted. Thank you for helping keep connectEd safe.');
     }
 
     // Clicking a node opens the published projects of everyone pinned there
@@ -1044,6 +1112,8 @@ import {
     };
     bindAsyncForm('#create-form', createProject, 'Publishing…');
     bindAsyncForm('#join-form', submitApplication, 'Sending…');
+    bindAsyncForm('#report-form', submitProjectReport, 'Submitting…');
+    $('#report-project-button').onclick = openReportProject;
     $('#plus-checkout').onclick = startCheckout;
     // Disabled until refreshPaymentsStatus() confirms Stripe is actually
     // configured — a visitor clicking mid-setup would otherwise reach

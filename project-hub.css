@@ -2755,3 +2755,66 @@
         width: 100%;
       }
     }
+
+    /* Keep filtered boards compact: one result should remain a project card,
+       not stretch into a full-width banner. */
+    #panel-discover .masonry,
+    #panel-owned .masonry {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 360px));
+      align-items: start;
+      justify-content: start;
+    }
+    #panel-discover .pin,
+    #panel-owned .pin {
+      align-self: start;
+      height: auto;
+      min-height: 0;
+    }
+    #panel-discover .pin-body,
+    #panel-owned .pin-body {
+      min-height: 0;
+      flex: 0 0 auto;
+    }
+    #panel-discover .pin-foot,
+    #panel-owned .pin-foot {
+      margin-top: var(--space-2);
+    }
+
+    .project-detail-tools {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: var(--space-4);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-soft);
+    }
+    .btn-report-project {
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+    }
+    .btn-report-project:hover {
+      border-color: color-mix(in oklab, var(--danger), transparent 58%);
+      background: color-mix(in oklab, var(--danger), transparent 92%);
+      color: color-mix(in oklab, var(--danger), white 12%);
+    }
+    #modal-report .report-modal {
+      width: min(100%, 540px);
+    }
+    #modal-report .report-project-context {
+      margin: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm);
+      background: color-mix(in oklab, var(--surface), transparent 20%);
+      color: var(--fg-2);
+    }
+    #modal-report textarea.field {
+      min-height: 128px;
+    }
+
+    @media (max-width: 640px) {
+      #panel-discover .masonry,
+      #panel-owned .masonry {
+        grid-template-columns: 1fr;
+      }
+    }

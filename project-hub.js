@@ -49,6 +49,14 @@ import {
       .map(tag => tag.trim().toLowerCase().replace(/[^a-z0-9 +#.-]/g, ''))
       .filter(Boolean)
       .slice(0, 8);
+    const REPORT_REASONS = new Set([
+      'spam_or_scam',
+      'harassment_or_hate',
+      'sexual_content',
+      'violence',
+      'copyright',
+      'other'
+    ]);
     const PROJECT_IMAGE_PREFIX = '__image__:';
     const PROJECT_LINK_PREFIX = '__link__:';
     const PROJECT_LOCATION_PREFIX = '__location__:';
@@ -1844,6 +1852,8 @@ import {
       $('#detail-tags').innerHTML = projectTags(activeProject).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
       $('#detail-links').innerHTML = projectLinkMarkup(activeProject);
       $('#detail-links').hidden = !projectLinks(activeProject).length;
+      $('#detail-report-project').hidden = String(activeProject.id).startsWith('preview-')
+        || activeProject.owner_id === user?.id;
       const detailCover = $('#detail-cover-image');
       const fallbackCover = projectCover(activeProject);
       detailCover.onerror = () => {
@@ -1914,6 +1924,61 @@ import {
         </label>
       `).join('') : '<p class="muted">No additional questions for this project.</p>';
       if (submitButton) submitButton.disabled = !canApply;
+    }
+
+    function openProjectReport() {
+      if (!activeProject || String(activeProject.id).startsWith('preview-')) {
+        return toast('Preview projects cannot be reported.');
+      }
+      if (!user) {
+        replaceModal('project-detail', 'auth');
+        toast('Sign in before submitting a report.');
+        return;
+      }
+      if (activeProject.owner_id === user.id) {
+        return toast('You cannot report your own project.');
+      }
+      const form = $('#report-form');
+      form.reset();
+      form.elements.project_id.value = activeProject.id;
+      $('#report-project-name').textContent = activeProject.title;
+      replaceModal('project-detail', 'report');
+    }
+
+    async function submitProjectReport(form) {
+      if (!user) {
+        replaceModal('report', 'auth');
+        return toast('Sign in before submitting a report.');
+      }
+      const values = new FormData(form);
+      const projectId = String(values.get('project_id') || '');
+      const reason = String(values.get('reason') || '');
+      const details = String(values.get('details') || '').trim();
+      if (!activeProject || projectId !== String(activeProject.id)) {
+        return toast('Open the project again before reporting it.');
+      }
+      if (activeProject.owner_id === user.id) return toast('You cannot report your own project.');
+      if (!REPORT_REASONS.has(reason)) return toast('Choose a reason for the report.');
+      if (reason === 'other' && details.length < 10) {
+        form.elements.details.focus();
+        return toast('Please add a short explanation for this report.');
+      }
+      const result = await supabase.from('project_reports').insert({
+        project_id: projectId,
+        reporter_id: user.id,
+        reason,
+        details
+      });
+      if (result.error) {
+        if (result.error.code === '23505') return toast('You already reported this project.');
+        if (result.error.code === '42501' || /row-level security/i.test(result.error.message || '')) {
+          return toast('This project could not be reported from this account.');
+        }
+        return toast(result.error.message || 'The report could not be submitted.');
+      }
+      form.reset();
+      closeModal('report');
+      toast('Report submitted. Thank you for helping keep connectEd safe.');
     }
 
     const MAX_PROJECT_QUESTIONS = 8;
@@ -2752,10 +2817,12 @@ import {
     $$('[data-create-project]').forEach(button => button.onclick = () => openProjectForm());
     bindAsyncForm('#project-form', saveProject, 'Saving…');
     bindAsyncForm('#application-form', submitApplication, 'Sending…');
+    bindAsyncForm('#report-form', submitProjectReport, 'Submitting…');
     bindAsyncForm('#interview-form', scheduleInterview, 'Scheduling…');
     bindAsyncForm('#review-form', submitParticipantReview, 'Publishing…');
     bindAsyncForm('#profile-form', saveProfile, 'Saving…');
     bindAsyncForm('#message-form', sendMessage, 'Sending…');
+    $('#detail-report-project').onclick = openProjectReport;
     $('#message-thread-back').onclick = () => { closeConversation(); renderConversationList(); };
     $('#view-profile-message').onclick = () => {
       if (!viewingProfileId) return;
