@@ -2818,3 +2818,19 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* Long descriptions scroll inside their own reading area so application
+       questions and controls remain easy to reach. */
+    #modal-project-detail #detail-description {
+      max-height: min(34vh, 320px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+      padding-right: var(--space-2);
+    }
+
+    @media (max-width: 560px) {
+      #modal-project-detail #detail-description {
+        max-height: 38vh;
+      }
+    }

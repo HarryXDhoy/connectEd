@@ -2681,3 +2681,19 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* Keep long project copy readable without making the entire detail modal
+       grow around it. */
+    #modal-project #project-description {
+      max-height: min(34vh, 320px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+      padding-right: var(--space-2);
+    }
+
+    @media (max-width: 560px) {
+      #modal-project #project-description {
+        max-height: 38vh;
+      }
+    }
