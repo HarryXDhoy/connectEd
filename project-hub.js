@@ -1225,7 +1225,7 @@ import {
 
     function renderRequests() {
       if (!user) {
-        $('#request-list').innerHTML = authWall('Sign in to track your requests.');
+        $('#request-list').innerHTML = authWall('Sign in to track your applications.');
         bindSigninButtons();
         return;
       }
@@ -1271,13 +1271,13 @@ import {
                     ? `<button class="btn btn-small" data-review-project="${escapeHtml(application.project_id)}">Review project team</button>`
                     : ''}
                   ${application.status === 'pending'
-                    ? `<button class="btn btn-small btn-danger-subtle" type="button" data-cancel-application="${escapeHtml(application.id)}">Cancel application</button>`
+                    ? `<button class="btn btn-small btn-danger-subtle application-cancel" type="button" data-cancel-application="${escapeHtml(application.id)}">Cancel application</button>`
                     : ''}
                 </div>
               </article>
             `;
           }).join('')
-        : '<div class="empty"><p>You have not sent a join request yet.</p><button class="btn btn-primary" type="button" data-find-projects>Find a project</button></div>';
+        : '<div class="empty"><p>You have not applied to a project yet.</p><button class="btn btn-primary" type="button" data-find-projects>Find a project</button></div>';
       const findProjects = $('[data-find-projects]');
       if (findProjects) findProjects.onclick = () => switchPanel('discover');
       $$('[data-cancel-application]').forEach(button => {
@@ -1824,7 +1824,7 @@ import {
         pausedMessage.innerHTML = `
           <p>You already sent a request to this project — current status: ${escapeHtml(statusLabel(existingApplication.status).toLowerCase())}.</p>
           <div class="project-detail-state-actions">
-            <button class="btn btn-small" type="button" data-open-requests>Open My requests</button>
+            <button class="btn btn-small" type="button" data-open-requests>Open My applications</button>
             ${existingApplication.status === 'pending'
               ? `<button class="btn btn-small btn-danger-subtle" type="button" data-cancel-application="${escapeHtml(existingApplication.id)}">Cancel application</button>`
               : ''}

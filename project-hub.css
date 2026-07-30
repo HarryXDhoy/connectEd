@@ -2693,6 +2693,11 @@
       border-color: var(--danger);
       background: color-mix(in oklab, var(--danger), transparent 84%);
     }
+    #panel-requests .application-cancel {
+      margin-top: var(--space-2);
+      border-color: color-mix(in oklab, var(--danger), transparent 38%);
+      font-weight: 600;
+    }
     .pin-foot {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
