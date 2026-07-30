@@ -1590,6 +1590,10 @@
       background: transparent;
       box-shadow: none;
     }
+    .stage:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -4px;
+    }
     .stage::before { display: none; }
     .project-network-canvas {
       inset: 0;

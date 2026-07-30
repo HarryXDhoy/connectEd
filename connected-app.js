@@ -1161,8 +1161,8 @@ import {
       });
 
       const defaultFocusMarkup = memberLocations.length
-        ? `Live member network<span>Drag to explore, ⌘/Ctrl + scroll to zoom. Hover a node to see ${memberLocations.length} ${memberLocations.length === 1 ? 'member' : 'members'} and the projects they're building.</span>`
-        : 'Live member network<span>Drag to explore, ⌘/Ctrl + scroll to zoom. Share your location from your profile to place the first node.</span>';
+        ? `Live member network<span>Drag to explore. Pinch or two-finger scroll to zoom. Hover a node to see ${memberLocations.length} ${memberLocations.length === 1 ? 'member' : 'members'} and the projects they're building.</span>`
+        : 'Live member network<span>Drag to explore. Pinch or two-finger scroll to zoom. Share your location from your profile to place the first node.</span>';
       focus.innerHTML = defaultFocusMarkup;
 
       try {
@@ -2069,17 +2069,59 @@ import {
           const location = hit?.object?.userData?.location;
           if (location) showMemberProjects(location);
         });
-        // Zoom is opt-in behind Cmd/Ctrl so an ordinary two-finger scroll
-        // over the globe still scrolls the page instead of trapping the
-        // cursor — only the modified gesture takes over the camera.
+        // Trackpads report pinch as a ctrl-modified wheel in Chromium, while
+        // some embedded/WebKit surfaces report it as an ordinary pixel wheel.
+        // Handle both so the globe zooms naturally without a keyboard chord.
+        // At either zoom limit the event falls through, releasing page scroll.
         const MIN_ZOOM = 3.2;
         const MAX_ZOOM = 10;
-        canvas.addEventListener('wheel', event => {
-          if (!event.metaKey && !event.ctrlKey) return;
-          event.preventDefault();
-          camera.position.z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, camera.position.z + event.deltaY * .01));
+        const clampZoom = value => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
+        const applyZoom = delta => {
+          const nextZoom = clampZoom(camera.position.z + delta);
+          if (Math.abs(nextZoom - camera.position.z) < .0001) return false;
+          camera.position.z = nextZoom;
+          resize();
           if (reducedMotion || userPaused || !visible) render(performance.now());
+          return true;
+        };
+        canvas.addEventListener('wheel', event => {
+          const modeScale = event.deltaMode === WheelEvent.DOM_DELTA_LINE
+            ? 16
+            : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+              ? stage.clientHeight
+              : 1;
+          const normalizedDelta = Math.max(-120, Math.min(120, event.deltaY * modeScale));
+          if (applyZoom(normalizedDelta * .007)) event.preventDefault();
         }, { passive: false });
+
+        // Safari exposes trackpad pinch through gesture events rather than
+        // wheel events. Keep this small compatibility path alongside wheel.
+        let gestureStartZoom = camera.position.z;
+        canvas.addEventListener('gesturestart', event => {
+          gestureStartZoom = camera.position.z;
+          event.preventDefault();
+        }, { passive: false });
+        canvas.addEventListener('gesturechange', event => {
+          const scale = Math.max(.25, Math.min(4, Number(event.scale) || 1));
+          camera.position.z = clampZoom(gestureStartZoom / scale);
+          resize();
+          event.preventDefault();
+        }, { passive: false });
+
+        stage.addEventListener('keydown', event => {
+          const zoomStep = event.key === '+' || event.key === '='
+            ? -.45
+            : event.key === '-'
+              ? .45
+              : 0;
+          if (zoomStep && applyZoom(zoomStep)) {
+            event.preventDefault();
+          } else if (event.key === '0') {
+            camera.position.z = 6.65;
+            resize();
+            event.preventDefault();
+          }
+        });
 
         canvas.addEventListener('webglcontextlost', event => {
           event.preventDefault();
