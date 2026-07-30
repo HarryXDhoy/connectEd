@@ -28,7 +28,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="connectEd">
   <title>connectEd - Find your next project</title>
-  <link rel="stylesheet" href="connected-app.css?v=20260730-compact">
+  <link rel="stylesheet" href="connected-app.css?v=20260730-detail-rebuild">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -319,7 +319,7 @@
       <form id="join-form" class="form project-detail-layout">
         <div class="project-detail-column project-detail-column-media">
           <img id="project-detail-cover" class="project-detail-cover" alt="" hidden>
-          <div class="project-questions-section">
+          <div class="project-questions-section application-fields">
             <p class="detail-section-label">Application questions</p>
             <div id="project-questions"></div>
           </div>
@@ -331,7 +331,8 @@
             <div id="project-tags" class="tags"></div>
             <div id="project-links" class="project-links" hidden aria-label="Project links"></div>
           </div>
-          <div class="application-submit">
+          <div class="empty project-detail-state" id="landing-application-state" hidden></div>
+          <div class="application-submit application-fields">
             <label class="application-message">Optional note for the project owner
               <textarea class="field" name="message" maxlength="3000" placeholder="Add context or anything else you would like to share."></textarea>
             </label>

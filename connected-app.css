@@ -535,9 +535,6 @@
     .project-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-2); margin: var(--space-4) 0; }
     .project-link { display: inline-flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 44px; padding: 0 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--fg); background: var(--surface); text-decoration: none; font-size: var(--text-sm); }
     .project-link:hover { border-color: var(--fg-2); background: var(--surface-warm); }
-    .project-detail-layout #project-questions { grid-column: 1; grid-row: 2; }
-    .project-detail-layout .application-message { grid-column: 2; grid-row: 2; }
-    .project-detail-layout .form-actions { grid-column: 2; grid-row: 3; }
     .project-detail-cover {
       display: block;
       width: 100%;
@@ -2341,7 +2338,7 @@
 
     /* Compact project cards and detail view. */
     #discover .masonry {
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
       gap: var(--space-4);
     }
     .pin-cover {
@@ -2431,5 +2428,137 @@
       }
       #modal-project #project-description {
         max-height: none;
+      }
+    }
+
+    /* Definitive project-detail layout. Keep this block last so older
+       component generations cannot reposition nested form controls. */
+    #modal-project .modal {
+      width: min(100%, 980px);
+      max-height: 92vh;
+      padding: 0;
+      overflow: hidden;
+    }
+    #modal-project .modal-head {
+      position: relative;
+      margin: 0;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    #modal-project .modal-head h2 {
+      font-size: clamp(26px, 3vw, 36px);
+      line-height: 1.08;
+    }
+    #modal-project .project-detail-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(340px, .88fr);
+      align-items: start;
+      gap: 20px;
+      max-height: calc(92vh - 92px);
+      margin: 0;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    #modal-project .project-detail-column {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-content: start;
+      gap: 16px;
+    }
+    #modal-project .project-detail-cover {
+      aspect-ratio: 16 / 9;
+    }
+    #modal-project .project-detail-summary,
+    #modal-project .project-questions-section,
+    #modal-project .application-submit,
+    #modal-project .project-detail-state {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      background: color-mix(in oklab, var(--bg), transparent 22%);
+    }
+    #modal-project .project-detail-state {
+      text-align: left;
+    }
+    #modal-project #project-description {
+      max-height: none;
+      overflow: visible;
+      padding: 0;
+      font-size: var(--text-sm);
+      line-height: 1.58;
+    }
+    #modal-project .project-links {
+      margin: var(--space-3) 0 0;
+    }
+    .project-link-label {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .project-link-icon {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 auto;
+    }
+    #modal-project .application-submit {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+    }
+    #modal-project .application-message,
+    #modal-project .application-submit .form-actions {
+      min-width: 0;
+      grid-column: 1;
+      grid-row: auto;
+    }
+    #modal-project .application-submit .form-actions {
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+      gap: 10px;
+      margin: 0;
+      padding: 14px 0 0;
+      border-top: 1px solid var(--border-soft);
+    }
+    #modal-project .application-submit .btn {
+      width: auto;
+      min-width: max-content;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+    #modal-project textarea.field {
+      min-height: 92px;
+    }
+    #modal-project #project-questions {
+      display: grid;
+      gap: 14px;
+    }
+    @media (max-width: 840px) {
+      #modal-project .project-detail-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 560px) {
+      #modal-project .modal {
+        max-height: 96vh;
+        overflow-y: auto;
+      }
+      #modal-project .project-detail-layout {
+        max-height: none;
+        padding: 14px;
+        overflow: visible;
+      }
+      #modal-project .application-submit .form-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+      #modal-project .application-submit .btn {
+        width: 100%;
+      }
+      #modal-project .application-submit .btn-primary {
+        grid-row: 1;
       }
     }

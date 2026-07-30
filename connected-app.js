@@ -72,16 +72,32 @@ import {
       })
       .filter(Boolean)
       .slice(0, 6);
+    const projectLinkIconMarkup = link => {
+      let isGitHub = false;
+      try {
+        isGitHub = new URL(link.url).hostname.toLowerCase().replace(/^www\./, '') === 'github.com';
+      } catch (_) {
+        isGitHub = false;
+      }
+      if (!isGitHub && !/github/i.test(link.label || '')) return '';
+      return `<svg class="project-link-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M12 .7a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.24c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.78 1.2 1.78 1.2 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.57-.29-5.27-1.29-5.27-5.68 0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.16 1.18a10.96 10.96 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08 0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.2c0 .31.21.68.8.56A11.5 11.5 0 0 0 12 .7Z"/>
+      </svg>`;
+    };
     const projectLinkMarkup = project => projectLinks(project).map(link => `
       <a class="project-link" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">
-        <span>${escapeHtml(link.label)}</span><span aria-hidden="true">↗</span>
+        <span class="project-link-label">
+          ${projectLinkIconMarkup(link)}
+          <span>${escapeHtml(link.label)}</span>
+        </span>
+        <span aria-hidden="true">↗</span>
       </a>
     `).join('');
     const projectCardTagsMarkup = project => {
       const tags = projectTags(project);
       return [
-        ...tags.slice(0, 3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`),
-        ...(tags.length > 3 ? [`<span class="tag tag-more">+${tags.length - 3}</span>`] : [])
+        ...tags.slice(0, 2).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`),
+        ...(tags.length > 2 ? [`<span class="tag tag-more">+${tags.length - 2}</span>`] : [])
       ].join('');
     };
     // seats_total is the static capacity set at creation — it never moved
@@ -574,6 +590,7 @@ import {
     async function showProject(id) {
       activeProject = projects.find(project => String(project.id) === id);
       if (!activeProject) return;
+      const requestedProjectId = String(activeProject.id);
       $('#project-title').textContent = activeProject.title;
       const detailSeatLabel = seatsLabel(activeProject);
       $('#project-owner').textContent = `Shared by ${activeProject.owner}${detailSeatLabel ? ` · ${detailSeatLabel}` : ''}`;
@@ -595,27 +612,71 @@ import {
       $('#project-links').hidden = !projectLinks(activeProject).length;
 
       const questionContainer = $('#project-questions');
+      const submitButton = $('#join-form [type="submit"]');
       questionContainer.setAttribute('aria-busy', 'true');
       questionContainer.innerHTML = '<p class="muted">Loading application questions…</p>';
+      if (submitButton) submitButton.disabled = true;
       openModal('project');
       let questions = [];
+      let questionError = null;
+      let viewer = null;
+      let existingApplication = null;
       if (isSupabaseConfigured && !id.startsWith('preview-')) {
-        const result = await supabase
-          .from('project_questions')
-          .select('id,prompt,required,position')
-          .eq('project_id', id)
-          .order('position');
-        if (!result.error) questions = result.data || [];
+        viewer = await currentUser();
+        const [questionResult, applicationResult] = await Promise.all([
+          supabase
+            .from('project_questions')
+            .select('id,prompt,required,position')
+            .eq('project_id', id)
+            .order('position'),
+          viewer
+            ? supabase
+                .from('applications')
+                .select('id,status')
+                .eq('project_id', id)
+                .eq('applicant_id', viewer.id)
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null })
+        ]);
+        questionError = questionResult.error;
+        questions = questionError ? [] : questionResult.data || [];
+        existingApplication = applicationResult.error ? null : applicationResult.data;
+      }
+      if (!activeProject || String(activeProject.id) !== requestedProjectId) return;
+      const applicationState = $('#landing-application-state');
+      const canApply = activeProject.owner_id !== viewer?.id
+        && isAcceptingApplications(activeProject)
+        && !existingApplication;
+      $$('#join-form .application-fields').forEach(section => {
+        section.hidden = !canApply;
+      });
+      if (!canApply) {
+        applicationState.textContent = existingApplication
+          ? `You already applied to this project. Current status: ${String(existingApplication.status).replace('_', ' ')}.`
+          : activeProject.owner_id === viewer?.id
+            ? 'You own this project.'
+            : 'This project is not accepting applications right now.';
+        applicationState.hidden = false;
+      } else {
+        applicationState.hidden = true;
       }
       activeProject.questions = questions;
       questionContainer.removeAttribute('aria-busy');
+      if (questionError) {
+        questionContainer.innerHTML = '<p class="muted">Application questions could not be loaded.</p><button class="btn btn-small" type="button" data-retry-questions>Retry</button>';
+        const retry = questionContainer.querySelector('[data-retry-questions]');
+        if (retry) retry.onclick = () => showProject(requestedProjectId);
+        if (submitButton) submitButton.disabled = true;
+        return;
+      }
       questionContainer.innerHTML = questions.length ? questions.map(question => `
         <label>
           ${escapeHtml(question.prompt)}
           <textarea class="field" name="question-${escapeHtml(question.id)}"
-            maxlength="2000" ${question.required ? 'required' : ''}></textarea>
+            rows="3" maxlength="2000" ${question.required ? 'required' : ''}></textarea>
         </label>
       `).join('') : '<p class="muted">No additional questions for this project.</p>';
+      if (submitButton) submitButton.disabled = !canApply;
     }
 
     // Clicking a node opens the published projects of everyone pinned there

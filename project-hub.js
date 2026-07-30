@@ -251,7 +251,8 @@ import {
         pending: 'Pending',
         accepted: 'Accepted',
         declined: 'Declined',
-        interview: 'Interview'
+        interview: 'Interview',
+        withdrawn: 'Withdrawn'
       })[status] || 'Updated';
     }
 
@@ -293,7 +294,7 @@ import {
     function requestUpdates() {
       const seenAt = Number(localStorage.getItem(requestSeenKey()) || 0);
       return sentApplications.filter(application =>
-        application.status !== 'pending' &&
+        !['pending', 'withdrawn'].includes(application.status) &&
         new Date(application.updated_at || application.created_at).getTime() > seenAt
       );
     }
@@ -316,6 +317,10 @@ import {
           table: 'applications',
           filter: `applicant_id=eq.${user.id}`
         }, payload => {
+          if (payload.new.status === 'withdrawn') {
+            window.setTimeout(loadAll, 0);
+            return;
+          }
           const title = sentApplications.find(item => item.id === payload.new.id)?.projects?.title || 'a project';
           toast(`Your request for ${title} is now ${statusLabel(payload.new.status).toLowerCase()}.`);
           window.setTimeout(loadAll, 0);
@@ -338,7 +343,7 @@ import {
       $('#request-count').textContent = sentApplications.length;
       renderRequests();
       renderNotifications();
-      if (changed) {
+      if (changed && changed.status !== 'withdrawn') {
         toast(`Your request for ${changed.projects?.title || 'a project'} is now ${statusLabel(changed.status).toLowerCase()}.`);
       }
     }
@@ -1047,15 +1052,31 @@ import {
     function projectLinkMarkup(project) {
       return projectLinks(project).map(link => `
         <a class="project-link" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">
-          <span>${escapeHtml(link.label)}</span><span aria-hidden="true">↗</span>
+          <span class="project-link-label">
+            ${projectLinkIconMarkup(link)}
+            <span>${escapeHtml(link.label)}</span>
+          </span>
+          <span aria-hidden="true">↗</span>
         </a>
       `).join('');
+    }
+    function projectLinkIconMarkup(link) {
+      let isGitHub = false;
+      try {
+        isGitHub = new URL(link.url).hostname.toLowerCase().replace(/^www\./, '') === 'github.com';
+      } catch (_) {
+        isGitHub = false;
+      }
+      if (!isGitHub && !/github/i.test(link.label || '')) return '';
+      return `<svg class="project-link-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M12 .7a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.24c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.78 1.2 1.78 1.2 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.57-.29-5.27-1.29-5.27-5.68 0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.16 1.18a10.96 10.96 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08 0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.2c0 .31.21.68.8.56A11.5 11.5 0 0 0 12 .7Z"/>
+      </svg>`;
     }
     function projectCardTagsMarkup(project) {
       const tags = projectTags(project);
       return [
-        ...tags.slice(0, 3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`),
-        ...(tags.length > 3 ? [`<span class="tag tag-more">+${tags.length - 3}</span>`] : [])
+        ...tags.slice(0, 2).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`),
+        ...(tags.length > 2 ? [`<span class="tag tag-more">+${tags.length - 2}</span>`] : [])
       ].join('');
     }
 
@@ -1249,6 +1270,9 @@ import {
                   ${['accepted', 'interview'].includes(application.status) && reviewsAvailable
                     ? `<button class="btn btn-small" data-review-project="${escapeHtml(application.project_id)}">Review project team</button>`
                     : ''}
+                  ${application.status === 'pending'
+                    ? `<button class="btn btn-small btn-danger-subtle" type="button" data-cancel-application="${escapeHtml(application.id)}">Cancel application</button>`
+                    : ''}
                 </div>
               </article>
             `;
@@ -1256,6 +1280,9 @@ import {
         : '<div class="empty"><p>You have not sent a join request yet.</p><button class="btn btn-primary" type="button" data-find-projects>Find a project</button></div>';
       const findProjects = $('[data-find-projects]');
       if (findProjects) findProjects.onclick = () => switchPanel('discover');
+      $$('[data-cancel-application]').forEach(button => {
+        button.onclick = () => cancelApplication(button.dataset.cancelApplication);
+      });
       bindReviewButtons();
     }
 
@@ -1265,9 +1292,9 @@ import {
       const updates = user ? requestUpdates() : [];
       action.hidden = !user;
       $('#notification-count').textContent = updates.length ? String(updates.length) : '';
-      list.innerHTML = sentApplications.filter(item => item.status !== 'pending').length
+      list.innerHTML = sentApplications.filter(item => !['pending', 'withdrawn'].includes(item.status)).length
         ? sentApplications
-            .filter(item => item.status !== 'pending')
+            .filter(item => !['pending', 'withdrawn'].includes(item.status))
             .slice(0, 8)
             .map(application => `
               <button class="notification-item" type="button" data-request-notification>
@@ -1763,6 +1790,7 @@ import {
     async function openProjectDetail(id) {
       activeProject = projects.find(project => String(project.id) === String(id));
       if (!activeProject) return;
+      const requestedProjectId = String(activeProject.id);
       $('#detail-title').textContent = activeProject.title;
       const detailSeatLabel = seatsLabel(activeProject);
       const detailSeatSuffix = detailSeatLabel ? ` · ${detailSeatLabel}` : '';
@@ -1793,30 +1821,58 @@ import {
         section.hidden = !canApply;
       });
       if (existingApplication) {
-        pausedMessage.textContent = `You already sent a request to this project — current status: ${String(existingApplication.status).replace('_', ' ')}. Track it under My requests.`;
+        pausedMessage.innerHTML = `
+          <p>You already sent a request to this project — current status: ${escapeHtml(statusLabel(existingApplication.status).toLowerCase())}.</p>
+          <div class="project-detail-state-actions">
+            <button class="btn btn-small" type="button" data-open-requests>Open My requests</button>
+            ${existingApplication.status === 'pending'
+              ? `<button class="btn btn-small btn-danger-subtle" type="button" data-cancel-application="${escapeHtml(existingApplication.id)}">Cancel application</button>`
+              : ''}
+          </div>
+        `;
         pausedMessage.hidden = false;
+        const openRequests = pausedMessage.querySelector('[data-open-requests]');
+        if (openRequests) openRequests.onclick = () => {
+          closeModal('project-detail');
+          switchPanel('requests');
+        };
+        const cancelButton = pausedMessage.querySelector('[data-cancel-application]');
+        if (cancelButton) cancelButton.onclick = () => cancelApplication(cancelButton.dataset.cancelApplication);
       } else {
         pausedMessage.textContent = 'This project is visible, but the initiator has paused new applications.';
         pausedMessage.hidden = activeProject.owner_id === user?.id || isAcceptingApplications(activeProject);
       }
 
       const questionContainer = $('#application-questions');
+      const submitButton = $('#application-form [type="submit"]');
       questionContainer.setAttribute('aria-busy', 'true');
       questionContainer.innerHTML = '<p class="muted">Loading application questions…</p>';
+      if (submitButton) submitButton.disabled = true;
       openModal('project-detail');
       let questions = [];
+      let questionError = null;
       if (isSupabaseConfigured && !String(id).startsWith('preview-')) {
         const result = await supabase.from('project_questions')
           .select('id,prompt,required,position').eq('project_id', id).order('position');
-        questions = result.error ? [] : result.data || [];
+        questionError = result.error;
+        questions = questionError ? [] : result.data || [];
       }
+      if (!activeProject || String(activeProject.id) !== requestedProjectId) return;
       activeProject.questions = questions;
       questionContainer.removeAttribute('aria-busy');
+      if (questionError) {
+        questionContainer.innerHTML = '<p class="muted">Application questions could not be loaded.</p><button class="btn btn-small" type="button" data-retry-questions>Retry</button>';
+        const retry = questionContainer.querySelector('[data-retry-questions]');
+        if (retry) retry.onclick = () => openProjectDetail(requestedProjectId);
+        if (submitButton) submitButton.disabled = true;
+        return;
+      }
       questionContainer.innerHTML = questions.length ? questions.map(question => `
         <label>${escapeHtml(question.prompt)}
-          <textarea class="field" name="question-${question.id}" maxlength="2000" ${question.required ? 'required' : ''}></textarea>
+          <textarea class="field" name="question-${question.id}" rows="3" maxlength="2000" ${question.required ? 'required' : ''}></textarea>
         </label>
       `).join('') : '<p class="muted">No additional questions for this project.</p>';
+      if (submitButton) submitButton.disabled = !canApply;
     }
 
     const MAX_PROJECT_QUESTIONS = 8;
@@ -2005,6 +2061,31 @@ import {
       editingProjectId = null;
       editingQuestionIds = [];
       await loadAll();
+    }
+
+    async function cancelApplication(id) {
+      if (!(await requireUser())) return;
+      const application = sentApplications.find(item => String(item.id) === String(id));
+      if (!application || application.status !== 'pending') {
+        toast('Only pending applications can be cancelled.');
+        await loadAll();
+        return;
+      }
+      const projectTitle = application.projects?.title || 'this project';
+      if (!window.confirm(`Cancel your application to "${projectTitle}"? It will remain in your request history as withdrawn.`)) return;
+      const result = await supabase.rpc('withdraw_application', {
+        target_application: id
+      });
+      if (result.error) {
+        if (result.error.code === '42501' || /row-level security/i.test(result.error.message || '')) {
+          return toast('This application could not be cancelled. Refresh and try again.');
+        }
+        return toast(result.error.message);
+      }
+      closeModal('project-detail');
+      toast('Application withdrawn.');
+      await loadAll();
+      switchPanel('requests');
     }
 
     async function toggleProjectIntake(projectId) {
