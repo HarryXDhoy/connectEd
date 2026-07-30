@@ -236,6 +236,8 @@ import {
     let activeModal = null;
     let modalReturnFocus = null;
     const modalBackground = [document.querySelector('header'), document.querySelector('main'), $('#preview-note')].filter(Boolean);
+    const visibleFocusable = modal => [...modal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+      .filter(element => element.type !== 'hidden' && !element.closest('[hidden]') && element.offsetParent !== null);
 
     function openModal(name) {
       const modal = $(`#modal-${name}`);
@@ -248,9 +250,20 @@ import {
       modalBackground.forEach(region => region.inert = true);
       document.body.classList.add('modal-open');
       window.requestAnimationFrame(() => {
-        const target = modal.querySelector('input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])');
+        const target = visibleFocusable(modal)[0];
         (target || modal).focus();
       });
+    }
+
+    function replaceModal(name, nextName) {
+      const modal = $(`#modal-${name}`);
+      const returnTarget = modalReturnFocus;
+      window.clearTimeout(modal.closeTimer);
+      modal.classList.remove('open', 'closing');
+      modal.setAttribute('aria-hidden', 'true');
+      activeModal = null;
+      openModal(nextName);
+      modalReturnFocus = returnTarget;
     }
 
     function closeModal(name) {
@@ -282,8 +295,7 @@ import {
         return;
       }
       if (event.key !== 'Tab') return;
-      const focusable = [...activeModal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')]
-        .filter(element => !element.hidden && element.offsetParent !== null);
+      const focusable = visibleFocusable(activeModal);
       if (!focusable.length) {
         event.preventDefault();
         activeModal.focus();
@@ -797,8 +809,7 @@ import {
     async function submitApplication(form) {
       const user = await currentUser();
       if (!user) {
-        closeModal('project');
-        openModal('auth');
+        replaceModal('project', 'auth');
         toast('Sign in before applying.');
         return;
       }
@@ -824,10 +835,14 @@ import {
       for (const question of activeProject.questions || []) {
         answers[question.id] = String(values.get(`question-${question.id}`) || '').trim();
       }
+      const note = String(values.get('message') || '').trim();
+      if (note && note.length < 20) {
+        return toast('Optional notes must be at least 20 characters, or left blank.');
+      }
       const { error } = await supabase.from('applications').insert({
         project_id: activeProject.id,
         applicant_id: user.id,
-        message: String(values.get('message') || '').trim() || 'No additional note provided.',
+        message: note || 'No additional note provided.',
         answers
       });
       if (error) {
@@ -1828,12 +1843,7 @@ import {
         // when actually running fixes that.
         let pulseTime = 0;
 
-        function resize() {
-          const width = Math.max(1, stage.clientWidth);
-          const height = Math.max(1, stage.clientHeight);
-          renderer.setSize(width, height, false);
-          camera.aspect = width / height;
-          camera.updateProjectionMatrix();
+        function updateGlobeFraming() {
           // Full-bleed framing: on wide viewports the Earth sits right of the
           // hero copy; on stacked layouts it re-centers and scales down.
           const stacked = window.matchMedia('(max-width: 900px)').matches;
@@ -1848,6 +1858,15 @@ import {
             earth.position.set(0, .08, 0);
             earth.scale.setScalar(stacked ? .72 : .85);
           }
+        }
+
+        function resize() {
+          const width = Math.max(1, stage.clientWidth);
+          const height = Math.max(1, stage.clientHeight);
+          renderer.setSize(width, height, false);
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+          updateGlobeFraming();
           render(performance.now());
         }
 
@@ -1975,16 +1994,57 @@ import {
         // that CSS alone. Mouse has no such ambiguity and drags immediately.
         let pendingTouch = null;
         let manualScroll = false;
+        let suppressNextClick = false;
+        const activeTouchPointers = new Map();
+        let pinchStartDistance = 0;
+        let pinchStartZoom = camera.position.z;
+        const touchDistance = () => {
+          const points = [...activeTouchPointers.values()];
+          return points.length < 2 ? 0 : Math.hypot(
+            points[0].clientX - points[1].clientX,
+            points[0].clientY - points[1].clientY
+          );
+        };
         canvas.addEventListener('pointerdown', event => {
           if (event.pointerType === 'mouse') {
             if (event.button !== 0) return;
+            stage.focus({ preventScroll: true });
             beginDrag(event);
+            return;
+          }
+          activeTouchPointers.set(event.pointerId, {
+            clientX: event.clientX,
+            clientY: event.clientY
+          });
+          if (activeTouchPointers.size >= 2) {
+            pinchStartDistance = touchDistance();
+            pinchStartZoom = camera.position.z;
+            pendingTouch = null;
+            manualScroll = false;
+            dragging = false;
+            inertia = 0;
             return;
           }
           pendingTouch = event;
           manualScroll = false;
         });
         canvas.addEventListener('pointermove', event => {
+          if (event.pointerType !== 'mouse' && activeTouchPointers.has(event.pointerId)) {
+            activeTouchPointers.set(event.pointerId, {
+              clientX: event.clientX,
+              clientY: event.clientY
+            });
+          }
+          if (activeTouchPointers.size >= 2) {
+            event.preventDefault();
+            const distance = touchDistance();
+            if (pinchStartDistance > 0 && distance > 0) {
+              camera.position.z = clampZoom(pinchStartZoom * (pinchStartDistance / distance));
+              updateGlobeFraming();
+              if (reducedMotion || userPaused || !visible) render(performance.now());
+            }
+            return;
+          }
           if (pendingTouch && !dragging && !manualScroll) {
             const dx = event.clientX - pendingTouch.clientX;
             const dy = event.clientY - pendingTouch.clientY;
@@ -2027,18 +2087,28 @@ import {
           inspect(event);
         });
         function endDrag(event) {
+          activeTouchPointers.delete(event.pointerId);
+          if (activeTouchPointers.size < 2) {
+            pinchStartDistance = 0;
+          }
           pendingTouch = null;
           manualScroll = false;
           if (!dragging) return;
           dragging = false;
           try { canvas.releasePointerCapture(event.pointerId); } catch (_) {}
           canvas.style.cursor = 'grab';
+          suppressNextClick = dragMoved >= 6;
           if (dragMoved < 6 || reducedMotion) inertia = 0;
         }
         canvas.addEventListener('pointerup', endDrag);
         canvas.addEventListener('pointercancel', endDrag);
-        canvas.addEventListener('pointerleave', () => {
-          if (dragging) return;
+        canvas.addEventListener('lostpointercapture', endDrag);
+        canvas.addEventListener('pointerleave', event => {
+          if (dragging) endDrag(event);
+          pendingTouch = null;
+          manualScroll = false;
+          activeTouchPointers.clear();
+          pinchStartDistance = 0;
           pointer.set(4, 4);
           hoverPaused = false;
           canvas.style.cursor = 'grab';
@@ -2051,7 +2121,12 @@ import {
           if (reducedMotion || userPaused || !visible) render(performance.now());
         });
         canvas.addEventListener('click', event => {
-          if (dragMoved >= 6) return;
+          if (suppressNextClick) {
+            suppressNextClick = false;
+            dragMoved = 0;
+            return;
+          }
+          dragMoved = 0;
           const rect = canvas.getBoundingClientRect();
           pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
           pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -2069,10 +2144,8 @@ import {
           const location = hit?.object?.userData?.location;
           if (location) showMemberProjects(location);
         });
-        // Trackpads report pinch as a ctrl-modified wheel in Chromium, while
-        // some embedded/WebKit surfaces report it as an ordinary pixel wheel.
-        // Handle both so the globe zooms naturally without a keyboard chord.
-        // At either zoom limit the event falls through, releasing page scroll.
+        // Chromium reports trackpad pinch as a ctrl/meta-modified wheel.
+        // Keep ordinary two-finger scrolling available for moving down the page.
         const MIN_ZOOM = 3.2;
         const MAX_ZOOM = 10;
         const clampZoom = value => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
@@ -2080,11 +2153,13 @@ import {
           const nextZoom = clampZoom(camera.position.z + delta);
           if (Math.abs(nextZoom - camera.position.z) < .0001) return false;
           camera.position.z = nextZoom;
-          resize();
+          updateGlobeFraming();
           if (reducedMotion || userPaused || !visible) render(performance.now());
           return true;
         };
         canvas.addEventListener('wheel', event => {
+          const zoomEngaged = event.metaKey || event.ctrlKey;
+          if (!zoomEngaged) return;
           const modeScale = event.deltaMode === WheelEvent.DOM_DELTA_LINE
             ? 16
             : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
@@ -2104,9 +2179,21 @@ import {
         canvas.addEventListener('gesturechange', event => {
           const scale = Math.max(.25, Math.min(4, Number(event.scale) || 1));
           camera.position.z = clampZoom(gestureStartZoom / scale);
-          resize();
+          updateGlobeFraming();
+          if (reducedMotion || userPaused || !visible) render(performance.now());
           event.preventDefault();
         }, { passive: false });
+
+        const zoomInButton = $('#network-zoom-in');
+        const zoomOutButton = $('#network-zoom-out');
+        const zoomResetButton = $('#network-zoom-reset');
+        if (zoomInButton) zoomInButton.onclick = () => applyZoom(-.55);
+        if (zoomOutButton) zoomOutButton.onclick = () => applyZoom(.55);
+        if (zoomResetButton) zoomResetButton.onclick = () => {
+          camera.position.z = 6.65;
+          updateGlobeFraming();
+          if (reducedMotion || userPaused || !visible) render(performance.now());
+        };
 
         stage.addEventListener('keydown', event => {
           const zoomStep = event.key === '+' || event.key === '='
@@ -2118,15 +2205,24 @@ import {
             event.preventDefault();
           } else if (event.key === '0') {
             camera.position.z = 6.65;
-            resize();
+            updateGlobeFraming();
+            if (reducedMotion || userPaused || !visible) render(performance.now());
             event.preventDefault();
           }
         });
 
+        const interactiveStageLabel = stage.getAttribute('aria-label');
         canvas.addEventListener('webglcontextlost', event => {
           event.preventDefault();
           stage.classList.remove('webgl-ready');
+          stage.setAttribute('aria-label', 'The interactive globe is temporarily unavailable.');
           window.cancelAnimationFrame(frame);
+        });
+        canvas.addEventListener('webglcontextrestored', () => {
+          stage.setAttribute('aria-label', interactiveStageLabel);
+          stage.classList.add('webgl-ready');
+          resize();
+          startAnimation();
         });
 
         const observer = new ResizeObserver(resize);

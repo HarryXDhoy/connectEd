@@ -28,7 +28,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="connectEd">
   <title>connectEd — Project board</title>
-  <link rel="stylesheet" href="project-hub.css?v=20260730-my-applications">
+  <link rel="stylesheet" href="project-hub.css?v=20260730-audit-fixes">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -87,7 +87,7 @@
         <p class="board-status" id="board-status" role="status" aria-live="polite">Loading projects…</p>
       </div>
 
-      <nav class="tabs glass" aria-label="Project board sections" role="tablist">
+      <nav class="tabs glass" aria-label="Project board sections" role="tablist" aria-orientation="vertical">
         <button id="tab-discover" class="tab active" data-panel="discover" role="tab" aria-selected="true" aria-controls="panel-discover">Find projects</button>
         <button id="tab-owned" class="tab" data-panel="owned" role="tab" aria-selected="false" aria-controls="panel-owned" tabindex="-1">My projects <span class="tab-count" id="owned-count">0</span></button>
         <button id="tab-requests" class="tab" data-panel="requests" role="tab" aria-selected="false" aria-controls="panel-requests" tabindex="-1">My applications <span class="tab-count" id="request-count">0</span></button>
@@ -117,7 +117,7 @@
             </div>
           </div>
         </div>
-        <div id="discovery-board" class="masonry" aria-live="polite" aria-busy="true"></div>
+        <div id="discovery-board" class="masonry" aria-busy="true"></div>
       </section>
 
       <section id="panel-owned" class="panel" data-od-id="owned-projects-panel" role="tabpanel" aria-labelledby="tab-owned" tabindex="0" hidden>
@@ -360,7 +360,7 @@
           </figure>
           <div class="project-questions-section application-fields">
             <p class="detail-section-label">Application questions</p>
-            <div id="application-questions"></div>
+            <div id="application-questions" role="status" aria-live="polite"></div>
           </div>
         </div>
         <div class="project-detail-column project-detail-column-copy">
@@ -492,6 +492,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="app-config.js?v=20260727"></script>
-  <script type="module" src="project-hub.js"></script>
+  <script type="module" src="project-hub.js?v=20260730-audit-fixes"></script>
 </body>
 </html>

@@ -2510,7 +2510,7 @@
     }
     .pin .tag {
       padding: 4px 7px;
-      font-size: 10px;
+      font-size: 12px;
       white-space: nowrap;
     }
     .pin-foot {
@@ -2741,5 +2741,17 @@
       }
       #modal-project-detail .application-submit .btn-primary {
         grid-row: 1;
+      }
+      #modal-project-detail .modal-head {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: var(--surface);
+      }
+      .message-thread-head {
+        flex-wrap: wrap;
+      }
+      .message-thread-head .btn {
+        width: 100%;
       }
     }

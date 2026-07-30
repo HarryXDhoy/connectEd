@@ -557,6 +557,8 @@ import {
     let modalReturnFocus = null;
     const modalBackground = [document.querySelector('header'), document.querySelector('main'), $('#preview-note')].filter(Boolean);
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const visibleFocusable = modal => [...modal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+      .filter(element => element.type !== 'hidden' && !element.closest('[hidden]') && element.offsetParent !== null);
 
     function openModal(name) {
       const modal = $(`#modal-${name}`);
@@ -569,9 +571,20 @@ import {
       modalBackground.forEach(region => region.inert = true);
       document.body.classList.add('modal-open');
       window.requestAnimationFrame(() => {
-        const target = modal.querySelector('input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])');
+        const target = visibleFocusable(modal)[0];
         (target || modal).focus();
       });
+    }
+
+    function replaceModal(name, nextName) {
+      const modal = $(`#modal-${name}`);
+      const returnTarget = modalReturnFocus;
+      window.clearTimeout(modal.closeTimer);
+      modal.classList.remove('open', 'closing');
+      modal.setAttribute('aria-hidden', 'true');
+      activeModal = null;
+      openModal(nextName);
+      modalReturnFocus = returnTarget;
     }
 
     function closeModal(name) {
@@ -614,8 +627,7 @@ import {
         return;
       }
       if (event.key !== 'Tab') return;
-      const focusable = [...activeModal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')]
-        .filter(element => !element.hidden && element.offsetParent !== null);
+      const focusable = visibleFocusable(activeModal);
       if (!focusable.length) {
         event.preventDefault();
         activeModal.focus();
@@ -680,7 +692,11 @@ import {
     }
     function openAuthModal() {
       $('#auth-preview-note').hidden = !isEmbeddedPreview();
-      openModal('auth');
+      if (activeModal && activeModal.id !== 'modal-auth') {
+        replaceModal(activeModal.id.replace('modal-', ''), 'auth');
+      } else {
+        openModal('auth');
+      }
     }
     $('#auth-form').onsubmit = async event => {
       event.preventDefault();
@@ -724,11 +740,30 @@ import {
       return null;
     }
 
-    async function loadAll() {
+    let loadAllPromise = null;
+    let loadAllQueued = false;
+
+    function loadAll() {
+      if (loadAllPromise) {
+        loadAllQueued = true;
+        return loadAllPromise;
+      }
+      loadAllPromise = loadAllInternal().finally(async () => {
+        loadAllPromise = null;
+        if (loadAllQueued) {
+          loadAllQueued = false;
+          await loadAll();
+        }
+      });
+      return loadAllPromise;
+    }
+
+    async function loadAllInternal() {
       const discoveryBoard = $('#discovery-board');
       loadError = '';
       discoveryBoard.setAttribute('aria-busy', 'true');
       discoveryBoard.innerHTML = '<span class="sr-only">Loading projects</span><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';
+      try {
       user = await currentUser();
       await updateAccount();
       if (!isSupabaseConfigured) {
@@ -880,7 +915,13 @@ import {
       projectReviews = reviewResult.error ? [] : reviewResult.data || [];
 
       renderAll();
-      discoveryBoard.setAttribute('aria-busy', 'false');
+      } catch (error) {
+        loadError = error?.message || 'The project board could not be loaded.';
+        renderAll();
+        toast('Some project data could not be loaded. Please try again.');
+      } finally {
+        discoveryBoard.setAttribute('aria-busy', 'false');
+      }
     }
 
     async function updateAccount() {
@@ -1281,7 +1322,7 @@ import {
       const findProjects = $('[data-find-projects]');
       if (findProjects) findProjects.onclick = () => switchPanel('discover');
       $$('[data-cancel-application]').forEach(button => {
-        button.onclick = () => cancelApplication(button.dataset.cancelApplication);
+        button.onclick = () => cancelApplication(button.dataset.cancelApplication, button);
       });
       bindReviewButtons();
     }
@@ -1837,7 +1878,7 @@ import {
           switchPanel('requests');
         };
         const cancelButton = pausedMessage.querySelector('[data-cancel-application]');
-        if (cancelButton) cancelButton.onclick = () => cancelApplication(cancelButton.dataset.cancelApplication);
+        if (cancelButton) cancelButton.onclick = () => cancelApplication(cancelButton.dataset.cancelApplication, cancelButton);
       } else {
         pausedMessage.textContent = 'This project is visible, but the initiator has paused new applications.';
         pausedMessage.hidden = activeProject.owner_id === user?.id || isAcceptingApplications(activeProject);
@@ -2063,7 +2104,7 @@ import {
       await loadAll();
     }
 
-    async function cancelApplication(id) {
+    async function cancelApplication(id, button = null) {
       if (!(await requireUser())) return;
       const application = sentApplications.find(item => String(item.id) === String(id));
       if (!application || application.status !== 'pending') {
@@ -2073,10 +2114,21 @@ import {
       }
       const projectTitle = application.projects?.title || 'this project';
       if (!window.confirm(`Cancel your application to "${projectTitle}"? It will remain in your request history as withdrawn.`)) return;
+      const originalLabel = button?.textContent;
+      if (button) {
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        button.textContent = 'Cancelling…';
+      }
       const result = await supabase.rpc('withdraw_application', {
         target_application: id
       });
       if (result.error) {
+        if (button) {
+          button.disabled = false;
+          button.removeAttribute('aria-busy');
+          button.textContent = originalLabel;
+        }
         if (result.error.code === '42501' || /row-level security/i.test(result.error.message || '')) {
           return toast('This application could not be cancelled. Refresh and try again.');
         }
@@ -2189,10 +2241,14 @@ import {
       for (const question of activeProject.questions || []) {
         answers[question.id] = String(values.get(`question-${question.id}`) || '').trim();
       }
+      const note = String(values.get('message') || '').trim();
+      if (note && note.length < 20) {
+        return toast('Optional notes must be at least 20 characters, or left blank.');
+      }
       const result = await supabase.from('applications').insert({
         project_id: activeProject.id,
         applicant_id: user.id,
-        message: String(values.get('message') || '').trim() || 'No additional note provided.',
+        message: note || 'No additional note provided.',
         answers
       });
       if (result.error) {
@@ -2733,13 +2789,19 @@ import {
     });
 
     const panelTabs = $$('[data-panel]');
+    const tabList = document.querySelector('[role="tablist"]');
+    const syncTabOrientation = () => {
+      if (tabList) tabList.setAttribute('aria-orientation', window.innerWidth <= 900 ? 'horizontal' : 'vertical');
+    };
+    syncTabOrientation();
+    window.addEventListener('resize', syncTabOrientation, { passive: true });
     panelTabs.forEach(tab => {
       tab.onclick = () => switchPanel(tab.dataset.panel);
       tab.onkeydown = event => {
         const currentIndex = panelTabs.indexOf(tab);
         let nextIndex = currentIndex;
-        if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % panelTabs.length;
-        else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + panelTabs.length) % panelTabs.length;
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % panelTabs.length;
+        else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + panelTabs.length) % panelTabs.length;
         else if (event.key === 'Home') nextIndex = 0;
         else if (event.key === 'End') nextIndex = panelTabs.length - 1;
         else return;

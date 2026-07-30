@@ -28,7 +28,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="connectEd">
   <title>connectEd - Find your next project</title>
-  <link rel="stylesheet" href="connected-app.css?v=20260730-globe-zoom">
+  <link rel="stylesheet" href="connected-app.css?v=20260730-audit-fixes">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -109,6 +109,11 @@
             <button class="network-motion-toggle network-legend-toggle" id="network-legend-toggle" type="button" aria-expanded="false" aria-controls="network-legend">
               What's this?
             </button>
+            <div class="network-zoom-controls" role="group" aria-label="Globe zoom controls">
+              <button type="button" id="network-zoom-out" aria-label="Zoom globe out">−</button>
+              <button type="button" id="network-zoom-reset" aria-label="Reset globe zoom">Reset</button>
+              <button type="button" id="network-zoom-in" aria-label="Zoom globe in">+</button>
+            </div>
             <div class="network-legend" id="network-legend" role="dialog" aria-label="How to read the globe" hidden>
               <h3>Reading the globe</h3>
               <ul>
@@ -117,6 +122,7 @@
                 <li><span class="legend-swatch legend-pulse-accepted" aria-hidden="true"></span>Solid green pulse — a confirmed team-up.</li>
                 <li><span class="legend-swatch legend-pulse-interview" aria-hidden="true"></span>Hollow amber ring — an interview in progress.</li>
                 <li><span class="legend-swatch legend-pulse-declined" aria-hidden="true"></span>Red X — didn't work out.</li>
+                <li>Drag to rotate. Pinch or use the zoom controls to move closer. Keyboard: +, −, and 0 to reset.</li>
               </ul>
             </div>
             <div class="location-invite" id="location-invite" data-od-id="location-invite" hidden>
@@ -160,7 +166,7 @@
             <a class="btn btn-small" href="project-hub.html">Open project board</a>
           </div>
         </div>
-        <div id="project-pins" class="masonry" aria-live="polite" aria-busy="true"></div>
+        <div id="project-pins" class="masonry" aria-busy="true"></div>
       </div>
     </section>
 
@@ -321,7 +327,7 @@
           <img id="project-detail-cover" class="project-detail-cover" alt="" hidden>
           <div class="project-questions-section application-fields">
             <p class="detail-section-label">Application questions</p>
-            <div id="project-questions"></div>
+            <div id="project-questions" role="status" aria-live="polite"></div>
           </div>
         </div>
         <div class="project-detail-column project-detail-column-copy">
@@ -376,6 +382,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="app-config.js?v=20260727"></script>
-  <script type="module" src="connected-app.js"></script>
+  <script type="module" src="connected-app.js?v=20260730-audit-fixes"></script>
 </body>
 </html>
