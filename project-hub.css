@@ -5,7 +5,7 @@
       --fg: #fafafa;
       --fg-2: #b4b4b4;
       --muted: #898989;
-      --meta: #4d4d4d;
+      --meta: #858585;
       --border: #2e2e2e;
       --border-soft: #242424;
       --accent: #3ecf8e;
@@ -14,7 +14,7 @@
       --accent-active: color-mix(in oklab, var(--accent), black 14%);
       --success: #16a34a;
       --warn: #eab308;
-      --danger: #dc2626;
+      --danger: #ef4444;
       --font-display: "Circular", "custom-font", "Helvetica Neue", Helvetica, Arial, sans-serif;
       --font-body: "Circular", "custom-font", "Helvetica Neue", Helvetica, Arial, sans-serif;
       --font-mono: "Source Code Pro", "Office Code Pro", Menlo, Monaco, Consolas, monospace;
@@ -2163,10 +2163,317 @@
       .applicant-group-head { flex-direction: column; }
       .applicant-group-counts { justify-content: flex-start; }
     }
+    /* Final visual refinement: compact cards, readable controls, and a
+       two-column detail modal whose columns flow independently. */
+    button:focus-visible,
+    a:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible,
+    .btn:focus-visible,
+    .chip:focus-visible,
+    .tab:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+    .pin { min-height: 0; }
+    .pin-cover {
+      height: auto;
+      min-height: 0;
+      aspect-ratio: 16 / 9;
+    }
+    .pin-body { gap: var(--space-3); }
+    .pin-body > p { margin-bottom: 0; }
+    .pin .tags { min-height: 24px; }
+    .tag-more { color: var(--fg-2); }
+    .pin-card-actions [data-view] {
+      border-color: color-mix(in oklab, var(--accent), transparent 45%);
+      color: var(--accent);
+    }
+    #modal-project-detail .modal {
+      width: min(100%, 960px);
+      overflow: hidden;
+      padding: 0;
+    }
+    #modal-project-detail .modal-head {
+      z-index: 3;
+      padding: var(--space-6);
+      border-bottom: 1px solid var(--border-soft);
+      background: color-mix(in oklab, var(--surface), transparent 4%);
+    }
+    #modal-project-detail .project-detail-layout {
+      max-height: calc(92vh - 112px);
+      grid-template-columns: minmax(0, 1.08fr) minmax(300px, .92fr);
+      gap: var(--space-6);
+      align-items: start;
+      overflow-y: auto;
+      margin: 0;
+      padding: var(--space-6);
+    }
+    .project-detail-column {
+      min-width: 0;
+      display: grid;
+      align-content: start;
+      gap: var(--space-5);
+    }
+    .project-detail-column-media .project-questions-section {
+      margin-top: 0;
+      padding: var(--space-5);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: color-mix(in oklab, var(--surface), transparent 18%);
+    }
+    .project-detail-column-copy .project-detail-summary {
+      display: grid;
+      gap: var(--space-3);
+    }
+    #detail-description {
+      max-height: 380px;
+      overflow-y: auto;
+      margin: 0;
+      padding-right: var(--space-2);
+      white-space: pre-line;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .application-submit {
+      display: grid;
+      gap: var(--space-4);
+      padding-top: var(--space-5);
+      border-top: 1px solid var(--border-soft);
+    }
+    .project-detail-state {
+      padding: var(--space-5);
+      text-align: left;
+    }
+    @media (max-width: 720px) {
+      #modal-project-detail .modal { overflow-y: auto; }
+      #modal-project-detail .project-detail-layout {
+        max-height: none;
+        grid-template-columns: 1fr;
+        overflow: visible;
+        padding: var(--space-5);
+      }
+      #detail-description { max-height: none; overflow: visible; }
+    }
+    @media (max-width: 900px) {
+      .tabs {
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
+      }
+      .tabs::-webkit-scrollbar { display: block; height: 6px; }
+      .tabs::-webkit-scrollbar-thumb { border-radius: var(--radius-pill); background: var(--border); }
+    }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
       }
       .skeleton { animation: none !important; }
+    }
+
+    /* 2026 visual refresh: quieter navigation, clearer results and cards. */
+    .board-shell > .container {
+      grid-template-columns: 196px minmax(0, 1fr);
+      gap: var(--space-8);
+    }
+    .tabs {
+      gap: 3px;
+      padding-right: var(--space-6);
+    }
+    .tab {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      justify-content: flex-start;
+      width: 100%;
+      color: var(--fg-2);
+      text-align: left;
+    }
+    .tab::before {
+      content: "";
+      width: 3px;
+      height: 18px;
+      flex: 0 0 auto;
+      border-radius: var(--radius-pill);
+      background: transparent;
+    }
+    .tab.active {
+      border-color: transparent;
+      background: color-mix(in oklab, var(--accent), transparent 92%);
+    }
+    .tab.active::before { background: var(--accent); }
+    .panel {
+      border-color: var(--border-soft);
+      background:
+        linear-gradient(145deg, color-mix(in oklab, var(--fg), transparent 98%), transparent 38%),
+        color-mix(in oklab, var(--surface), transparent 5%);
+    }
+    .panel-head {
+      align-items: flex-start;
+      gap: var(--space-6);
+      padding-bottom: var(--space-5);
+    }
+    .board-filter-tools {
+      display: grid;
+      justify-items: end;
+      gap: var(--space-3);
+    }
+    .results-summary {
+      margin: 0;
+      color: var(--muted);
+      font: var(--text-xs)/1.4 var(--font-mono);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .masonry {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--space-5);
+    }
+    .pin {
+      min-height: 0;
+      border-color: var(--border-soft);
+    }
+    .pin-cover {
+      aspect-ratio: 16 / 9;
+      height: auto;
+      min-height: 0;
+    }
+    .pin-body { min-height: 232px; }
+    .pin-title { min-height: 2.6em; }
+    .pin-body > p { min-height: 3em; }
+    .tags { min-height: 26px; }
+    .pin-foot {
+      margin-top: auto;
+      align-items: center;
+    }
+    .pin-card-actions .btn[data-save] {
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+    }
+    .pin-card-actions .btn[data-save]:hover {
+      border-color: var(--border);
+      background: var(--bg);
+      color: var(--fg);
+    }
+    .pin-card-actions .btn[data-view] {
+      border-color: color-mix(in oklab, var(--accent), transparent 52%);
+      background: color-mix(in oklab, var(--accent), transparent 90%);
+      color: var(--fg);
+    }
+    #modal-project-detail .modal {
+      width: min(100%, 1040px);
+      border-color: color-mix(in oklab, var(--fg), transparent 82%);
+    }
+    #modal-project-detail .modal-head {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      margin: 0;
+      padding: var(--space-6);
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface), transparent 4%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .project-detail-layout {
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
+      gap: var(--space-6) var(--space-8);
+    }
+    .project-detail-column {
+      min-width: 0;
+      display: grid;
+      align-content: start;
+      gap: var(--space-5);
+    }
+    .detail-cover,
+    .project-detail-summary,
+    .project-questions-section,
+    .application-submit {
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      background: color-mix(in oklab, var(--bg), transparent 24%);
+    }
+    .detail-cover { overflow: hidden; }
+    .project-detail-summary,
+    .project-questions-section,
+    .application-submit { padding: var(--space-5); }
+    .application-submit {
+      display: grid;
+      gap: var(--space-4);
+    }
+    .detail-section-label {
+      color: var(--accent);
+      font: var(--text-xs)/1.3 var(--font-mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .project-detail-layout .form-actions {
+      grid-column: auto;
+      grid-row: auto;
+      position: static;
+      margin: 0;
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--border-soft);
+      background: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    @media (max-width: 900px) {
+      .board-shell > .container { grid-template-columns: 1fr; gap: var(--space-5); }
+      .tabs {
+        width: 100%;
+        padding-right: 0;
+      }
+      .tab {
+        width: auto;
+        text-align: center;
+      }
+      .tab::before { display: none; }
+      .panel-head { align-items: stretch; }
+      .board-filter-tools { justify-items: stretch; }
+      .filter-row { justify-content: flex-start; }
+    }
+    @media (max-width: 640px) {
+      .project-detail-layout { grid-template-columns: 1fr; }
+      .project-detail-layout #application-questions,
+      .project-detail-layout .application-message,
+      .project-detail-layout .form-actions {
+        grid-column: 1;
+        grid-row: auto;
+      }
+      .masonry { grid-template-columns: 1fr; }
+      .panel { padding: var(--space-4); }
+    }
+
+    /* Keep the project header and both content columns in one predictable
+       scroll region. Questions follow the image; submit controls follow copy. */
+    #modal-project-detail .modal {
+      padding: 0;
+      overflow: hidden;
+    }
+    #modal-project-detail .modal-head {
+      position: relative;
+      top: auto;
+      margin: 0;
+      padding: var(--space-6);
+    }
+    #modal-project-detail .project-detail-layout {
+      max-height: calc(92vh - 105px);
+      margin: 0;
+      padding: var(--space-6);
+      overflow-y: auto;
+    }
+    @media (max-width: 720px) {
+      #modal-project-detail .modal {
+        overflow-y: auto;
+      }
+      #modal-project-detail .project-detail-layout {
+        max-height: none;
+        overflow: visible;
+        padding: var(--space-5);
+      }
     }

@@ -77,6 +77,13 @@ import {
         <span>${escapeHtml(link.label)}</span><span aria-hidden="true">↗</span>
       </a>
     `).join('');
+    const projectCardTagsMarkup = project => {
+      const tags = projectTags(project);
+      return [
+        ...tags.slice(0, 3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`),
+        ...(tags.length > 3 ? [`<span class="tag tag-more">+${tags.length - 3}</span>`] : [])
+      ].join('');
+    };
     // seats_total is the static capacity set at creation — it never moved
     // as people were actually accepted, so a project with every seat
     // filled looked identical to one with none. seatCounts (populated from
@@ -362,31 +369,34 @@ import {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('projects')
-        .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,profiles:owner_id(display_name)')
-        .neq('status', 'closed')
-        .order('boost_until', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,profiles:owner_id(display_name)')
+          .neq('status', 'closed')
+          .order('boost_until', { ascending: false, nullsFirst: false })
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        projects = [];
-        board.innerHTML = '<div class="empty">Projects could not be loaded. <button class="btn btn-small" id="retry-projects" type="button">Retry</button></div>';
-        $('#retry-projects').onclick = loadProjects;
-        board.setAttribute('aria-busy', 'false');
-        toast('Projects could not be loaded.');
-        return;
-      } else {
+        if (error) throw error;
         projects = (data || []).map(project => ({
           ...project,
           owner: project.profiles?.display_name || 'connectEd member'
         }));
+
+        const { data: seatData } = await supabase.rpc('project_seat_counts');
+        seatCounts = new Map((seatData || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
+        renderProjectFilters();
+        renderProjects();
+      } catch (error) {
+        projects = [];
+        board.innerHTML = '<div class="empty">Projects could not be loaded. <button class="btn btn-small" id="retry-projects" type="button">Retry</button></div>';
+        $('#retry-projects').onclick = loadProjects;
+        const resultSummary = $('#landing-results-summary');
+        if (resultSummary) resultSummary.textContent = 'Projects unavailable';
+        toast('Projects could not be loaded.');
+      } finally {
+        board.setAttribute('aria-busy', 'false');
       }
-      const { data: seatData } = await supabase.rpc('project_seat_counts');
-      seatCounts = new Map((seatData || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
-      renderProjectFilters();
-      renderProjects();
-      board.setAttribute('aria-busy', 'false');
     }
 
     function renderProjects() {
@@ -403,6 +413,10 @@ import {
         ].join(' ').toLowerCase();
         return matchesFilter && (!query || haystack.includes(query));
       });
+      const resultSummary = $('#landing-results-summary');
+      if (resultSummary) {
+        resultSummary.textContent = `${filtered.length} ${filtered.length === 1 ? 'project' : 'projects'} shown`;
+      }
 
       $('#project-pins').innerHTML = filtered.length
         ? filtered.map((project, index) => {
@@ -440,7 +454,7 @@ import {
                   <h3 class="pin-title">${escapeHtml(project.title)}</h3>
                   <p>${escapeHtml(project.summary)}</p>
                   <div class="tags">
-                    ${projectTags(project).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+                    ${projectCardTagsMarkup(project)}
                   </div>
                   <div class="pin-foot">
                     <span class="owner">${escapeHtml(`By ${project.owner}${seatSuffix}`)}</span>
@@ -507,7 +521,7 @@ import {
       const tags = [...counts]
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .map(([tag]) => tag)
-        .slice(0, 8);
+        .slice(0, 5);
       const filterLabel = tag => tag.length <= 3
         ? tag.toUpperCase()
         : tag.charAt(0).toUpperCase() + tag.slice(1);
@@ -579,6 +593,10 @@ import {
       $('#project-links').innerHTML = projectLinkMarkup(activeProject);
       $('#project-links').hidden = !projectLinks(activeProject).length;
 
+      const questionContainer = $('#project-questions');
+      questionContainer.setAttribute('aria-busy', 'true');
+      questionContainer.innerHTML = '<p class="muted">Loading application questions…</p>';
+      openModal('project');
       let questions = [];
       if (isSupabaseConfigured && !id.startsWith('preview-')) {
         const result = await supabase
@@ -589,14 +607,14 @@ import {
         if (!result.error) questions = result.data || [];
       }
       activeProject.questions = questions;
-      $('#project-questions').innerHTML = questions.map(question => `
+      questionContainer.removeAttribute('aria-busy');
+      questionContainer.innerHTML = questions.length ? questions.map(question => `
         <label>
           ${escapeHtml(question.prompt)}
           <textarea class="field" name="question-${escapeHtml(question.id)}"
             maxlength="2000" ${question.required ? 'required' : ''}></textarea>
         </label>
-      `).join('');
-      openModal('project');
+      `).join('') : '<p class="muted">No additional questions for this project.</p>';
     }
 
     // Clicking a node opens the published projects of everyone pinned there

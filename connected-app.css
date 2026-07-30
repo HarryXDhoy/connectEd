@@ -5,7 +5,7 @@
       --fg: #fafafa;
       --fg-2: #b4b4b4;
       --muted: #898989;
-      --meta: #4d4d4d;
+      --meta: #858585;
       --border: #2e2e2e;
       --border-soft: #242424;
       --accent: #3ecf8e;
@@ -14,7 +14,7 @@
       --accent-active: color-mix(in oklab, var(--accent), black 14%);
       --success: #16a34a;
       --warn: #eab308;
-      --danger: #dc2626;
+      --danger: #ef4444;
       --font-display: "Circular", "custom-font", "Helvetica Neue", Helvetica, Arial, sans-serif;
       --font-body: "Circular", "custom-font", "Helvetica Neue", Helvetica, Arial, sans-serif;
       --font-mono: "Source Code Pro", "Office Code Pro", Menlo, Monaco, Consolas, monospace;
@@ -2042,6 +2042,94 @@
       .tier-benefits { grid-column: auto; }
       .tier-benefits .btn { width: 100%; }
     }
+    /* Final visual refinement shared with the board page. */
+    button:focus-visible,
+    a:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible,
+    .btn:focus-visible,
+    .chip:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+    .pin { min-height: 0; }
+    .pin-cover {
+      height: auto;
+      min-height: 0;
+      aspect-ratio: 16 / 9;
+    }
+    .pin-body { gap: var(--space-3); }
+    .pin-body > p { margin-bottom: 0; }
+    .pin .tags { min-height: 24px; }
+    .tag-more { color: var(--fg-2); }
+    .pin [data-project] {
+      border-color: color-mix(in oklab, var(--accent), transparent 45%);
+      color: var(--accent);
+    }
+    #modal-project .modal {
+      width: min(100%, 960px);
+      overflow: hidden;
+      padding: 0;
+    }
+    #modal-project .modal-head {
+      z-index: 3;
+      padding: var(--space-6);
+      border-bottom: 1px solid var(--border-soft);
+      background: color-mix(in oklab, var(--surface), transparent 4%);
+    }
+    #modal-project .project-detail-layout {
+      max-height: calc(92vh - 112px);
+      grid-template-columns: minmax(0, 1.08fr) minmax(300px, .92fr);
+      gap: var(--space-6);
+      align-items: start;
+      overflow-y: auto;
+      margin: 0;
+      padding: var(--space-6);
+    }
+    .project-detail-column {
+      min-width: 0;
+      display: grid;
+      align-content: start;
+      gap: var(--space-5);
+    }
+    .project-detail-column-media .project-questions-section {
+      margin-top: 0;
+      padding: var(--space-5);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: color-mix(in oklab, var(--surface), transparent 18%);
+    }
+    .project-detail-column-copy .project-detail-summary {
+      display: grid;
+      gap: var(--space-3);
+    }
+    #project-description {
+      max-height: 380px;
+      overflow-y: auto;
+      margin: 0;
+      padding-right: var(--space-2);
+      white-space: pre-line;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .application-submit {
+      display: grid;
+      gap: var(--space-4);
+      padding-top: var(--space-5);
+      border-top: 1px solid var(--border-soft);
+    }
+    @media (max-width: 720px) {
+      #modal-project .modal { overflow-y: auto; }
+      #modal-project .project-detail-layout {
+        max-height: none;
+        grid-template-columns: 1fr;
+        overflow: visible;
+        padding: var(--space-5);
+      }
+      #project-description { max-height: none; overflow: visible; }
+    }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         scroll-behavior: auto !important;
@@ -2063,4 +2151,190 @@
       }
       ::view-transition-old(root),
       ::view-transition-new(root) { animation: none !important; }
+    }
+
+    /* 2026 visual refresh: clearer landing hierarchy and predictable cards. */
+    .hero-actions { gap: var(--space-3); }
+    .hero-actions .btn {
+      min-height: 48px;
+      padding-inline: var(--space-6);
+    }
+    .hero-actions .btn-primary {
+      box-shadow: 0 12px 34px color-mix(in oklab, var(--accent), transparent 82%);
+    }
+    .hero .lede {
+      max-width: 42ch;
+      font-size: clamp(var(--text-base), 1.5vw, var(--text-lg));
+      line-height: 1.65;
+    }
+    .hero-quicklinks {
+      margin-top: var(--space-6);
+      opacity: .82;
+    }
+    .hero-quicklink {
+      min-height: 34px;
+      padding-inline: var(--space-3);
+      border-color: transparent;
+      background: color-mix(in oklab, var(--surface), transparent 28%);
+    }
+    #discover {
+      position: relative;
+      border-bottom: 1px solid var(--border-soft);
+      background:
+        radial-gradient(circle at 90% 8%, color-mix(in oklab, var(--accent), transparent 94%), transparent 30%),
+        color-mix(in oklab, var(--surface), transparent 55%);
+    }
+    .board-tool-summary,
+    .board-filter-tools {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--space-4);
+    }
+    .results-summary {
+      margin: 0;
+      color: var(--muted);
+      font: var(--text-xs)/1.4 var(--font-mono);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .masonry {
+      columns: unset;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: var(--space-5);
+    }
+    .pin {
+      min-height: 0;
+      margin: 0;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .pin-cover {
+      aspect-ratio: 16 / 9;
+      height: auto;
+      min-height: 0;
+    }
+    .pin-body { min-height: 210px; }
+    .pin-foot {
+      margin-top: auto;
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--border-soft);
+    }
+    #modal-project .modal {
+      width: min(100%, 1040px);
+      border-color: color-mix(in oklab, var(--fg), transparent 82%);
+    }
+    .project-detail-layout {
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
+      gap: var(--space-8);
+    }
+    .project-detail-column {
+      min-width: 0;
+      display: grid;
+      align-content: start;
+      gap: var(--space-5);
+    }
+    .project-detail-cover {
+      aspect-ratio: 16 / 9;
+      border-color: var(--border-soft);
+    }
+    .project-detail-summary,
+    .project-questions-section,
+    .application-submit {
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: var(--space-5);
+      background: color-mix(in oklab, var(--bg), transparent 24%);
+    }
+    .project-questions-section { border-top: 1px solid var(--border-soft); }
+    .application-submit {
+      display: grid;
+      gap: var(--space-4);
+    }
+    .application-submit .form-actions {
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--border-soft);
+    }
+    .detail-section-label { color: var(--accent); }
+    .membership-compare {
+      overflow: visible;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-5);
+      border: 0;
+      background: transparent;
+    }
+    .membership-tier {
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-8);
+      background: var(--surface);
+    }
+    .membership-tier + .membership-tier {
+      position: relative;
+      border: 1px solid color-mix(in oklab, var(--accent), transparent 58%);
+      background:
+        linear-gradient(145deg, color-mix(in oklab, var(--accent), transparent 94%), transparent 58%),
+        var(--surface);
+    }
+    .membership-tier + .membership-tier::before {
+      content: "For active builders";
+      position: absolute;
+      top: var(--space-4);
+      right: var(--space-4);
+      border: 1px solid color-mix(in oklab, var(--accent), transparent 52%);
+      border-radius: var(--radius-pill);
+      padding: 5px 9px;
+      color: var(--accent);
+      font: 10px/1 var(--font-mono);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    @media (max-width: 900px) {
+      .masonry { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .membership-compare { grid-template-columns: 1fr; }
+      .membership-tier + .membership-tier { border-top: 1px solid color-mix(in oklab, var(--accent), transparent 58%); }
+    }
+    @media (max-width: 640px) {
+      .project-detail-layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .board-tool-summary {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .results-summary { white-space: normal; }
+      .masonry { grid-template-columns: 1fr; }
+      .membership-tier { padding: var(--space-6); }
+    }
+
+    /* Keep questions directly below the image and application controls
+       directly below the project copy, without shared-grid blank space. */
+    #modal-project .modal {
+      padding: 0;
+      overflow: hidden;
+    }
+    #modal-project .modal-head {
+      margin: 0;
+      padding: var(--space-6);
+    }
+    #modal-project .project-detail-layout {
+      max-height: calc(92vh - 105px);
+      margin: 0;
+      padding: var(--space-6);
+      overflow-y: auto;
+    }
+    @media (max-width: 720px) {
+      #modal-project .modal {
+        overflow-y: auto;
+      }
+      #modal-project .project-detail-layout {
+        max-height: none;
+        overflow: visible;
+        padding: var(--space-5);
+      }
     }

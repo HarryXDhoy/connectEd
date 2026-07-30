@@ -996,7 +996,7 @@ import {
       const tags = [...counts]
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .map(([tag]) => tag)
-        .slice(0, 8);
+        .slice(0, 5);
       const filterLabel = tag => tag.length <= 3
         ? tag.toUpperCase()
         : tag.charAt(0).toUpperCase() + tag.slice(1);
@@ -1051,6 +1051,13 @@ import {
         </a>
       `).join('');
     }
+    function projectCardTagsMarkup(project) {
+      const tags = projectTags(project);
+      return [
+        ...tags.slice(0, 3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`),
+        ...(tags.length > 3 ? [`<span class="tag tag-more">+${tags.length - 3}</span>`] : [])
+      ].join('');
+    }
 
     function pinMarkup(project, index, owned = false) {
       const boosted = project.boost_until && new Date(project.boost_until) > new Date();
@@ -1086,7 +1093,7 @@ import {
           <div class="pin-body">
             <h3 class="pin-title">${escapeHtml(project.title)}</h3>
             <p>${escapeHtml(project.summary)}</p>
-            <div class="tags">${projectTags(project).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
+            <div class="tags">${projectCardTagsMarkup(project)}</div>
             <div class="pin-foot">
               <span class="owner">${ownerLine}${escapeHtml(seatSuffix)}</span>
               <div class="pin-card-actions">
@@ -1140,11 +1147,17 @@ import {
 
     function renderDiscovery() {
       if (loadError) {
+        const resultSummary = $('#hub-results-summary');
+        if (resultSummary) resultSummary.textContent = 'Projects unavailable';
         $('#discovery-board').innerHTML = `<div class="empty">The shared board could not be loaded.<br><button class="btn btn-small" id="retry-board" type="button">Retry</button></div>`;
         $('#retry-board').onclick = loadAll;
         return;
       }
       const items = filteredProjects();
+      const resultSummary = $('#hub-results-summary');
+      if (resultSummary) {
+        resultSummary.textContent = `${items.length} ${items.length === 1 ? 'project' : 'projects'} shown`;
+      }
       const filteredEmpty = activeFilter !== 'all' || $('#board-search').value.trim();
       const emptyMessage = activeFilter === 'saved' && !$('#board-search').value.trim()
         ? 'No saved projects yet. Save a project to keep it close for later.'
@@ -1775,7 +1788,9 @@ import {
       const canApply = activeProject.owner_id !== user?.id
         && isAcceptingApplications(activeProject)
         && !existingApplication;
-      $('#application-form').hidden = !canApply;
+      $$('#application-form .application-fields').forEach(section => {
+        section.hidden = !canApply;
+      });
       if (existingApplication) {
         pausedMessage.textContent = `You already sent a request to this project — current status: ${String(existingApplication.status).replace('_', ' ')}. Track it under My requests.`;
         pausedMessage.hidden = false;
@@ -1784,6 +1799,10 @@ import {
         pausedMessage.hidden = activeProject.owner_id === user?.id || isAcceptingApplications(activeProject);
       }
 
+      const questionContainer = $('#application-questions');
+      questionContainer.setAttribute('aria-busy', 'true');
+      questionContainer.innerHTML = '<p class="muted">Loading application questions…</p>';
+      openModal('project-detail');
       let questions = [];
       if (isSupabaseConfigured && !String(id).startsWith('preview-')) {
         const result = await supabase.from('project_questions')
@@ -1791,12 +1810,12 @@ import {
         questions = result.error ? [] : result.data || [];
       }
       activeProject.questions = questions;
-      $('#application-questions').innerHTML = questions.map(question => `
+      questionContainer.removeAttribute('aria-busy');
+      questionContainer.innerHTML = questions.length ? questions.map(question => `
         <label>${escapeHtml(question.prompt)}
           <textarea class="field" name="question-${question.id}" maxlength="2000" ${question.required ? 'required' : ''}></textarea>
         </label>
-      `).join('');
-      openModal('project-detail');
+      `).join('') : '<p class="muted">No additional questions for this project.</p>';
     }
 
     const MAX_PROJECT_QUESTIONS = 8;
@@ -2514,12 +2533,17 @@ import {
 
     function switchPanel(name) {
       $$('.panel').forEach(panel => panel.hidden = panel.id !== `panel-${name}`);
+      let activeTab = null;
       $$('[data-panel]').forEach(tab => {
         const selected = tab.dataset.panel === name;
         tab.classList.toggle('active', selected);
         tab.setAttribute('aria-selected', String(selected));
         tab.tabIndex = selected ? 0 : -1;
+        if (selected) activeTab = tab;
       });
+      if (activeTab && window.innerWidth <= 900) {
+        activeTab.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest', inline: 'center' });
+      }
       if (name === 'profile') renderProfile();
       if (name === 'requests') renderRequests();
       if (name === 'messages') { closeConversation(); renderConversationList(); }

@@ -28,7 +28,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="connectEd">
   <title>connectEd - Find your next project</title>
-  <link rel="stylesheet" href="connected-app.css?v=20260730-layout">
+  <link rel="stylesheet" href="connected-app.css?v=20260730-visual-refresh">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -48,7 +48,7 @@
         <span></span><span></span><span></span>
       </button>
       <div class="nav-actions" id="nav-actions">
-        <a class="btn btn-ghost btn-small" href="project-hub.html">Browse projects</a>
+        <a class="btn btn-ghost btn-small" href="project-hub.html">Open project board</a>
         <button id="account-button" class="account-control btn btn-primary btn-small" data-open="auth">
           <span class="account-avatar" id="account-avatar" aria-hidden="true" hidden>
             <img id="account-avatar-img" alt="" referrerpolicy="no-referrer" hidden>
@@ -71,7 +71,7 @@
             to a scheduled conversation.
           </p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="#discover" data-od-id="hero-explore-cta">Browse projects</a>
+            <a class="btn btn-primary" href="#discover" data-od-id="hero-explore-cta">Explore featured projects</a>
             <button class="btn" data-open="create" data-od-id="hero-share-cta">Share a project</button>
           </div>
           <p class="hero-meta" id="hero-live-meta" data-od-id="hero-live-meta">Connecting to the live board</p>
@@ -155,7 +155,10 @@
           <div class="filter-row" id="landing-project-filters" role="group" aria-label="Project filters">
             <button class="chip active" data-filter="all" aria-pressed="true">All ideas</button>
           </div>
-          <a class="btn btn-small" href="project-hub.html">Open the full board</a>
+          <div class="board-tool-summary">
+            <p class="results-summary" id="landing-results-summary" role="status" aria-live="polite">Loading projects…</p>
+            <a class="btn btn-small" href="project-hub.html">Open project board</a>
+          </div>
         </div>
         <div id="project-pins" class="masonry" aria-live="polite" aria-busy="true"></div>
       </div>
@@ -314,23 +317,29 @@
         <button class="close" data-close="project" aria-label="Close">×</button>
       </div>
       <form id="join-form" class="form project-detail-layout">
-        <img id="project-detail-cover" class="project-detail-cover" alt="" hidden>
-        <div class="project-detail-summary">
-          <p class="detail-section-label">About this project</p>
-          <p id="project-description" class="section-copy"></p>
-          <div id="project-tags" class="tags"></div>
-          <div id="project-links" class="project-links" hidden aria-label="Project links"></div>
+        <div class="project-detail-column project-detail-column-media">
+          <img id="project-detail-cover" class="project-detail-cover" alt="" hidden>
+          <div class="project-questions-section">
+            <p class="detail-section-label">Application questions</p>
+            <div id="project-questions"></div>
+          </div>
         </div>
-        <div class="project-questions-section">
-          <p class="detail-section-label">Application questions</p>
-          <div id="project-questions"></div>
-        </div>
-        <label class="application-message">Optional note for the project owner
-          <textarea class="field" name="message" maxlength="3000" placeholder="Add context or anything else you would like to share."></textarea>
-        </label>
-        <div class="form-actions">
-          <button class="btn" type="button" data-close="project">Cancel</button>
-          <button class="btn btn-primary" type="submit">Send application</button>
+        <div class="project-detail-column project-detail-column-copy">
+          <div class="project-detail-summary">
+            <p class="detail-section-label">About this project</p>
+            <p id="project-description" class="section-copy"></p>
+            <div id="project-tags" class="tags"></div>
+            <div id="project-links" class="project-links" hidden aria-label="Project links"></div>
+          </div>
+          <div class="application-submit">
+            <label class="application-message">Optional note for the project owner
+              <textarea class="field" name="message" maxlength="3000" placeholder="Add context or anything else you would like to share."></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="btn" type="button" data-close="project">Cancel</button>
+              <button class="btn btn-primary" type="submit">Send application</button>
+            </div>
+          </div>
         </div>
       </form>
     </div>
