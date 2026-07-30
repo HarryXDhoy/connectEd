@@ -528,11 +528,11 @@
     .modal-head { display: flex; justify-content: space-between; gap: var(--space-5); }
     .modal h2 { font-size: var(--text-2xl); }
     #modal-project .modal { width: min(100%, 980px); }
-    .project-detail-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: var(--space-6); align-items: start; margin-top: var(--space-5); }
+    .project-detail-layout { display: grid; grid-template-columns: 1fr; gap: var(--space-5); align-items: start; margin-top: var(--space-5); }
     .project-detail-summary { min-width: 0; }
-    .project-detail-layout #project-questions { grid-column: 1; grid-row: 2; }
-    .project-detail-layout .application-message { grid-column: 2; grid-row: 2; }
-    .project-detail-layout .form-actions { grid-column: 2; grid-row: 3; }
+    .project-detail-layout #project-questions,
+    .project-detail-layout .application-message,
+    .project-detail-layout .form-actions { grid-column: 1; grid-row: auto; }
     .project-detail-cover {
       display: block;
       width: 100%;
