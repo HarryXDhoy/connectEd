@@ -1499,8 +1499,27 @@ import {
         crossCtx.lineTo(34, 94);
         crossCtx.stroke();
         const crossTexture = new THREE.CanvasTexture(crossCanvas);
-        const acceptedPulseGeometry = new THREE.SphereGeometry(.035, 12, 10);
-        const acceptedPulseMaterial = new THREE.MeshBasicMaterial({ color: color('--accent'), transparent: true, opacity: .9, depthWrite: false });
+        const acceptedCanvas = document.createElement('canvas');
+        acceptedCanvas.width = 128;
+        acceptedCanvas.height = 128;
+        const acceptedCtx = acceptedCanvas.getContext('2d');
+        const acceptedGradient = acceptedCtx.createRadialGradient(64, 64, 2, 64, 64, 58);
+        acceptedGradient.addColorStop(0, 'rgba(255,255,255,1)');
+        acceptedGradient.addColorStop(.16, 'rgba(255,255,255,.96)');
+        acceptedGradient.addColorStop(.36, 'rgba(255,255,255,.48)');
+        acceptedGradient.addColorStop(.7, 'rgba(255,255,255,.12)');
+        acceptedGradient.addColorStop(1, 'rgba(255,255,255,0)');
+        acceptedCtx.fillStyle = acceptedGradient;
+        acceptedCtx.fillRect(0, 0, 128, 128);
+        const acceptedTexture = new THREE.CanvasTexture(acceptedCanvas);
+        const acceptedPulseMaterial = new THREE.SpriteMaterial({
+          map: acceptedTexture,
+          color: color('--accent'),
+          transparent: true,
+          opacity: .98,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending
+        });
         const interviewPulseMaterial = new THREE.SpriteMaterial({
           map: ringTexture,
           color: color('--warn'),
@@ -1518,6 +1537,7 @@ import {
           blending: THREE.AdditiveBlending
         });
         const pulseShape = {
+          accepted: { material: acceptedPulseMaterial, baseScale: .12 },
           interview: { material: interviewPulseMaterial, baseScale: .09 },
           // Slightly larger than the ring — an X drawn at the same size
           // reads smaller than a filled ring/dot because more of its
@@ -1529,7 +1549,7 @@ import {
           const shape = pulseShape[status];
           const pulse = shape
             ? new THREE.Sprite(shape.material)
-            : new THREE.Mesh(acceptedPulseGeometry, acceptedPulseMaterial);
+            : new THREE.Sprite(acceptedPulseMaterial);
           pulse.userData = {
             curve,
             offset: pulseRoutes.length ? index / pulseRoutes.length : 0,

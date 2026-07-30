@@ -1112,7 +1112,12 @@
       box-shadow: 0 0 6px color-mix(in oklab, var(--accent), transparent 30%);
     }
     .legend-line { align-self: center; height: 2px; background: var(--accent); }
-    .legend-pulse-accepted { border-radius: 50%; background: var(--accent); }
+    .legend-pulse-accepted {
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent), transparent 35%);
+      animation: accepted-legend-pulse 2.2s var(--ease-standard) infinite;
+    }
     .legend-pulse-interview { border-radius: 50%; border: 2px solid var(--warn); background: transparent; }
     .legend-pulse-declined {
       display: flex;
@@ -1876,6 +1881,10 @@
     @keyframes live-pulse {
       0%, 100% { box-shadow: 0 0 10px color-mix(in oklab, var(--accent), transparent 30%); }
       50% { box-shadow: 0 0 3px color-mix(in oklab, var(--accent), transparent 72%); }
+    }
+    @keyframes accepted-legend-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent), transparent 70%); }
+      50% { box-shadow: 0 0 0 5px color-mix(in oklab, var(--accent), transparent 100%); }
     }
     @keyframes scroll-cue {
       0% { transform: scaleY(0); transform-origin: top; opacity: 0; }
