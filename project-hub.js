@@ -50,11 +50,13 @@ import {
       .filter(Boolean)
       .slice(0, 8);
     const PROJECT_IMAGE_PREFIX = '__image__:';
+    const PROJECT_LINK_PREFIX = '__link__:';
     const PROJECT_LOCATION_PREFIX = '__location__:';
     const APPLICATIONS_PAUSED_TAG = '__applications_paused__';
     const projectTags = project => (project?.tags || [])
       .filter(tag =>
         !String(tag).startsWith(PROJECT_IMAGE_PREFIX) &&
+        !String(tag).startsWith(PROJECT_LINK_PREFIX) &&
         !String(tag).startsWith(PROJECT_LOCATION_PREFIX) &&
         String(tag) !== APPLICATIONS_PAUSED_TAG
       );
@@ -65,6 +67,19 @@ import {
       const marker = (project?.tags || []).find(tag => String(tag).startsWith(PROJECT_IMAGE_PREFIX));
       return marker ? String(marker).slice(PROJECT_IMAGE_PREFIX.length) : '';
     };
+    const projectLinks = project => (project?.tags || [])
+      .filter(tag => String(tag).startsWith(PROJECT_LINK_PREFIX))
+      .map(tag => {
+        try {
+          const [label, url] = JSON.parse(String(tag).slice(PROJECT_LINK_PREFIX.length));
+          const safeUrl = safeExternalUrl(url);
+          return safeUrl ? { label: String(label || 'Project link').slice(0, 40), url: safeUrl } : null;
+        } catch (_) {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .slice(0, 6);
     // seats_total is the static capacity set at creation — it never moved
     // as people were actually accepted, so a full project looked identical
     // to an empty one. seatCounts (from the project_seat_counts() RPC) is
@@ -1029,6 +1044,14 @@ import {
       return 'assets/project-cover-general.png';
     }
 
+    function projectLinkMarkup(project) {
+      return projectLinks(project).map(link => `
+        <a class="project-link" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">
+          <span>${escapeHtml(link.label)}</span><span aria-hidden="true">↗</span>
+        </a>
+      `).join('');
+    }
+
     function pinMarkup(project, index, owned = false) {
       const boosted = project.boost_until && new Date(project.boost_until) > new Date();
       const acceptingApplications = isAcceptingApplications(project);
@@ -1736,6 +1759,8 @@ import {
       bindProfileViewButtons();
       $('#detail-description').textContent = activeProject.description;
       $('#detail-tags').innerHTML = projectTags(activeProject).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
+      $('#detail-links').innerHTML = projectLinkMarkup(activeProject);
+      $('#detail-links').hidden = !projectLinks(activeProject).length;
       const detailCover = $('#detail-cover-image');
       const fallbackCover = projectCover(activeProject);
       detailCover.onerror = () => {
@@ -1775,6 +1800,7 @@ import {
     }
 
     const MAX_PROJECT_QUESTIONS = 8;
+    const MAX_PROJECT_LINKS = 6;
     function questionRowMarkup(value = '') {
       return `
         <div class="question-row">
@@ -1798,6 +1824,38 @@ import {
       $('#question-list').innerHTML = (prompts.length ? prompts : ['']).map(questionRowMarkup).join('');
       bindQuestionRowButtons();
     }
+
+    function projectLinkRowMarkup(label = '', url = '') {
+      return `
+        <div class="project-link-row">
+          <input class="field" name="link_label" maxlength="40" placeholder="GitHub repo" value="${escapeHtml(label)}">
+          <input class="field" name="link_url" type="url" maxlength="300" placeholder="https://github.com/…" value="${escapeHtml(url)}">
+          <button class="btn btn-small remove-project-link" type="button" aria-label="Remove link">×</button>
+        </div>
+      `;
+    }
+    function bindProjectLinkButtons() {
+      const rows = $$('#project-link-list .project-link-row');
+      rows.forEach(row => {
+        const button = row.querySelector('.remove-project-link');
+        button.hidden = rows.length <= 1;
+        button.onclick = () => {
+          row.remove();
+          bindProjectLinkButtons();
+        };
+      });
+    }
+    function renderProjectLinkRows(links) {
+      $('#project-link-list').innerHTML = (links.length ? links : [{ label: '', url: '' }])
+        .map(link => projectLinkRowMarkup(link.label, link.url)).join('');
+      bindProjectLinkButtons();
+    }
+    $('#add-project-link').onclick = () => {
+      const list = $('#project-link-list');
+      if (list.children.length >= MAX_PROJECT_LINKS) return toast(`Up to ${MAX_PROJECT_LINKS} links per project.`);
+      list.insertAdjacentHTML('beforeend', projectLinkRowMarkup());
+      bindProjectLinkButtons();
+    };
     $('#add-question').onclick = () => {
       const list = $('#question-list');
       if (list.children.length >= MAX_PROJECT_QUESTIONS) {
@@ -1816,12 +1874,14 @@ import {
       form.status.querySelector('option[value="invite_only"]')?.remove();
       resetProjectImagePreview();
       renderQuestionRows([]);
+      renderProjectLinkRows([]);
       $('#project-form-title').textContent = project ? 'Edit your project' : 'Post a project';
       if (project) {
         form.title.value = project.title;
         form.summary.value = project.summary;
         form.description.value = project.description;
         form.tags.value = projectTags(project).join(', ');
+        renderProjectLinkRows(projectLinks(project));
         form.seats.value = project.seats_total;
         // Without this, the edit form always opened looking like the
         // project had no thumbnail at all — there was no way to see (let
@@ -1858,6 +1918,8 @@ import {
       const values = new FormData(form);
       const image = values.get('image');
       const tags = normalizeTags(values.get('tags'));
+      const linkLabels = values.getAll('link_label').map(value => String(value || '').trim());
+      const linkUrls = values.getAll('link_url').map(value => String(value || '').trim());
       const existingProject = editingProjectId
         ? projects.find(project => String(project.id) === String(editingProjectId))
         : null;
@@ -1869,6 +1931,12 @@ import {
       }
       if ((existingProject?.tags || []).includes(APPLICATIONS_PAUSED_TAG)) {
         tags.push(APPLICATIONS_PAUSED_TAG);
+      }
+      for (let index = 0; index < Math.min(linkLabels.length, linkUrls.length, MAX_PROJECT_LINKS); index += 1) {
+        if (!linkLabels[index] && !linkUrls[index]) continue;
+        const safeUrl = safeExternalUrl(linkUrls[index]);
+        if (!safeUrl) return toast('Project links must use an http:// or https:// URL.');
+        tags.push(`${PROJECT_LINK_PREFIX}${JSON.stringify([linkLabels[index] || 'Project link', safeUrl])}`);
       }
       const payload = {
         title: String(values.get('title')).trim(),

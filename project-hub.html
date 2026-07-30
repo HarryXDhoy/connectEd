@@ -301,13 +301,25 @@
           <label class="thumbnail-upload" for="hub-project-image">
             <span class="thumbnail-upload-title">Choose your project thumbnail</span>
             <input class="field" id="hub-project-image" name="image" type="file" accept="image/jpeg,image/png,image/webp">
-            <span class="field-help">Upload your own cover image · JPEG, PNG, or WebP · up to 8 MB. We optimize it before publishing.</span>
+            <span class="field-help">Upload your own cover image · 16:9 works best · JPEG, PNG, or WebP · up to 8 MB. We optimize it before publishing.</span>
           </label>
           <div class="image-preview" id="hub-image-preview" hidden>
             <img id="hub-image-preview-img" alt="Selected project thumbnail preview">
             <p class="image-preview-copy"><strong>Thumbnail ready.</strong><br>This image will appear on your project card. Uploading another image replaces it.</p>
           </div>
         </div>
+        <fieldset class="link-fieldset">
+          <legend>Project links · optional</legend>
+          <p class="field-help">Give people a quick way to explore the project. Add a GitHub repo, portfolio, live demo, or other public link.</p>
+          <div class="project-link-list" id="project-link-list">
+            <div class="project-link-row">
+              <input class="field" name="link_label" maxlength="40" placeholder="GitHub repo">
+              <input class="field" name="link_url" type="url" maxlength="300" placeholder="https://github.com/…">
+              <button class="btn btn-small remove-project-link" type="button" aria-label="Remove link" hidden>×</button>
+            </div>
+          </div>
+          <button class="btn btn-small" type="button" id="add-project-link">+ Add another link</button>
+        </fieldset>
         <label>Skills and topics<input class="field" name="tags" maxlength="240" placeholder="design, mobile, education"></label>
         <div class="field-row">
           <label>Open seats<input class="field" name="seats" type="number" min="1" max="50" value="3" required></label>
@@ -343,6 +355,7 @@
       </figure>
       <p id="detail-description" class="muted"></p>
       <div id="detail-tags" class="tags"></div>
+      <div id="detail-links" class="project-links" hidden aria-label="Project links"></div>
       <div class="empty" id="application-paused-message" hidden>This project is visible, but the initiator has paused new applications.</div>
       <form id="application-form" class="form">
         <label>What would you contribute?<textarea class="field" name="message" minlength="20" maxlength="3000" required></textarea></label>
