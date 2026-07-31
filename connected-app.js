@@ -108,6 +108,18 @@ import {
         ...(tags.length > 2 ? [`<span class="tag tag-more">+${tags.length - 2}</span>`] : [])
       ].join('');
     };
+    const isBoostLive = project => {
+      const until = Date.parse(project?.boost_until || '');
+      return Number.isFinite(until) && until > Date.now();
+    };
+    // PostgREST orders on the raw boost_until column, so a boost whose date
+    // has already passed still sorts above every project whose boost_until is
+    // null — and nothing ever rewrites the column once it expires, so that
+    // top placement is permanent. Re-sort here so only a live boost earns it.
+    // Stable sort: everything that isn't actively boosted keeps the order the
+    // database already applied (created_at desc).
+    const boostedFirst = rows =>
+      [...rows].sort((a, b) => Number(isBoostLive(b)) - Number(isBoostLive(a)));
     // seats_total is the static capacity set at creation — it never moved
     // as people were actually accepted, so a project with every seat
     // filled looked identical to one with none. seatCounts (populated from
@@ -419,10 +431,10 @@ import {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        projects = (data || []).map(project => ({
+        projects = boostedFirst((data || []).map(project => ({
           ...project,
           owner: project.profiles?.display_name || 'connectEd member'
-        }));
+        })));
 
         const { data: seatData } = await supabase.rpc('project_seat_counts');
         seatCounts = new Map((seatData || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
@@ -461,7 +473,7 @@ import {
 
       $('#project-pins').innerHTML = filtered.length
         ? filtered.map((project, index) => {
-            const boosted = project.boost_until && new Date(project.boost_until) > new Date();
+            const boosted = isBoostLive(project);
             // Was missing the paused-applications check entirely (unlike
             // project-hub.js's equivalent pinMarkup()) — a project with
             // applications explicitly paused by its owner still showed

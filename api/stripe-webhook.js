@@ -25,8 +25,15 @@ function verifyStripeSignature(payload, signature, secret) {
     .digest('hex');
 
   return signatures.some(value => {
-    if (value.length !== expected.length) return false;
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(value));
+    // Compare the decoded bytes, not the strings. timingSafeEqual throws
+    // outright on a length mismatch, and a JS string length is a UTF-16 code
+    // unit count — for a non-hex signature containing multi-byte characters
+    // the two can agree while the buffers differ in size, turning a bad
+    // signature from "return false" into an uncaught throw.
+    const candidate = Buffer.from(value, 'hex');
+    const digest = Buffer.from(expected, 'hex');
+    if (candidate.length !== digest.length || candidate.length === 0) return false;
+    return crypto.timingSafeEqual(digest, candidate);
   });
 }
 
@@ -47,6 +54,21 @@ async function supabaseWrite(path, body, method = 'POST') {
   if (!response.ok) throw new Error(`Supabase write failed with ${response.status}.`);
 }
 
+async function supabaseRead(path) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Supabase server credentials are not configured.');
+  }
+  const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/${path}`, {
+    headers: {
+      apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      accept: 'application/json'
+    }
+  });
+  if (!response.ok) throw new Error(`Supabase read failed with ${response.status}.`);
+  return response.json();
+}
+
 async function activatePlus({
   userId,
   customerId,
@@ -65,15 +87,20 @@ async function activatePlus({
     'PATCH'
   );
 
+  const entitlement = {
+    active,
+    stripe_customer_id: customerId || null,
+    stripe_subscription_id: subscriptionId || null,
+    ends_at: periodEnd || null
+  };
+  // Only checkout knows which project was chosen. On subscription events the
+  // entitlement row is the source of truth for that (see below), so don't let
+  // a stale value from Stripe metadata overwrite it.
+  if (projectId) entitlement.project_id = projectId;
+
   await supabaseWrite(
     `billing_entitlements?user_id=eq.${encodeURIComponent(userId)}&plan=eq.priority_match`,
-    {
-      active,
-      stripe_customer_id: customerId || null,
-      stripe_subscription_id: subscriptionId || null,
-      project_id: projectId || null,
-      ends_at: periodEnd || null
-    },
+    entitlement,
     'PATCH'
   );
 
@@ -83,25 +110,57 @@ async function activatePlus({
       { boost_until: periodEnd || new Date(Date.now() + 31 * 86400000).toISOString() },
       'PATCH'
     );
+    return;
   }
+
+  // Deactivation used to stop after flipping the two `active` flags, leaving
+  // boost_until set as much as 31 days out with nothing on the platform able
+  // to clear it: activate_plus_boost() only clears the owner's *other*
+  // projects, the column is deliberately absent from every client grant, and
+  // there is no expiry job. A cancelled subscriber kept their paid placement
+  // until the date passed — and, because discovery ordered on the raw column,
+  // kept outranking every unboosted project even after that.
+  if (!active) {
+    await supabaseWrite(
+      `projects?owner_id=eq.${encodeURIComponent(userId)}&boost_until=not.is.null`,
+      { boost_until: null },
+      'PATCH'
+    );
+  }
+}
+
+// The boosted project is chosen at checkout, but the member can move it later
+// through activate_plus_boost(). Stripe's subscription metadata is frozen at
+// checkout time, so reading the target from there on a renewal re-boosted the
+// original project and left two boosted at once. The entitlement row is the
+// only thing that tracks the current choice.
+async function currentBoostProject(userId) {
+  const rows = await supabaseRead(
+    `billing_entitlements?select=project_id&user_id=eq.${encodeURIComponent(userId)}&plan=eq.priority_match&limit=1`
+  );
+  return rows[0]?.project_id || '';
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
 
-  const payload = await rawBody(req);
-  const signature = req.headers['stripe-signature'];
-  if (
-    !process.env.STRIPE_WEBHOOK_SECRET ||
-    !verifyStripeSignature(payload.toString(), signature, process.env.STRIPE_WEBHOOK_SECRET)
-  ) {
-    return json(res, 400, { error: 'Invalid Stripe signature.' });
-  }
-
+  // Everything up to the signature check used to run outside any try/catch —
+  // the only handler in api/ that could return a non-JSON body. Reading the
+  // request stream throws on an aborted upload, and the HMAC path throws on a
+  // malformed signature header, both from an unauthenticated caller.
   let event;
   try {
+    const payload = await rawBody(req);
+    const signature = req.headers['stripe-signature'];
+    if (
+      !process.env.STRIPE_WEBHOOK_SECRET ||
+      !verifyStripeSignature(payload.toString(), signature, process.env.STRIPE_WEBHOOK_SECRET)
+    ) {
+      return json(res, 400, { error: 'Invalid Stripe signature.' });
+    }
     event = JSON.parse(payload.toString());
-  } catch {
+  } catch (error) {
+    console.error('Stripe webhook could not be read or verified:', error.message);
     return json(res, 400, { error: 'Invalid webhook payload.' });
   }
 
@@ -142,7 +201,7 @@ export default async function handler(req, res) {
           userId: object.metadata.user_id,
           customerId: object.customer,
           subscriptionId: object.id,
-          projectId: object.metadata.project_id,
+          projectId: active ? await currentBoostProject(object.metadata.user_id) : '',
           active,
           periodEnd
         });

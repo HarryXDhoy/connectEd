@@ -88,6 +88,18 @@ import {
       })
       .filter(Boolean)
       .slice(0, 6);
+    const isBoostLive = project => {
+      const until = Date.parse(project?.boost_until || '');
+      return Number.isFinite(until) && until > Date.now();
+    };
+    // PostgREST orders on the raw boost_until column, so a boost whose date
+    // has already passed still sorts above every project whose boost_until is
+    // null — and nothing ever rewrites the column once it expires, so that
+    // top placement is permanent. Re-sort here so only a live boost earns it.
+    // Stable sort: everything that isn't actively boosted keeps the order the
+    // database already applied (created_at desc).
+    const boostedFirst = rows =>
+      [...rows].sort((a, b) => Number(isBoostLive(b)) - Number(isBoostLive(a)));
     // seats_total is the static capacity set at creation — it never moved
     // as people were actually accepted, so a full project looked identical
     // to an empty one. seatCounts (from the project_seat_counts() RPC) is
@@ -825,10 +837,10 @@ import {
         return;
       }
 
-      projects = (projectResult.data || []).map(project => ({
+      projects = boostedFirst((projectResult.data || []).map(project => ({
         ...project,
         owner: project.profiles?.display_name || 'connectEd member'
-      }));
+      })));
       ownedProjects = user ? projects.filter(project => project.owner_id === user.id) : [];
       const seatCountResult = await supabase.rpc('project_seat_counts');
       seatCounts = new Map((seatCountResult.data || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
@@ -1152,7 +1164,7 @@ import {
     }
 
     function pinMarkup(project, index, owned = false) {
-      const boosted = project.boost_until && new Date(project.boost_until) > new Date();
+      const boosted = isBoostLive(project);
       const acceptingApplications = isAcceptingApplications(project);
       const statusClass = boosted
         ? 'is-boosted'
@@ -1639,11 +1651,21 @@ import {
       $('#location-status').textContent = location
         ? `Approximate location shared${location.label ? ` · ${location.label}` : ''}.`
         : 'No location collected.';
-      $('#membership-title').textContent = profile?.priority_match_active ? 'connectEd Plus' : 'Free member';
+      // A member who has paid but whose webhook hasn't landed yet is neither
+      // "Free member" nor Plus — saying either would be a lie, and the free
+      // wording actively invites a second purchase.
+      const awaitingPlus = plusAwaitingWebhook && !profile?.priority_match_active;
+      $('#membership-title').textContent = profile?.priority_match_active
+        ? 'connectEd Plus'
+        : awaitingPlus ? 'Plus pending' : 'Free member';
       $('#membership-copy').textContent = profile?.priority_match_active
         ? 'Priority applications are active. Choose one project in My projects to boost.'
-        : 'Applications and project sharing are free. Plus adds visibility in both roles.';
-      $('#membership-action').textContent = profile?.priority_match_active ? 'Choose project to boost' : 'Get connectEd Plus';
+        : awaitingPlus
+          ? 'Payment received — Stripe is still confirming it. This usually takes under a minute; refresh to check.'
+          : 'Applications and project sharing are free. Plus adds visibility in both roles.';
+      $('#membership-action').textContent = profile?.priority_match_active
+        ? 'Choose project to boost'
+        : awaitingPlus ? 'Confirming payment…' : 'Get connectEd Plus';
       $('#membership-manage').hidden = !profile?.priority_match_active;
       const reputation = reviewSummary(user.id);
       $('#reputation-score').textContent = reputation.received.length ? reputation.average.toFixed(1) : '—';
@@ -2530,6 +2552,14 @@ import {
     };
 
     let checkoutPending = false;
+    // Set once someone returns from a successful Stripe checkout, and cleared
+    // only when the webhook's effect actually shows up on the profile. The
+    // post-checkout poll used to simply give up after ~18s and hand back an
+    // enabled "Get connectEd Plus" button — so a member whose webhook was
+    // merely slow was invited to buy the subscription they had just bought.
+    // create-checkout-session's duplicate guard reads priority_match_active,
+    // which is precisely the flag that hasn't landed yet, so it cannot help.
+    let plusAwaitingWebhook = false;
 
     // Disabled by default (paymentsConfigured starts false) so nobody can
     // click through to create-checkout-session's 503 before this resolves —
@@ -2538,14 +2568,19 @@ import {
     // Plus, since activating a boost they already have doesn't call Stripe.
     function applyPaymentsGating() {
       const alreadyPlus = Boolean(profile?.priority_match_active);
+      const awaiting = plusAwaitingWebhook && !alreadyPlus;
+      const disabled = awaiting || (!alreadyPlus && !paymentsConfigured);
+      const title = awaiting
+        ? 'Confirming your payment…'
+        : alreadyPlus || paymentsConfigured ? '' : 'Coming soon';
       const membershipButton = $('#membership-action');
       if (membershipButton) {
-        membershipButton.disabled = !alreadyPlus && !paymentsConfigured;
-        membershipButton.title = alreadyPlus || paymentsConfigured ? '' : 'Coming soon';
+        membershipButton.disabled = disabled;
+        membershipButton.title = title;
       }
       $$('[data-boost]').forEach(button => {
-        button.disabled = !alreadyPlus && !paymentsConfigured;
-        button.title = alreadyPlus || paymentsConfigured ? '' : 'Coming soon';
+        button.disabled = disabled;
+        button.title = title;
       });
     }
 
@@ -2973,12 +3008,27 @@ import {
       // without this the membership card would keep showing "Free member"
       // for several seconds with nothing prompting a refresh, right after
       // someone just paid. Poll briefly instead of making them guess.
+      plusAwaitingWebhook = true;
+      renderProfile();
+      applyPaymentsGating();
       let attempts = 0;
       const pollForPlus = window.setInterval(async () => {
         attempts += 1;
         if (profile?.priority_match_active || attempts >= 6) {
           window.clearInterval(pollForPlus);
-          if (profile?.priority_match_active) toast('connectEd Plus is active.');
+          if (profile?.priority_match_active) {
+            plusAwaitingWebhook = false;
+            toast('connectEd Plus is active.');
+          } else {
+            // Deliberately leave plusAwaitingWebhook set: the payment did go
+            // through, so the honest state is "pending", and the purchase
+            // controls must stay disabled rather than inviting a second
+            // subscription. A reload clears it, by which time the webhook has
+            // almost certainly landed.
+            toast('Payment received — still waiting on Stripe to confirm. Refresh in a moment.');
+          }
+          renderProfile();
+          applyPaymentsGating();
           return;
         }
         await loadAll();

@@ -61,6 +61,38 @@ async function saveInterview(row) {
   return { interview: rows[0] || null };
 }
 
+// Every successful call sends a real calendar invite to the candidate's inbox
+// (sendUpdates=all), and nothing stopped an owner from calling it in a loop —
+// an accepted applicant could be buried under invites by someone whose only
+// qualification was owning a project they once applied to. Interviews are
+// recorded here, so the table itself is the rate limit: a handful of genuine
+// reschedules a day is normal, hundreds is not.
+const INTERVIEWS_PER_APPLICATION_PER_DAY = 5;
+
+async function recentInterviewCount(applicationId) {
+  const url = process.env.SUPABASE_URL || 'https://josrjdvcdkqkwfzomxxh.supabase.co';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) return 0;
+  const since = new Date(Date.now() - 86400000).toISOString();
+  const response = await fetch(
+    `${url}/rest/v1/interviews?select=id&application_id=eq.${applicationId}&created_at=gte.${since}`,
+    {
+      headers: {
+        apikey: serviceRoleKey,
+        authorization: `Bearer ${serviceRoleKey}`,
+        accept: 'application/json',
+        // Ask for the count in a header rather than pulling every row back.
+        prefer: 'count=exact',
+        range: '0-0'
+      }
+    }
+  );
+  if (!response.ok) return 0;
+  const contentRange = response.headers.get('content-range') || '';
+  const total = Number(contentRange.split('/')[1]);
+  return Number.isFinite(total) ? total : 0;
+}
+
 // The calendar event is created before the row exists, so a failed write used
 // to leave a real event on the organizer's calendar and a real invite in the
 // candidate's inbox that the app had no record of — invisible to both the
@@ -214,6 +246,12 @@ async function scheduleInterview(req, res) {
         ? 'The candidate’s account email lookup failed.'
         : 'The candidate has no email on file.';
     return json(res, 400, { error: `Candidate email is unavailable or invalid. ${detail} Enter it manually to continue.` });
+  }
+
+  if (await recentInterviewCount(applicationId) >= INTERVIEWS_PER_APPLICATION_PER_DAY) {
+    return json(res, 429, {
+      error: 'Too many interviews scheduled for this application today. Try again tomorrow.'
+    });
   }
 
   if (tokenResult.error) {
