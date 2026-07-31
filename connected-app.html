@@ -28,7 +28,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="connectEd">
   <title>connectEd - Find your next project</title>
-  <link rel="stylesheet" href="connected-app.css?v=20260730-mobile">
+  <link rel="stylesheet" href="connected-app.css?v=20260731-audit">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -109,7 +109,12 @@
             <button class="network-motion-toggle network-legend-toggle" id="network-legend-toggle" type="button" aria-expanded="false" aria-controls="network-legend">
               What's this?
             </button>
-            <div class="network-zoom-controls" role="group" aria-label="Globe zoom controls">
+            <!-- Hidden until the three.js import resolves and the handlers are
+                 attached (see connected-app.js). They used to render
+                 unconditionally while being wired only inside the dynamic
+                 import's try block, so whenever the CDN was blocked or slow
+                 they sat there looking operable and did nothing. -->
+            <div class="network-zoom-controls" id="network-zoom-controls" role="group" aria-label="Globe zoom controls" hidden>
               <button type="button" id="network-zoom-out" aria-label="Zoom globe out">−</button>
               <button type="button" id="network-zoom-reset" aria-label="Reset globe zoom">Reset</button>
               <button type="button" id="network-zoom-in" aria-label="Zoom globe in">+</button>
@@ -138,6 +143,17 @@
             </div>
           </div>
         </div>
+        <!-- The canvas is the only route to a member node and it answers only
+             to a raycast click, so members with no published project (who
+             appear nowhere else on the site) could not be reached without a
+             mouse. This list mirrors the nodes as real buttons. It sits
+             outside .stage deliberately: that element has z-index 1 and
+             overflow:hidden, so anything inside it is trapped underneath the
+             hero copy and clipped at its edges. Visually hidden until
+             something inside takes focus, so screen readers get the roster
+             without sighted keyboard users tabbing through invisible
+             controls. -->
+        <ul class="globe-member-list" id="globe-member-list" aria-label="Members shown on the globe"></ul>
       </div>
     </section>
 
@@ -167,6 +183,12 @@
           </div>
         </div>
         <div id="project-pins" class="masonry" aria-busy="true"></div>
+        <!-- The discovery query is bounded (see PROJECT_PAGE_SIZE): the tags
+             array carries each project's cover image as an inline base64 data
+             URL, so an unbounded select grows without limit. -->
+        <div class="load-more-row" id="landing-load-more-row" hidden>
+          <button class="btn btn-small" type="button" id="landing-load-more">Load more projects</button>
+        </div>
       </div>
     </section>
 
@@ -261,7 +283,7 @@
           <input class="field" name="password" type="password" minlength="8" required autocomplete="current-password">
         </label>
         <div class="form-actions">
-          <button class="btn" type="button" id="google-auth"><svg class="google-icon" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
+          <button class="btn" type="button" id="google-auth"><svg class="google-icon" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg><span class="google-auth-label">Continue with Google</span></button>
           <button class="btn btn-primary" type="submit" id="email-auth">Sign in</button>
         </div>
         <button class="btn btn-ghost auth-switch" type="button" id="auth-mode">
@@ -301,7 +323,7 @@
           <legend>Application questions · optional</legend>
           <div class="question-list" id="question-list">
             <div class="question-row">
-              <input class="field" name="question" maxlength="500" placeholder="Ask applicants something, or leave this blank">
+              <input class="field" name="question" minlength="8" maxlength="500" placeholder="Ask applicants something, or leave this blank">
               <button class="btn btn-small remove-question" type="button" aria-label="Remove question" hidden>×</button>
             </div>
           </div>
@@ -345,7 +367,7 @@
           <div class="empty project-detail-state" id="landing-application-state" hidden></div>
           <div class="application-submit application-fields">
             <label class="application-message">Optional note for the project owner
-              <textarea class="field" name="message" maxlength="3000" placeholder="Add context or anything else you would like to share."></textarea>
+              <textarea class="field" name="message" minlength="20" maxlength="3000" placeholder="Add context or anything else you would like to share (at least 20 characters)."></textarea>
             </label>
             <div class="form-actions">
               <button class="btn" type="button" data-close="project">Cancel</button>
@@ -448,6 +470,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="app-config.js?v=20260727"></script>
-  <script type="module" src="connected-app.js?v=20260730-clickable-profiles"></script>
+  <script type="module" src="connected-app.js?v=20260731-audit"></script>
 </body>
 </html>

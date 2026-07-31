@@ -28,6 +28,23 @@ import {
         return '';
       }
     };
+    // banner_url is free text stored on a profile row, and it was the one
+    // user-supplied value in either page interpolated into markup without
+    // escaping — straight into a CSS url(), where a stray double quote closes
+    // the function early and everything after it is parsed as further
+    // declarations. JSON.stringify quotes and escapes the value; the scheme
+    // check keeps it to an inline image or a real http(s) URL, since
+    // escapeHtml-style escaping would not stop a javascript: or data:text/html
+    // one on its own.
+    const bannerImageUrl = value => {
+      const raw = String(value || '');
+      return /^data:image\//i.test(raw) ? raw : safeExternalUrl(raw);
+    };
+    const applyBannerImage = (element, value) => {
+      const url = bannerImageUrl(value);
+      element.style.backgroundImage = url ? `url(${JSON.stringify(url)})` : '';
+      element.hidden = !url;
+    };
     // Every /api/* endpoint here always responds with JSON on every path —
     // but an unhandled crash in one (a timeout, a network blip reaching a
     // third-party API) can still make the platform return an empty or
@@ -88,6 +105,47 @@ import {
       })
       .filter(Boolean)
       .slice(0, 6);
+    // meet_url and calendar_html_link were rendered straight into an href with
+    // only escapeHtml(), which neutralizes HTML metacharacters but not a URL
+    // scheme — and until the 20260731090000 migration those columns were
+    // client-writable, so an organizer could point a button the candidate
+    // reasonably trusts ("Open Meet") anywhere they liked. Both values come
+    // from Google or they are not rendered: rows written before that migration
+    // are still in the table, so the host check is not redundant.
+    const googleLinkUrl = value => {
+      const safeUrl = safeExternalUrl(value);
+      if (!safeUrl) return '';
+      try {
+        const host = new URL(safeUrl).hostname.toLowerCase();
+        return host === 'google.com' || host.endsWith('.google.com') ? safeUrl : '';
+      } catch (_) {
+        return '';
+      }
+    };
+    const interviewLinksMarkup = interview => {
+      const meetUrl = googleLinkUrl(interview?.meet_url);
+      const calendarUrl = googleLinkUrl(interview?.calendar_html_link);
+      return [
+        meetUrl
+          ? `<a class="btn btn-small" href="${escapeHtml(meetUrl)}" target="_blank" rel="noopener">Open Meet</a>`
+          : '',
+        calendarUrl
+          ? `<a class="btn btn-small" href="${escapeHtml(calendarUrl)}" target="_blank" rel="noopener">Open Calendar</a>`
+          : ''
+      ].join('');
+    };
+    const isBoostLive = project => {
+      const until = Date.parse(project?.boost_until || '');
+      return Number.isFinite(until) && until > Date.now();
+    };
+    // PostgREST orders on the raw boost_until column, so a boost whose date
+    // has already passed still sorts above every project whose boost_until is
+    // null — and nothing ever rewrites the column once it expires, so that
+    // top placement is permanent. Re-sort here so only a live boost earns it.
+    // Stable sort: everything that isn't actively boosted keeps the order the
+    // database already applied (created_at desc).
+    const boostedFirst = rows =>
+      [...rows].sort((a, b) => Number(isBoostLive(b)) - Number(isBoostLive(a)));
     // seats_total is the static capacity set at creation — it never moved
     // as people were actually accepted, so a full project looked identical
     // to an empty one. seatCounts (from the project_seat_counts() RPC) is
@@ -95,6 +153,9 @@ import {
     const seatsLabel = project => {
       const total = Number(project?.seats_total) || 0;
       if (!total) return '';
+      // null means the seat-count RPC failed. "0 of 5 seats filled" would be a
+      // confident claim built on nothing, so say nothing.
+      if (!seatCounts) return '';
       const filled = seatCounts.get(String(project.id)) || 0;
       // A bare "3/5 seats" makes someone stop and work out which number is
       // which — spelling it out reads correctly on first glance whether
@@ -208,6 +269,11 @@ import {
     let profile = null;
     let projects = [];
     let seatCounts = new Map();
+    // Discovery is paginated because projects.tags carries each project's
+    // cover image inline as a base64 data URL — an unbounded select grows
+    // without limit. Raised by the "Load more projects" button.
+    const PROJECT_PAGE_SIZE = 48;
+    let projectLimit = PROJECT_PAGE_SIZE;
     let ownedProjects = [];
     let applications = [];
     let sentApplications = [];
@@ -225,6 +291,11 @@ import {
     // attention open automatically and fully-reviewed ones stay tucked away.
     let applicantGroupOverrides = new Map();
     let loadError = '';
+    // Per-list load failures, kept separate from loadError (which covers the
+    // board) so a failed applicants fetch can say so instead of rendering the
+    // same zero-state as "nobody has applied".
+    let applicationsError = '';
+    let sentApplicationsError = '';
     let paymentsConfigured = false;
     let messages = [];
     let messagesAvailable = false;
@@ -307,6 +378,19 @@ import {
       );
     }
 
+    // .subscribe() with no callback swallows CHANNEL_ERROR and TIMED_OUT
+    // entirely, so a realtime channel that never connects looks exactly like
+    // one where nothing has happened yet — indistinguishable from working, for
+    // as long as nobody sends you anything. The 45s poll still covers request
+    // statuses, so this is diagnosis rather than recovery: without it there is
+    // no signal anywhere that live updates are off.
+    function reportChannelStatus(name) {
+      return status => {
+        if (status === 'SUBSCRIBED' || status === 'CLOSED') return;
+        console.error(`[connectEd] realtime channel "${name}" is ${status} — falling back to polling.`);
+      };
+    }
+
     function subscribeToRequestUpdates() {
       if (!supabase || !user) {
         if (requestSubscription) supabase?.removeChannel(requestSubscription);
@@ -333,14 +417,22 @@ import {
           toast(`Your request for ${title} is now ${statusLabel(payload.new.status).toLowerCase()}.`);
           window.setTimeout(loadAll, 0);
         })
-        .subscribe();
+        .subscribe(reportChannelStatus('request updates'));
     }
+
+    // The 45s poll and the full load both replace `sentApplications` wholesale,
+    // so their selects have to match — the poll's was missing projects.tags,
+    // which is where the cover image lives, so every polled refresh silently
+    // stripped the thumbnails off the sent-requests cards until the next full
+    // reload put them back. One constant, used by both.
+    const SENT_APPLICATION_SELECT =
+      'id,project_id,applicant_id,message,status,created_at,updated_at,projects(id,title,tags,owner_id,profiles:owner_id(display_name))';
 
     async function pollRequestStatuses() {
       if (!supabase || !user || document.hidden) return;
       const result = await supabase
         .from('applications')
-        .select('id,project_id,applicant_id,message,status,created_at,updated_at,projects(id,title,owner_id,profiles:owner_id(display_name))')
+        .select(SENT_APPLICATION_SELECT)
         .eq('applicant_id', user.id)
         .order('created_at', { ascending: false });
       if (result.error) return;
@@ -388,7 +480,7 @@ import {
           table: 'messages',
           filter: `sender_id=eq.${user.id}`
         }, () => window.setTimeout(loadAll, 0))
-        .subscribe();
+        .subscribe(reportChannelStatus('messages'));
     }
 
     function otherParticipantId(message) {
@@ -517,25 +609,41 @@ import {
       $('#conversation-list').hidden = true;
       $('#message-thread').hidden = false;
       renderMessageThread();
+      loadChatLink(partnerId);
       markConversationRead(partnerId);
       window.setTimeout(() => $('#message-form [name=body]').focus(), 0);
     }
 
-    // The hand-off link is only ever read from an embedded message row
-    // (sender/recipient profile), never from a public profile fetch — that's
-    // what keeps it scoped to "people you're already talking to in-app"
-    // instead of exposing it to anyone who views the profile.
     function partnerProfileFromMessages(partnerId) {
       const withPartner = messages.find(message => otherParticipantId(message) === partnerId);
       if (!withPartner) return null;
       return withPartner.sender_id === partnerId ? withPartner.sender : withPartner.recipient;
     }
 
+    // The hand-off link used to ride along on the embedded sender/recipient
+    // profile of a message row, which kept it scoped to "people you're already
+    // talking to" in the UI only — the column was still in the blanket SELECT
+    // grant on a table whose RLS is `using (true)`, so anyone could read every
+    // member's personal contact link straight from the REST API without even
+    // signing in. It now comes from the chat_link_for() RPC, which enforces the
+    // same rule in Postgres. Cached per partner because renderMessageThread is
+    // synchronous and re-runs on every render.
+    const chatLinks = new Map();
+
+    async function loadChatLink(partnerId) {
+      if (!supabase || !partnerId || chatLinks.has(partnerId)) return;
+      // Claim the slot before awaiting so a second render can't fire a
+      // duplicate request for the same partner while this one is in flight.
+      chatLinks.set(partnerId, null);
+      const result = await supabase.rpc('chat_link_for', { target_user: partnerId });
+      const row = result.error ? null : (result.data || [])[0];
+      const safeUrl = safeExternalUrl(row?.link);
+      chatLinks.set(partnerId, safeUrl ? { url: safeUrl, label: row.label || 'chat' } : null);
+      if (activeConversationUserId === partnerId) renderMessageThread();
+    }
+
     function partnerChatLink(partnerId) {
-      const partnerProfile = partnerProfileFromMessages(partnerId);
-      const safeUrl = safeExternalUrl(partnerProfile?.chat_link);
-      if (!safeUrl) return null;
-      return { url: safeUrl, label: partnerProfile?.chat_link_label || 'chat' };
+      return chatLinks.get(partnerId) || null;
     }
 
     function closeConversation() {
@@ -643,6 +751,15 @@ import {
       }
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
+      // The trap only recognises "at the first element" and "at the last one",
+      // so focus stranded anywhere else — on an element the modal has since
+      // hidden, or on <body> after a re-render — matched neither branch and
+      // Tab escaped into the page behind the dialog. Pull it back in.
+      if (!activeModal.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+        return;
+      }
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
@@ -652,11 +769,19 @@ import {
       }
     });
 
+    // The Google logo is an inline <svg> sibling of the button's text, so
+    // setting button.textContent for the busy state deleted it — permanently,
+    // since restoring the label puts back only a text node. Swap the label
+    // span instead, and fall back to the button itself if the markup ever
+    // loses the span (authWall() builds one without it).
+    const buttonLabel = button => button.querySelector('.google-auth-label') || button;
+
     async function beginGoogleSignIn(button = null) {
-      const originalLabel = button?.textContent;
+      const label = button ? buttonLabel(button) : null;
+      const originalLabel = label?.textContent;
       if (button) {
         button.disabled = true;
-        button.textContent = 'Connecting…';
+        label.textContent = 'Connecting…';
       }
       try {
         const result = await signInWithGoogle('/project-hub.html');
@@ -668,7 +793,7 @@ import {
       } finally {
         if (button) {
           button.disabled = false;
-          button.textContent = originalLabel;
+          label.textContent = originalLabel;
         }
       }
     }
@@ -773,6 +898,8 @@ import {
       discoveryBoard.innerHTML = '<span class="sr-only">Loading projects</span><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';
       try {
       user = await currentUser();
+      applicationsError = '';
+      sentApplicationsError = '';
       await updateAccount();
       if (!isSupabaseConfigured) {
         projects = previewProjects;
@@ -788,11 +915,24 @@ import {
         return;
       }
 
-      const projectResult = await supabase
-        .from('projects')
-        .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,created_at,profiles:owner_id(display_name)')
-        .order('boost_until', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false });
+      // Bounded on purpose — see PROJECT_PAGE_SIZE. projects.tags carries each
+      // cover image as an inline base64 data URL, and loadAll() re-runs after
+      // every mutation (including sending a single message), so an unbounded
+      // select here is re-downloaded constantly.
+      //
+      // The seat counts do not depend on the project rows, so the two run
+      // together. loadAllInternal used to await seven independent queries one
+      // after another, paying a full round trip for each — and it re-runs
+      // after every mutation, including sending a single message.
+      const [projectResult, seatCountResult] = await Promise.all([
+        supabase
+          .from('projects')
+          .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,created_at,profiles:owner_id(display_name)')
+          .order('boost_until', { ascending: false, nullsFirst: false })
+          .order('created_at', { ascending: false })
+          .limit(projectLimit),
+        supabase.rpc('project_seat_counts')
+      ]);
 
       if (projectResult.error) {
         projects = [];
@@ -809,20 +949,49 @@ import {
         return;
       }
 
-      projects = (projectResult.data || []).map(project => ({
+      projects = boostedFirst((projectResult.data || []).map(project => ({
         ...project,
         owner: project.profiles?.display_name || 'connectEd member'
-      }));
+      })));
+      // A full page back means there is probably more behind it. Say so rather
+      // than quietly presenting a truncated board as the whole thing.
+      const boardLoadMoreRow = $('#board-load-more-row');
+      if (boardLoadMoreRow) boardLoadMoreRow.hidden = projects.length < projectLimit;
       ownedProjects = user ? projects.filter(project => project.owner_id === user.id) : [];
-      const seatCountResult = await supabase.rpc('project_seat_counts');
-      seatCounts = new Map((seatCountResult.data || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
+      // Same as the landing page: swallowing this error made every project
+      // claim "0 of N seats filled", a confident statement produced by the
+      // absence of data rather than by any data. Leave it null so seatsLabel()
+      // renders nothing at all instead.
+      seatCounts = seatCountResult.error
+        ? null
+        : new Map((seatCountResult.data || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
 
       if (user) {
-        let profileResult = await supabase
-          .from('profiles')
-          .select('id,display_name,headline,bio,skills,avatar_url,banner_url,custom_avatar,priority_match_active,chat_link,chat_link_label')
-          .eq('id', user.id)
-          .maybeSingle();
+        // None of these five depend on each other, so they go out together
+        // rather than as five sequential round trips.
+        let [
+          profileResult,
+          ownChatLink,
+          applicationResult,
+          sentApplicationResult
+        ] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id,display_name,headline,bio,skills,avatar_url,banner_url,custom_avatar,priority_match_active')
+            .eq('id', user.id)
+            .maybeSingle(),
+          supabase.rpc('chat_link_for', { target_user: user.id }),
+          supabase
+            .from('applications')
+            .select('id,project_id,applicant_id,message,answers,status,created_at,updated_at,projects!inner(id,title,summary,tags,owner_id),profiles:applicant_id(id,display_name,headline,bio,skills,avatar_url,priority_match_active)')
+            .eq('projects.owner_id', user.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('applications')
+            .select(SENT_APPLICATION_SELECT)
+            .eq('applicant_id', user.id)
+            .order('created_at', { ascending: false })
+        ]);
         if (profileResult.error && /permission denied/i.test(profileResult.error.message)) {
           profileResult = await supabase
             .from('profiles')
@@ -831,6 +1000,16 @@ import {
             .maybeSingle();
         }
         profile = profileResult.data || null;
+
+        // chat_link/chat_link_label are no longer in the profiles SELECT grant
+        // (they were world-readable there, which the harassment-vector comment
+        // on their own migration explicitly rules out). Your own values come
+        // back through the same RPC that serves a conversation partner's.
+        if (profile) {
+          const ownRow = ownChatLink.error ? null : (ownChatLink.data || [])[0];
+          profile.chat_link = ownRow?.link || '';
+          profile.chat_link_label = ownRow?.label || '';
+        }
 
         // Only sync the provider's photo in when the member hasn't chosen
         // their own — otherwise every reload would clobber a custom upload.
@@ -847,24 +1026,35 @@ import {
           }
         }
 
-        const applicationResult = await supabase
-          .from('applications')
-          .select('id,project_id,applicant_id,message,answers,status,created_at,updated_at,projects!inner(id,title,summary,tags,owner_id),profiles:applicant_id(id,display_name,headline,bio,skills,avatar_url,priority_match_active)')
-          .eq('projects.owner_id', user.id)
-          .order('created_at', { ascending: false });
+        applicationsError = applicationResult.error
+          ? applicationResult.error.message || 'Applicants could not be loaded.'
+          : '';
         applications = applicationResult.error ? [] : applicationResult.data || [];
 
-        const sentApplicationResult = await supabase
-          .from('applications')
-          .select('id,project_id,applicant_id,message,status,created_at,updated_at,projects(id,title,tags,owner_id,profiles:owner_id(display_name))')
-          .eq('applicant_id', user.id)
-          .order('created_at', { ascending: false });
+        sentApplicationsError = sentApplicationResult.error
+          ? sentApplicationResult.error.message || 'Your applications could not be loaded.'
+          : '';
         sentApplications = sentApplicationResult.error ? [] : sentApplicationResult.data || [];
 
-        let interviewResult = await supabase
-          .from('interviews')
-          .select('id,application_id,project_id,organizer_id,candidate_id,starts_at,ends_at,title,notes,google_event_id,meet_url,calendar_html_link,created_at')
-          .order('starts_at', { ascending: true });
+        // Independent of each other too.
+        // The messages table may not exist yet if that migration hasn't
+        // rolled out to every environment — fail soft (empty inbox) rather
+        // than breaking the whole board.
+        // No chat_link on the embedded profiles here any more: it is fetched
+        // per conversation through chat_link_for(), which enforces the
+        // "already talking in-app" rule at the database instead of trusting
+        // this select to only ever be read by the right person.
+        let [interviewResult, messageResult] = await Promise.all([
+          supabase
+            .from('interviews')
+            .select('id,application_id,project_id,organizer_id,candidate_id,starts_at,ends_at,title,notes,google_event_id,meet_url,calendar_html_link,created_at')
+            .order('starts_at', { ascending: true }),
+          supabase
+            .from('messages')
+            .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url),recipient:recipient_id(display_name,avatar_url)')
+            .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+            .order('created_at', { ascending: true })
+        ]);
         if (interviewResult.error && /permission denied/i.test(interviewResult.error.message)) {
           // calendar_html_link migration not applied yet — fall back so the
           // rest of the interview data (Meet links, schedule) still loads.
@@ -874,24 +1064,6 @@ import {
             .order('starts_at', { ascending: true });
         }
         interviews = interviewResult.error ? [] : interviewResult.data || [];
-
-        // The messages table may not exist yet if this migration hasn't
-        // rolled out to every environment — fail soft (empty inbox) rather
-        // than breaking the whole board.
-        let messageResult = await supabase
-          .from('messages')
-          .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url,chat_link,chat_link_label),recipient:recipient_id(display_name,avatar_url,chat_link,chat_link_label)')
-          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-          .order('created_at', { ascending: true });
-        if (messageResult.error && /permission denied/i.test(messageResult.error.message)) {
-          // chat_link/chat_link_label migration not applied yet — messages
-          // themselves still work, just without the hand-off link.
-          messageResult = await supabase
-            .from('messages')
-            .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url),recipient:recipient_id(display_name,avatar_url)')
-            .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-            .order('created_at', { ascending: true });
-        }
         messagesAvailable = !messageResult.error;
         messages = messageResult.error ? [] : messageResult.data || [];
 
@@ -980,7 +1152,16 @@ import {
       renderNotifications();
       renderLocationNudge();
       renderConversationList();
-      if (activeConversationUserId) renderMessageThread();
+      if (activeConversationUserId) {
+        renderMessageThread();
+        // markConversationRead only ran from openConversation, so a message
+        // that arrived while the thread was already open stayed unread
+        // forever: the badge kept counting it and the sender never saw "Seen"
+        // for a message the recipient was literally looking at. It early-
+        // returns when there is nothing unread, so calling it on every render
+        // costs nothing.
+        markConversationRead(activeConversationUserId);
+      }
       // Global, not per-panel: every panel above can render a clickable
       // avatar or name, so bind them once after everything has painted
       // instead of repeating this call in each render function.
@@ -1130,7 +1311,7 @@ import {
     }
 
     function pinMarkup(project, index, owned = false) {
-      const boosted = project.boost_until && new Date(project.boost_until) > new Date();
+      const boosted = isBoostLive(project);
       const acceptingApplications = isAcceptingApplications(project);
       const statusClass = boosted
         ? 'is-boosted'
@@ -1278,6 +1459,11 @@ import {
         bindSigninButtons();
         return;
       }
+      if (sentApplicationsError) {
+        $('#request-list').innerHTML = listErrorMarkup('Your applications could not be loaded.');
+        bindRetryLoadButtons();
+        return;
+      }
       $('#request-list').innerHTML = sentApplications.length
         ? sentApplications.map(application => {
             const project = application.projects || {};
@@ -1310,12 +1496,7 @@ import {
                 </div>
                 <div class="applicant-actions">
                   <span class="request-status" data-status="${escapeHtml(application.status)}">${escapeHtml(statusLabel(application.status))}</span>
-                  ${interview?.meet_url
-                    ? `<a class="btn btn-small" href="${escapeHtml(interview.meet_url)}" target="_blank" rel="noopener">Open Meet</a>`
-                    : ''}
-                  ${interview?.calendar_html_link
-                    ? `<a class="btn btn-small" href="${escapeHtml(interview.calendar_html_link)}" target="_blank" rel="noopener">Open Calendar</a>`
-                    : ''}
+                  ${interviewLinksMarkup(interview)}
                   ${['accepted', 'interview'].includes(application.status) && reviewsAvailable
                     ? `<button class="btn btn-small" data-review-project="${escapeHtml(application.project_id)}">Review project team</button>`
                     : ''}
@@ -1365,10 +1546,31 @@ import {
       return `<div class="auth-wall"><h2>${escapeHtml(message)}</h2><p>Your work stays tied to your account.</p><button class="btn btn-primary" data-google-signin>Continue with Google</button></div>`;
     }
 
+    // A list that failed to load and a list that is genuinely empty used to
+    // render identically, because the fetch results were folded straight into
+    // `x = result.error ? [] : result.data`. An owner whose applicants query
+    // errored was told "No applications have reached your projects yet" — a
+    // statement about their project, not about the request, and one they had
+    // no reason to doubt. Say what actually happened and offer a retry.
+    function listErrorMarkup(message) {
+      return `<div class="empty"><p>${escapeHtml(message)}</p><button class="btn btn-small" type="button" data-retry-load>Retry</button></div>`;
+    }
+
+    function bindRetryLoadButtons() {
+      $$('[data-retry-load]').forEach(button => {
+        button.onclick = () => loadAll();
+      });
+    }
+
     function renderApplicants() {
       if (!user) {
         $('#applicant-list').innerHTML = authWall('Sign in to review applicants.');
         bindSigninButtons();
+        return;
+      }
+      if (applicationsError) {
+        $('#applicant-list').innerHTML = listErrorMarkup('Your applicants could not be loaded.');
+        bindRetryLoadButtons();
         return;
       }
       const ordered = [...applications].sort((a, b) =>
@@ -1434,12 +1636,7 @@ import {
             </div>
             <div class="applicant-actions">
               <span class="request-status" data-status="${escapeHtml(application.status)}">${escapeHtml(statusLabel(application.status))}</span>
-              ${interview?.meet_url
-                ? `<a class="btn btn-small" href="${escapeHtml(interview.meet_url)}" target="_blank" rel="noopener">Open Meet</a>`
-                : ''}
-              ${interview?.calendar_html_link
-                ? `<a class="btn btn-small" href="${escapeHtml(interview.calendar_html_link)}" target="_blank" rel="noopener">Open Calendar</a>`
-                : ''}
+              ${interviewLinksMarkup(interview)}
               ${pendingActions}
             </div>
           </article>
@@ -1491,6 +1688,11 @@ import {
           const currentlyExpanded = button.getAttribute('aria-expanded') === 'true';
           applicantGroupOverrides.set(id, !currentlyExpanded);
           renderApplicants();
+          // renderApplicants() rewrites the whole list, destroying the button
+          // that was just activated — focus fell back to <body>, so the next
+          // Tab restarted from the top of the document instead of continuing
+          // from the group that was just opened. Put focus on the replacement.
+          $(`[data-toggle-group="${CSS.escape(id)}"]`)?.focus();
         };
       });
       $$('[data-review]').forEach(button => {
@@ -1529,14 +1731,7 @@ import {
       messageButton.hidden = !user || user.id === person.id || !messagesAvailable;
       $('#view-profile-name').textContent = displayName;
       $('#view-profile-headline').textContent = person.headline || 'No profile headline yet';
-      const banner = $('#view-profile-banner');
-      if (person.banner_url) {
-        banner.style.backgroundImage = `url("${person.banner_url}")`;
-        banner.hidden = false;
-      } else {
-        banner.style.backgroundImage = '';
-        banner.hidden = true;
-      }
+      applyBannerImage($('#view-profile-banner'), person.banner_url);
       const photo = $('#view-profile-photo');
       const fallback = $('#view-profile-photo-fallback');
       photo.referrerPolicy = 'no-referrer';
@@ -1572,6 +1767,32 @@ import {
       }
     }
 
+    // renderProfile() runs from renderAll(), and renderAll() runs from any
+    // background loadAll() — a realtime message arriving, the 45s request
+    // poll, another tab signing in. Repopulating the form from there meant
+    // someone halfway through rewriting their bio would watch it revert to
+    // the saved copy with no warning and nothing to undo it. Only refill the
+    // form when the member has not started editing it.
+    let profileFormDirty = false;
+
+    function populateProfileForm() {
+      if (profileFormDirty) return;
+      for (const key of ['display_name', 'headline', 'bio']) {
+        $(`#profile-form [name=${key}]`).value = profile?.[key] || '';
+      }
+      $('#profile-form [name=skills]').value = (profile?.skills || []).join(', ');
+      $('#profile-form [name=chat_link_label]').value = profile?.chat_link_label || '';
+      $('#profile-form [name=chat_link]').value = profile?.chat_link || '';
+      const location = profileLocation(profile);
+      $('#profile-form [name=location_label]').value = location?.label || '';
+      $('#profile-form [name=location_latitude]').value = location?.latitude ?? '';
+      $('#profile-form [name=location_longitude]').value = location?.longitude ?? '';
+      $('#location-shared').checked = Boolean(location);
+      $('#location-status').textContent = location
+        ? `Approximate location shared${location.label ? ` · ${location.label}` : ''}.`
+        : 'No location collected.';
+    }
+
     function renderProfile() {
       $('#profile-wall').hidden = Boolean(user);
       $('#profile-content').hidden = !user;
@@ -1595,33 +1816,23 @@ import {
       profileFallback.textContent = displayName.slice(0, 2).toUpperCase();
       $('#profile-identity-name').textContent = displayName;
       $('#profile-identity-email').textContent = user.email || '';
-      const banner = $('#profile-banner');
-      if (profile?.banner_url) {
-        banner.style.backgroundImage = `url("${profile.banner_url}")`;
-        banner.hidden = false;
-      } else {
-        banner.style.backgroundImage = '';
-        banner.hidden = true;
-      }
-      for (const key of ['display_name', 'headline', 'bio']) {
-        $(`#profile-form [name=${key}]`).value = profile?.[key] || '';
-      }
-      $('#profile-form [name=skills]').value = (profile?.skills || []).join(', ');
-      $('#profile-form [name=chat_link_label]').value = profile?.chat_link_label || '';
-      $('#profile-form [name=chat_link]').value = profile?.chat_link || '';
-      const location = profileLocation(profile);
-      $('#profile-form [name=location_label]').value = location?.label || '';
-      $('#profile-form [name=location_latitude]').value = location?.latitude ?? '';
-      $('#profile-form [name=location_longitude]').value = location?.longitude ?? '';
-      $('#location-shared').checked = Boolean(location);
-      $('#location-status').textContent = location
-        ? `Approximate location shared${location.label ? ` · ${location.label}` : ''}.`
-        : 'No location collected.';
-      $('#membership-title').textContent = profile?.priority_match_active ? 'connectEd Plus' : 'Free member';
+      applyBannerImage($('#profile-banner'), profile?.banner_url);
+      populateProfileForm();
+      // A member who has paid but whose webhook hasn't landed yet is neither
+      // "Free member" nor Plus — saying either would be a lie, and the free
+      // wording actively invites a second purchase.
+      const awaitingPlus = plusAwaitingWebhook && !profile?.priority_match_active;
+      $('#membership-title').textContent = profile?.priority_match_active
+        ? 'connectEd Plus'
+        : awaitingPlus ? 'Plus pending' : 'Free member';
       $('#membership-copy').textContent = profile?.priority_match_active
         ? 'Priority applications are active. Choose one project in My projects to boost.'
-        : 'Applications and project sharing are free. Plus adds visibility in both roles.';
-      $('#membership-action').textContent = profile?.priority_match_active ? 'Choose project to boost' : 'Get connectEd Plus';
+        : awaitingPlus
+          ? 'Payment received — Stripe is still confirming it. This usually takes under a minute; refresh to check.'
+          : 'Applications and project sharing are free. Plus adds visibility in both roles.';
+      $('#membership-action').textContent = profile?.priority_match_active
+        ? 'Choose project to boost'
+        : awaitingPlus ? 'Confirming payment…' : 'Get connectEd Plus';
       $('#membership-manage').hidden = !profile?.priority_match_active;
       const reputation = reviewSummary(user.id);
       $('#reputation-score').textContent = reputation.received.length ? reputation.average.toFixed(1) : '—';
@@ -1709,8 +1920,7 @@ import {
               <strong>${escapeHtml(item.title)}</strong>
               <span>${escapeHtml(new Date(item.starts_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))}</span>
               <div class="calendar-agenda-actions">
-                ${item.meet_url ? `<a class="btn btn-small" href="${escapeHtml(item.meet_url)}" target="_blank" rel="noopener">Open Meet</a>` : ''}
-                ${item.calendar_html_link ? `<a class="btn btn-small" href="${escapeHtml(item.calendar_html_link)}" target="_blank" rel="noopener">Open Calendar</a>` : ''}
+                ${interviewLinksMarkup(item)}
               </div>
             </div>
           `).join('')
@@ -1819,6 +2029,12 @@ import {
       $('#review-context').textContent = `Your verified review of ${revieweeName} will appear on their connectEd profile.`;
       $('#review-person-picker').hidden = true;
       form.hidden = false;
+      // The button that was just clicked lives in the picker this hides, so
+      // focus was left on a display:none element — inside an aria-modal
+      // dialog, which leaves the focus trap with nothing to hold and drops the
+      // next Tab outside the modal entirely. Move into the form that replaced
+      // it.
+      (form.querySelector('#rating-5') || form.querySelector('[name="rating"]') || form).focus();
     }
 
     async function submitParticipantReview(form) {
@@ -1867,7 +2083,13 @@ import {
       detailCover.src = projectImageData(activeProject) || fallbackCover;
       detailCover.alt = `${activeProject.title} project cover`;
       // Three mutually exclusive states: already applied, paused, or open.
-      const existingApplication = sentApplications.find(item => String(item.project_id) === String(activeProject.id));
+      // A withdrawn application does not count as "already applied" — the row
+      // stays in the table (unique(project_id, applicant_id) means a fresh
+      // insert would collide), but the member should be able to change their
+      // mind. reapply_application() flips that row back to pending.
+      const projectApplication = sentApplications.find(item => String(item.project_id) === String(activeProject.id));
+      const withdrawnApplication = projectApplication?.status === 'withdrawn' ? projectApplication : null;
+      const existingApplication = withdrawnApplication ? null : projectApplication;
       const pausedMessage = $('#application-paused-message');
       const canApply = activeProject.owner_id !== user?.id
         && isAcceptingApplications(activeProject)
@@ -1893,6 +2115,18 @@ import {
         };
         const cancelButton = pausedMessage.querySelector('[data-cancel-application]');
         if (cancelButton) cancelButton.onclick = () => cancelApplication(cancelButton.dataset.cancelApplication, cancelButton);
+      } else if (withdrawnApplication && canApply) {
+        pausedMessage.innerHTML = `
+          <p>You withdrew your earlier request to this project. You can send it again.</p>
+          <div class="project-detail-state-actions">
+            <button class="btn btn-small btn-primary" type="button" data-reapply-application="${escapeHtml(withdrawnApplication.id)}">Send this request again</button>
+          </div>
+        `;
+        pausedMessage.hidden = false;
+        const reapplyButton = pausedMessage.querySelector('[data-reapply-application]');
+        if (reapplyButton) {
+          reapplyButton.onclick = () => reapplyApplication(reapplyButton.dataset.reapplyApplication, reapplyButton);
+        }
       } else {
         pausedMessage.textContent = 'This project is visible, but the initiator has paused new applications.';
         pausedMessage.hidden = activeProject.owner_id === user?.id || isAcceptingApplications(activeProject);
@@ -1987,10 +2221,21 @@ import {
 
     const MAX_PROJECT_QUESTIONS = 8;
     const MAX_PROJECT_LINKS = 6;
-    function questionRowMarkup(value = '') {
+    // The row carries its own question id so saveProject can pair a value with
+    // the row it came from. Diffing by position instead meant clearing one
+    // question shifted every later answer onto the wrong prompt — applicants'
+    // stored answers are keyed by question id, so they silently re-attached to
+    // a question nobody had asked them.
+    //
+    // minlength matches project_questions' own `char_length(prompt) between 8
+    // and 500` check. Without it a three-character question sailed past the
+    // browser and came back as a raw Postgres constraint message — after the
+    // project row had already been created.
+    function questionRowMarkup(value = '', id = '') {
       return `
         <div class="question-row">
-          <input class="field" name="question" maxlength="500" placeholder="Ask applicants something, or leave this blank" value="${escapeHtml(value)}">
+          <input type="hidden" name="question_id" value="${escapeHtml(id)}">
+          <input class="field" name="question" minlength="8" maxlength="500" placeholder="Ask applicants something, or leave this blank" value="${escapeHtml(value)}">
           <button class="btn btn-small remove-question" type="button" aria-label="Remove question">×</button>
         </div>
       `;
@@ -2006,8 +2251,13 @@ import {
         };
       });
     }
-    function renderQuestionRows(prompts) {
-      $('#question-list').innerHTML = (prompts.length ? prompts : ['']).map(questionRowMarkup).join('');
+    // Takes {id, prompt} rows so each input stays tied to the question row it
+    // was loaded from.
+    function renderQuestionRows(questions) {
+      const rows = questions.length ? questions : [{ id: '', prompt: '' }];
+      $('#question-list').innerHTML = rows
+        .map(question => questionRowMarkup(question.prompt, question.id))
+        .join('');
       bindQuestionRowButtons();
     }
 
@@ -2093,7 +2343,7 @@ import {
           .select('id,prompt').eq('project_id', project.id).order('position');
         if (result.data?.length) {
           editingQuestionIds = result.data.map(row => row.id);
-          renderQuestionRows(result.data.map(row => row.prompt));
+          renderQuestionRows(result.data);
         }
       }
       openModal('project-form');
@@ -2132,42 +2382,53 @@ import {
         seats_total: Number(values.get('seats')),
         status: String(values.get('status'))
       };
+      const wasEditing = Boolean(editingProjectId);
       const result = editingProjectId
         ? await supabase.from('projects').update(payload).eq('id', editingProjectId).select('id').single()
         : await supabase.from('projects').insert({ ...payload, owner_id: user.id }).select('id').single();
       if (result.error) return toast(result.error.message);
 
       const projectId = result.data.id;
-      // Questions are optional and there can be several. Diff positionally
-      // against what was already there (editingQuestionIds, fetched in
-      // openProjectForm) rather than delete-and-recreate everything: a
-      // slot that still has text in the same position keeps its existing
-      // row's id, since applicants' saved answers are keyed by question id
-      // — recreating rows would orphan their answers from the question
-      // they were actually written for.
-      const newQuestions = values.getAll('question')
-        .map(value => String(value || '').trim())
-        .filter(Boolean)
+      // The project row exists from here on. Anything below that fails leaves
+      // the modal open for a retry — and that retry used to run this insert a
+      // second time, publishing a duplicate project. Switching to edit mode
+      // makes every retry update the row that was just created instead.
+      editingProjectId = projectId;
+
+      // Questions are optional and there can be several. Pair each submitted
+      // value with the id of the row it came from (a hidden question_id input
+      // per row) rather than diffing by position: applicants' saved answers
+      // are keyed by question id, so a positional diff over a compacted array
+      // silently moved existing answers onto whichever prompt slid into that
+      // slot. An empty row is dropped, but only after it has been matched to
+      // its own id, so the right row gets deleted.
+      const submittedIds = values.getAll('question_id').map(value => String(value || ''));
+      const submitted = values.getAll('question')
+        .map((value, index) => ({ text: String(value || '').trim(), id: submittedIds[index] || '' }))
+        .filter(item => item.text)
         .slice(0, MAX_PROJECT_QUESTIONS);
-      const questionOps = [];
-      const questionSlots = Math.max(newQuestions.length, editingQuestionIds.length);
-      for (let index = 0; index < questionSlots; index += 1) {
-        const text = newQuestions[index];
-        const existingId = editingQuestionIds[index];
-        if (text && existingId) {
-          questionOps.push(supabase.from('project_questions').update({ prompt: text, position: index }).eq('id', existingId));
-        } else if (text) {
-          questionOps.push(supabase.from('project_questions').insert({ project_id: projectId, prompt: text, position: index, required: true }));
-        } else if (existingId) {
+      const keptIds = new Set(submitted.map(item => item.id).filter(Boolean));
+      const questionOps = submitted.map((item, index) => item.id
+        ? supabase.from('project_questions').update({ prompt: item.text, position: index }).eq('id', item.id)
+        : supabase.from('project_questions').insert({ project_id: projectId, prompt: item.text, position: index, required: true }));
+      for (const existingId of editingQuestionIds) {
+        if (!keptIds.has(existingId)) {
           questionOps.push(supabase.from('project_questions').delete().eq('id', existingId));
         }
       }
       const questionResults = await Promise.all(questionOps);
       const questionError = questionResults.find(item => item.error)?.error;
-      if (questionError) return toast(questionError.message);
+      if (questionError) {
+        // The questions that did save are now the project's real state — keep
+        // editingQuestionIds in step so a retry doesn't try to re-create them.
+        editingQuestionIds = [...keptIds];
+        return toast(/question|prompt/i.test(questionError.message || '')
+          ? 'Each application question needs at least 8 characters. Shorten or clear the ones that are too short.'
+          : questionError.message);
+      }
 
       closeModal('project-form');
-      toast(editingProjectId ? 'Project updated.' : 'Project published.');
+      toast(wasEditing ? 'Project updated.' : 'Project published.');
       editingProjectId = null;
       editingQuestionIds = [];
       await loadAll();
@@ -2182,7 +2443,7 @@ import {
         return;
       }
       const projectTitle = application.projects?.title || 'this project';
-      if (!window.confirm(`Cancel your application to "${projectTitle}"? It will remain in your request history as withdrawn.`)) return;
+      if (!window.confirm(`Cancel your application to "${projectTitle}"? It stays in your request history as withdrawn, and you can send it again later while the project is still open.`)) return;
       const originalLabel = button?.textContent;
       if (button) {
         button.disabled = true;
@@ -2207,6 +2468,34 @@ import {
       toast('Application withdrawn.');
       await loadAll();
       switchPanel('requests');
+    }
+
+    // Withdrawing used to be a one-way door: the row stays (and
+    // unique(project_id, applicant_id) blocks a fresh insert with 23505), so
+    // the apply form never came back and the only message on offer was "You
+    // already applied to this project."
+    async function reapplyApplication(id, button = null) {
+      if (!(await requireUser())) return;
+      const originalLabel = button?.textContent;
+      if (button) {
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        button.textContent = 'Reopening…';
+      }
+      const result = await supabase.rpc('reapply_application', { target_application: id });
+      if (result.error) {
+        if (button) {
+          button.disabled = false;
+          button.removeAttribute('aria-busy');
+          button.textContent = originalLabel;
+        }
+        return toast(result.error.message || 'This application could not be sent again.');
+      }
+      toast('Your request has been sent again.');
+      await loadAll();
+      // Re-render the open modal so it reflects the pending state rather than
+      // still offering "Send this request again".
+      if (activeModal?.id === 'modal-project-detail') await openProjectDetail(activeProject?.id);
     }
 
     async function toggleProjectIntake(projectId) {
@@ -2291,9 +2580,7 @@ import {
       if (!file) return;
       try {
         pendingBannerDataUrl = await optimizeBannerImage(file);
-        const banner = $('#profile-banner');
-        banner.style.backgroundImage = `url("${pendingBannerDataUrl}")`;
-        banner.hidden = false;
+        applyBannerImage($('#profile-banner'), pendingBannerDataUrl);
         toast('Cover image ready — save your profile to publish it.');
       } catch (error) {
         toast(error.message || 'Cover image could not be processed.');
@@ -2370,15 +2657,22 @@ import {
       await loadAll();
     }
 
+    // Set while the interview modal is editing an existing booking rather than
+    // creating one, so submitInterview knows to PATCH the Google event instead
+    // of creating a second invitation to the same meeting.
+    let reschedulingInterviewId = null;
+
     async function openInterview(id) {
       const application = applications.find(item => String(item.id) === String(id));
       if (!application) return;
       if (!['pending', 'accepted', 'interview'].includes(application.status)) {
         return toast('Interviews cannot be scheduled for a closed application.');
       }
-      if (interviews.some(item => String(item.application_id) === String(application.id))) {
-        return toast('An interview is already scheduled for this application.');
-      }
+      // An already-scheduled interview used to be a hard stop here, with no
+      // way to move or cancel it anywhere in the app — the owner's only exit
+      // was to decline the applicant. Open it for editing instead.
+      const existingInterview = interviews.find(item => String(item.application_id) === String(application.id));
+      reschedulingInterviewId = existingInterview?.id || null;
       const form = $('#interview-form');
       form.reset();
       form.hidden = false;
@@ -2386,9 +2680,11 @@ import {
       form.application_id.value = application.id;
       form.project_id.value = application.project_id;
       form.candidate_id.value = application.applicant_id;
-      form.title.value = `${application.projects?.title || 'connectEd'} interview`;
-      const suggestedStart = new Date(Date.now() + 60 * 60 * 1000);
-      suggestedStart.setMinutes(Math.ceil(suggestedStart.getMinutes() / 30) * 30, 0, 0);
+      form.title.value = existingInterview?.title || `${application.projects?.title || 'connectEd'} interview`;
+      const suggestedStart = existingInterview
+        ? new Date(existingInterview.starts_at)
+        : new Date(Date.now() + 60 * 60 * 1000);
+      if (!existingInterview) suggestedStart.setMinutes(Math.ceil(suggestedStart.getMinutes() / 30) * 30, 0, 0);
       const localDate = date => [
         date.getFullYear(),
         String(date.getMonth() + 1).padStart(2, '0'),
@@ -2403,7 +2699,48 @@ import {
       // resolves the real address with the service-role key, so leave this
       // blank and let it stay optional as an override.
       form.email.value = '';
+      form.notes.value = existingInterview?.notes || '';
+      $('#interview-title').textContent = existingInterview ? 'Reschedule interview' : 'Schedule an interview';
+      const submitButton = form.querySelector('[type="submit"]');
+      if (submitButton) submitButton.textContent = existingInterview ? 'Update interview' : 'Create Meet link';
+      let cancelInterviewButton = $('#cancel-interview');
+      if (!cancelInterviewButton) {
+        cancelInterviewButton = document.createElement('button');
+        cancelInterviewButton.id = 'cancel-interview';
+        cancelInterviewButton.type = 'button';
+        cancelInterviewButton.className = 'btn btn-small btn-danger-subtle';
+        form.querySelector('.form-actions')?.prepend(cancelInterviewButton);
+      }
+      cancelInterviewButton.textContent = 'Cancel interview';
+      cancelInterviewButton.hidden = !existingInterview;
+      cancelInterviewButton.onclick = () => cancelScheduledInterview(reschedulingInterviewId, cancelInterviewButton);
       openModal('interview');
+    }
+
+    async function cancelScheduledInterview(interviewId, button) {
+      if (!interviewId) return;
+      if (!window.confirm('Cancel this interview? The calendar event is deleted and the candidate is notified.')) return;
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Cancelling…';
+      try {
+        const response = await fetch('/api/google-calendar', {
+          method: 'POST',
+          headers: await authHeaders(),
+          body: JSON.stringify({ mode: 'cancel', interviewId })
+        });
+        const data = await safeJson(response);
+        if (!response.ok) return toast(data.error || 'The interview could not be cancelled.');
+        closeModal('interview');
+        toast(data.calendarEventRemoved
+          ? 'Interview cancelled.'
+          : 'Interview cancelled here, but the Google event may need removing manually.');
+        reschedulingInterviewId = null;
+        await loadAll();
+      } finally {
+        button.disabled = false;
+        button.textContent = originalLabel;
+      }
     }
 
     // Keep the time picker honest: when the chosen date is today, the
@@ -2435,6 +2772,37 @@ import {
       if (startsAt.getTime() < Date.now() + 5 * 60 * 1000) {
         return toast('Pick a start time at least five minutes from now.');
       }
+      // Rescheduling PATCHes the existing Google event so the candidate keeps
+      // the same Meet link and receives an update, rather than a second
+      // invitation to a meeting they are already booked for.
+      if (reschedulingInterviewId) {
+        const patchResponse = await fetch('/api/google-calendar', {
+          method: 'POST',
+          headers: await authHeaders(),
+          body: JSON.stringify({
+            mode: 'reschedule',
+            interviewId: reschedulingInterviewId,
+            title: values.get('title'),
+            startsAt: startsAt.toISOString(),
+            endsAt: endsAt.toISOString(),
+            notes: values.get('notes')
+          })
+        });
+        const patchData = await safeJson(patchResponse);
+        if (!patchResponse.ok) {
+          if (patchData.needsGoogleReconnect) {
+            toast(patchData.error || 'Reconnect Google to grant Calendar access.');
+            return beginGoogleSignIn();
+          }
+          return toast(patchData.error || 'The interview could not be rescheduled.');
+        }
+        closeModal('interview');
+        reschedulingInterviewId = null;
+        toast('Interview rescheduled — the candidate has been notified.');
+        await loadAll();
+        return;
+      }
+
       // No Google token to attach here — the server holds a stored refresh
       // token from sign-in and mints its own access token per request.
       const response = await fetch('/api/google-calendar', {
@@ -2459,25 +2827,12 @@ import {
         return toast(data.error || 'Calendar event could not be created.');
       }
 
-      const interviewRow = {
-        project_id: values.get('project_id'),
-        application_id: values.get('application_id'),
-        organizer_id: user.id,
-        candidate_id: values.get('candidate_id'),
-        starts_at: startsAt.toISOString(),
-        ends_at: endsAt.toISOString(),
-        title: String(values.get('title')).trim(),
-        notes: String(values.get('notes')).trim(),
-        google_event_id: data.eventId,
-        meet_url: data.meetUrl,
-        calendar_html_link: data.htmlLink
-      };
-      let saved = await supabase.from('interviews').insert(interviewRow);
-      if (saved.error && /permission denied/i.test(saved.error.message)) {
-        delete interviewRow.calendar_html_link;
-        saved = await supabase.from('interviews').insert(interviewRow);
-      }
-      if (saved.error) return toast(saved.error.message);
+      // The interviews row is written by /api/google-calendar with the service
+      // role, in the same request that creates the event. Doing it here meant
+      // google_event_id/meet_url/calendar_html_link had to be client-writable
+      // — which let an organizer point the candidate's "Open Meet" button at
+      // any URL — and meant a failed insert left a real calendar invite the
+      // app had no record of. The server now rolls the event back instead.
       const statusUpdate = await supabase.from('applications').update({ status: 'interview' }).eq('id', values.get('application_id'));
       if (statusUpdate.error) toast('The Meet was created, but the application status could not be updated.');
       form.hidden = true;
@@ -2521,6 +2876,14 @@ import {
     };
 
     let checkoutPending = false;
+    // Set once someone returns from a successful Stripe checkout, and cleared
+    // only when the webhook's effect actually shows up on the profile. The
+    // post-checkout poll used to simply give up after ~18s and hand back an
+    // enabled "Get connectEd Plus" button — so a member whose webhook was
+    // merely slow was invited to buy the subscription they had just bought.
+    // create-checkout-session's duplicate guard reads priority_match_active,
+    // which is precisely the flag that hasn't landed yet, so it cannot help.
+    let plusAwaitingWebhook = false;
 
     // Disabled by default (paymentsConfigured starts false) so nobody can
     // click through to create-checkout-session's 503 before this resolves —
@@ -2529,14 +2892,19 @@ import {
     // Plus, since activating a boost they already have doesn't call Stripe.
     function applyPaymentsGating() {
       const alreadyPlus = Boolean(profile?.priority_match_active);
+      const awaiting = plusAwaitingWebhook && !alreadyPlus;
+      const disabled = awaiting || (!alreadyPlus && !paymentsConfigured);
+      const title = awaiting
+        ? 'Confirming your payment…'
+        : alreadyPlus || paymentsConfigured ? '' : 'Coming soon';
       const membershipButton = $('#membership-action');
       if (membershipButton) {
-        membershipButton.disabled = !alreadyPlus && !paymentsConfigured;
-        membershipButton.title = alreadyPlus || paymentsConfigured ? '' : 'Coming soon';
+        membershipButton.disabled = disabled;
+        membershipButton.title = title;
       }
       $$('[data-boost]').forEach(button => {
-        button.disabled = !alreadyPlus && !paymentsConfigured;
-        button.title = alreadyPlus || paymentsConfigured ? '' : 'Coming soon';
+        button.disabled = disabled;
+        button.title = title;
       });
     }
 
@@ -2607,6 +2975,19 @@ import {
 
       // Typing a city needs no GPS permission — geocode it through a free,
       // keyless lookup so "share location" works either way.
+    // Raises the page size and refetches, rather than appending — the board
+    // is re-sorted by live boost on every load, so a second page merged into
+    // the first would sit in the wrong order.
+    $('#board-load-more')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      button.textContent = 'Loading…';
+      projectLimit += PROJECT_PAGE_SIZE;
+      await loadAll();
+      button.disabled = false;
+      button.textContent = 'Load more projects';
+    });
+
     async function geocodeLabel(label) {
       try {
         const response = await fetch(
@@ -2617,10 +2998,30 @@ import {
         const results = await response.json();
         const match = results[0];
         if (!match) return null;
-        return { latitude: Number(match.lat), longitude: Number(match.lon) };
+        return validCoordinates(match.lat, match.lon);
       } catch (_) {
         return null;
       }
+    }
+
+    // Nominatim's response was trusted as-is. A reply without usable lat/lon
+    // yields NaN, JSON.stringify turns NaN into null, and the update then
+    // wiped the member's saved location instead of leaving it alone. Same
+    // Number.isFinite discipline profileLocation() already applies on the way
+    // in, now applied on the way out too.
+    function validCoordinates(rawLatitude, rawLongitude) {
+      const latitude = Number(rawLatitude);
+      const longitude = Number(rawLongitude);
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 || latitude > 90 ||
+        longitude < -180 || longitude > 180
+      ) return null;
+      return {
+        latitude: Number(latitude.toFixed(2)),
+        longitude: Number(longitude.toFixed(2))
+      };
     }
 
     async function saveProfile(form) {
@@ -2629,7 +3030,13 @@ import {
       const labelValue = String(values.get('location_label') || '').trim().slice(0, 100);
       let latitudeValue = String(values.get('location_latitude') || '').trim();
       let longitudeValue = String(values.get('location_longitude') || '').trim();
-      if (shareLocation && (!latitudeValue || !longitudeValue) && labelValue) {
+      // Editing the city without touching the hidden coordinate fields used to
+      // save the new label against the old coordinates, leaving the profile
+      // claiming one place while the globe pinned another. Re-geocode whenever
+      // the label no longer matches what those coordinates were looked up for.
+      const savedLocationLabel = profileLocation(profile)?.label || '';
+      const labelChanged = Boolean(labelValue) && labelValue !== savedLocationLabel;
+      if (shareLocation && labelValue && (!latitudeValue || !longitudeValue || labelChanged)) {
         $('#location-status').textContent = 'Looking up that location…';
         const geocoded = await geocodeLabel(labelValue);
         if (geocoded) {
@@ -2637,22 +3044,29 @@ import {
           longitudeValue = String(geocoded.longitude);
           $('#profile-form [name=location_latitude]').value = latitudeValue;
           $('#profile-form [name=location_longitude]').value = longitudeValue;
+        } else if (labelChanged) {
+          // The old coordinates point at the place the member just replaced.
+          // Saving no location beats saving a confidently wrong one.
+          latitudeValue = '';
+          longitudeValue = '';
         }
       }
       const latitude = Number(latitudeValue);
       const longitude = Number(longitudeValue);
-      if (
+      const locationUsable = Boolean(
         shareLocation &&
-        (
-          !latitudeValue ||
-          !longitudeValue ||
-          !Number.isFinite(latitude) ||
-          !Number.isFinite(longitude)
-        )
-      ) {
-        return toast('Type a city we can find (e.g. "Seoul, South Korea"), or use "Use my current location".');
-      }
-      const location = shareLocation
+        latitudeValue &&
+        longitudeValue &&
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude)
+      );
+      // Location is optional, but it used to hold the whole form hostage:
+      // typing anything into the city field armed a hard gate, so one
+      // geocoding miss rejected the entire save — name, bio, skills and all —
+      // and left "Looking up that location…" sitting on screen. Save
+      // everything else and say what didn't stick.
+      const locationMissed = shareLocation && !locationUsable;
+      const location = locationUsable
         ? {
             shared: true,
             label: labelValue,
@@ -2700,9 +3114,20 @@ import {
         result = await supabase.from('profiles').update(withoutChatLink).eq('id', user.id);
         savedMessage = 'Profile saved, but the chat link needs a database migration first.';
       }
-      if (result.error) return toast(result.error.message);
+      if (result.error) {
+        // Leave the "Looking up that location…" line behind and the form looks
+        // like it is still working on something it gave up on long ago.
+        $('#location-status').textContent = 'Location could not be saved.';
+        return toast(result.error.message);
+      }
       pendingAvatarDataUrl = null;
       pendingBannerDataUrl = null;
+      if (locationMissed) {
+        savedMessage = 'Profile saved, but we could not find that location — try a city and country, or use "Use my current location".';
+      }
+      // The form now matches what is stored, so let background reloads
+      // repopulate it again.
+      profileFormDirty = false;
       toast(savedMessage);
       await loadAll();
     }
@@ -2719,6 +3144,10 @@ import {
         $('#profile-form [name=location_latitude]').value = latitude;
         $('#profile-form [name=location_longitude]').value = longitude;
         $('#location-shared').checked = true;
+        // Setting .value in script fires no input event, so mark the form
+        // dirty by hand or a background reload will throw these coordinates
+        // away before the member gets to save them.
+        profileFormDirty = true;
         $('#location-status').textContent = 'Approximate location ready. Save your profile to share it.';
         button.disabled = false;
         button.textContent = 'Update current location';
@@ -2741,6 +3170,12 @@ import {
     $('#profile-form [name=location_label]').addEventListener('input', event => {
       if (event.target.value.trim()) $('#location-shared').checked = true;
     });
+
+    // Any edit marks the form dirty so a background loadAll() stops
+    // repopulating it underneath the person typing. Cleared after a
+    // successful save (see saveProfile) and when the panel is left.
+    $('#profile-form').addEventListener('input', () => { profileFormDirty = true; });
+    $('#profile-form').addEventListener('change', () => { profileFormDirty = true; });
 
     $('#location-shared').onchange = event => {
       if (event.currentTarget.checked) return;
@@ -2964,12 +3399,27 @@ import {
       // without this the membership card would keep showing "Free member"
       // for several seconds with nothing prompting a refresh, right after
       // someone just paid. Poll briefly instead of making them guess.
+      plusAwaitingWebhook = true;
+      renderProfile();
+      applyPaymentsGating();
       let attempts = 0;
       const pollForPlus = window.setInterval(async () => {
         attempts += 1;
         if (profile?.priority_match_active || attempts >= 6) {
           window.clearInterval(pollForPlus);
-          if (profile?.priority_match_active) toast('connectEd Plus is active.');
+          if (profile?.priority_match_active) {
+            plusAwaitingWebhook = false;
+            toast('connectEd Plus is active.');
+          } else {
+            // Deliberately leave plusAwaitingWebhook set: the payment did go
+            // through, so the honest state is "pending", and the purchase
+            // controls must stay disabled rather than inviting a second
+            // subscription. A reload clears it, by which time the webhook has
+            // almost certainly landed.
+            toast('Payment received — still waiting on Stripe to confirm. Refresh in a moment.');
+          }
+          renderProfile();
+          applyPaymentsGating();
           return;
         }
         await loadAll();
