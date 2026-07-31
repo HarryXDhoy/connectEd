@@ -24,6 +24,23 @@ import {
         return '';
       }
     };
+    // banner_url is free text stored on a profile row, and it was the one
+    // user-supplied value in either page interpolated into markup without
+    // escaping — straight into a CSS url(), where a stray double quote closes
+    // the function early and everything after it is parsed as further
+    // declarations. JSON.stringify quotes and escapes the value; the scheme
+    // check keeps it to an inline image or a real http(s) URL, since
+    // escapeHtml-style escaping would not stop a javascript: or data:text/html
+    // one on its own.
+    const bannerImageUrl = value => {
+      const raw = String(value || '');
+      return /^data:image\//i.test(raw) ? raw : safeExternalUrl(raw);
+    };
+    const applyBannerImage = (element, value) => {
+      const url = bannerImageUrl(value);
+      element.style.backgroundImage = url ? `url(${JSON.stringify(url)})` : '';
+      element.hidden = !url;
+    };
     // Every /api/* endpoint always responds with JSON on every path — but
     // an unhandled crash in one (timeout, network blip reaching a
     // third-party API) can still make the platform return an empty or
@@ -771,14 +788,7 @@ import {
         .map(skill => `<span class="tag">${escapeHtml(skill)}</span>`)
         .join('');
 
-      const banner = $('#view-profile-banner');
-      if (person.banner_url) {
-        banner.style.backgroundImage = `url("${person.banner_url}")`;
-        banner.hidden = false;
-      } else {
-        banner.style.backgroundImage = '';
-        banner.hidden = true;
-      }
+      applyBannerImage($('#view-profile-banner'), person.banner_url);
 
       const photo = $('#view-profile-photo');
       const fallback = $('#view-profile-photo-fallback');

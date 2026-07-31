@@ -28,6 +28,23 @@ import {
         return '';
       }
     };
+    // banner_url is free text stored on a profile row, and it was the one
+    // user-supplied value in either page interpolated into markup without
+    // escaping — straight into a CSS url(), where a stray double quote closes
+    // the function early and everything after it is parsed as further
+    // declarations. JSON.stringify quotes and escapes the value; the scheme
+    // check keeps it to an inline image or a real http(s) URL, since
+    // escapeHtml-style escaping would not stop a javascript: or data:text/html
+    // one on its own.
+    const bannerImageUrl = value => {
+      const raw = String(value || '');
+      return /^data:image\//i.test(raw) ? raw : safeExternalUrl(raw);
+    };
+    const applyBannerImage = (element, value) => {
+      const url = bannerImageUrl(value);
+      element.style.backgroundImage = url ? `url(${JSON.stringify(url)})` : '';
+      element.hidden = !url;
+    };
     // Every /api/* endpoint here always responds with JSON on every path —
     // but an unhandled crash in one (a timeout, a network blip reaching a
     // third-party API) can still make the platform return an empty or
@@ -88,6 +105,35 @@ import {
       })
       .filter(Boolean)
       .slice(0, 6);
+    // meet_url and calendar_html_link were rendered straight into an href with
+    // only escapeHtml(), which neutralizes HTML metacharacters but not a URL
+    // scheme — and until the 20260731090000 migration those columns were
+    // client-writable, so an organizer could point a button the candidate
+    // reasonably trusts ("Open Meet") anywhere they liked. Both values come
+    // from Google or they are not rendered: rows written before that migration
+    // are still in the table, so the host check is not redundant.
+    const googleLinkUrl = value => {
+      const safeUrl = safeExternalUrl(value);
+      if (!safeUrl) return '';
+      try {
+        const host = new URL(safeUrl).hostname.toLowerCase();
+        return host === 'google.com' || host.endsWith('.google.com') ? safeUrl : '';
+      } catch (_) {
+        return '';
+      }
+    };
+    const interviewLinksMarkup = interview => {
+      const meetUrl = googleLinkUrl(interview?.meet_url);
+      const calendarUrl = googleLinkUrl(interview?.calendar_html_link);
+      return [
+        meetUrl
+          ? `<a class="btn btn-small" href="${escapeHtml(meetUrl)}" target="_blank" rel="noopener">Open Meet</a>`
+          : '',
+        calendarUrl
+          ? `<a class="btn btn-small" href="${escapeHtml(calendarUrl)}" target="_blank" rel="noopener">Open Calendar</a>`
+          : ''
+      ].join('');
+    };
     const isBoostLive = project => {
       const until = Date.parse(project?.boost_until || '');
       return Number.isFinite(until) && until > Date.now();
@@ -1344,12 +1390,7 @@ import {
                 </div>
                 <div class="applicant-actions">
                   <span class="request-status" data-status="${escapeHtml(application.status)}">${escapeHtml(statusLabel(application.status))}</span>
-                  ${interview?.meet_url
-                    ? `<a class="btn btn-small" href="${escapeHtml(interview.meet_url)}" target="_blank" rel="noopener">Open Meet</a>`
-                    : ''}
-                  ${interview?.calendar_html_link
-                    ? `<a class="btn btn-small" href="${escapeHtml(interview.calendar_html_link)}" target="_blank" rel="noopener">Open Calendar</a>`
-                    : ''}
+                  ${interviewLinksMarkup(interview)}
                   ${['accepted', 'interview'].includes(application.status) && reviewsAvailable
                     ? `<button class="btn btn-small" data-review-project="${escapeHtml(application.project_id)}">Review project team</button>`
                     : ''}
@@ -1468,12 +1509,7 @@ import {
             </div>
             <div class="applicant-actions">
               <span class="request-status" data-status="${escapeHtml(application.status)}">${escapeHtml(statusLabel(application.status))}</span>
-              ${interview?.meet_url
-                ? `<a class="btn btn-small" href="${escapeHtml(interview.meet_url)}" target="_blank" rel="noopener">Open Meet</a>`
-                : ''}
-              ${interview?.calendar_html_link
-                ? `<a class="btn btn-small" href="${escapeHtml(interview.calendar_html_link)}" target="_blank" rel="noopener">Open Calendar</a>`
-                : ''}
+              ${interviewLinksMarkup(interview)}
               ${pendingActions}
             </div>
           </article>
@@ -1563,14 +1599,7 @@ import {
       messageButton.hidden = !user || user.id === person.id || !messagesAvailable;
       $('#view-profile-name').textContent = displayName;
       $('#view-profile-headline').textContent = person.headline || 'No profile headline yet';
-      const banner = $('#view-profile-banner');
-      if (person.banner_url) {
-        banner.style.backgroundImage = `url("${person.banner_url}")`;
-        banner.hidden = false;
-      } else {
-        banner.style.backgroundImage = '';
-        banner.hidden = true;
-      }
+      applyBannerImage($('#view-profile-banner'), person.banner_url);
       const photo = $('#view-profile-photo');
       const fallback = $('#view-profile-photo-fallback');
       photo.referrerPolicy = 'no-referrer';
@@ -1629,14 +1658,7 @@ import {
       profileFallback.textContent = displayName.slice(0, 2).toUpperCase();
       $('#profile-identity-name').textContent = displayName;
       $('#profile-identity-email').textContent = user.email || '';
-      const banner = $('#profile-banner');
-      if (profile?.banner_url) {
-        banner.style.backgroundImage = `url("${profile.banner_url}")`;
-        banner.hidden = false;
-      } else {
-        banner.style.backgroundImage = '';
-        banner.hidden = true;
-      }
+      applyBannerImage($('#profile-banner'), profile?.banner_url);
       for (const key of ['display_name', 'headline', 'bio']) {
         $(`#profile-form [name=${key}]`).value = profile?.[key] || '';
       }
@@ -1753,8 +1775,7 @@ import {
               <strong>${escapeHtml(item.title)}</strong>
               <span>${escapeHtml(new Date(item.starts_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))}</span>
               <div class="calendar-agenda-actions">
-                ${item.meet_url ? `<a class="btn btn-small" href="${escapeHtml(item.meet_url)}" target="_blank" rel="noopener">Open Meet</a>` : ''}
-                ${item.calendar_html_link ? `<a class="btn btn-small" href="${escapeHtml(item.calendar_html_link)}" target="_blank" rel="noopener">Open Calendar</a>` : ''}
+                ${interviewLinksMarkup(item)}
               </div>
             </div>
           `).join('')
@@ -2335,9 +2356,7 @@ import {
       if (!file) return;
       try {
         pendingBannerDataUrl = await optimizeBannerImage(file);
-        const banner = $('#profile-banner');
-        banner.style.backgroundImage = `url("${pendingBannerDataUrl}")`;
-        banner.hidden = false;
+        applyBannerImage($('#profile-banner'), pendingBannerDataUrl);
         toast('Cover image ready — save your profile to publish it.');
       } catch (error) {
         toast(error.message || 'Cover image could not be processed.');
