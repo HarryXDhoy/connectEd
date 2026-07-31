@@ -153,8 +153,153 @@ async function organizerGoogleAccessToken(userId) {
   return { accessToken: tokenData.access_token };
 }
 
+// Reads the interview together with the project that owns it, so the caller's
+// right to touch it can be checked in one round trip. Service role, because
+// the columns being changed are no longer client-writable.
+async function ownedInterview(interviewId, ownerId) {
+  const url = process.env.SUPABASE_URL || 'https://josrjdvcdkqkwfzomxxh.supabase.co';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) return { error: 'unconfigured' };
+  const response = await fetch(
+    `${url}/rest/v1/interviews?select=id,google_event_id,organizer_id,application_id&id=eq.${interviewId}&organizer_id=eq.${ownerId}&limit=1`,
+    {
+      headers: {
+        apikey: serviceRoleKey,
+        authorization: `Bearer ${serviceRoleKey}`,
+        accept: 'application/json'
+      }
+    }
+  );
+  if (!response.ok) return { error: 'lookup_failed' };
+  const rows = await response.json();
+  return rows.length ? { interview: rows[0] } : { error: 'not_found' };
+}
+
+async function writeInterview(interviewId, patch, method = 'PATCH') {
+  const url = process.env.SUPABASE_URL || 'https://josrjdvcdkqkwfzomxxh.supabase.co';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) return { error: 'unconfigured' };
+  const response = await fetch(`${url}/rest/v1/interviews?id=eq.${interviewId}`, {
+    method,
+    headers: {
+      apikey: serviceRoleKey,
+      authorization: `Bearer ${serviceRoleKey}`,
+      'content-type': 'application/json',
+      prefer: 'return=minimal'
+    },
+    ...(method === 'PATCH' ? { body: JSON.stringify(patch) } : {})
+  });
+  return response.ok ? {} : { error: `write_failed_${response.status}` };
+}
+
+// A scheduled interview could not be changed or cancelled from anywhere in the
+// app — no .update() or .delete() on interviews existed in the client at all,
+// and openInterview() simply refused with "An interview is already scheduled
+// for this application." The only way out was for the owner to decline the
+// applicant outright.
+async function cancelInterview(req, res, identity) {
+  const { interviewId } = req.body || {};
+  if (!validUuid(interviewId)) return json(res, 400, { error: 'Invalid interview.' });
+
+  const owned = await ownedInterview(interviewId, identity.user.id);
+  if (owned.error === 'not_found') {
+    return json(res, 403, { error: 'Only the organizer can cancel this interview.' });
+  }
+  if (owned.error) return json(res, 500, { error: 'The interview could not be looked up.' });
+
+  const tokenResult = await organizerGoogleAccessToken(identity.user.id);
+  // Removing the row is the part that matters — if Google is unreachable the
+  // app must not be left showing an interview it believes is cancelled.
+  if (!tokenResult.error) {
+    await deleteCalendarEvent(tokenResult.accessToken, owned.interview.google_event_id);
+  }
+  const removed = await writeInterview(interviewId, null, 'DELETE');
+  if (removed.error) return json(res, 500, { error: 'The interview could not be cancelled. Please try again.' });
+
+  return json(res, 200, {
+    cancelled: true,
+    calendarEventRemoved: !tokenResult.error,
+    applicationId: owned.interview.application_id
+  });
+}
+
+async function rescheduleInterview(req, res, identity) {
+  const { interviewId, startsAt, endsAt, title, notes = '' } = req.body || {};
+  if (!validUuid(interviewId)) return json(res, 400, { error: 'Invalid interview.' });
+
+  const start = validDate(startsAt);
+  const end = validDate(endsAt);
+  const duration = start && end ? end.getTime() - start.getTime() : 0;
+  if (!start || !end || start.getTime() < Date.now() - 60000 || duration < 900000 || duration > 10800000) {
+    return json(res, 400, { error: 'Choose a future interview lasting 15 minutes to 3 hours.' });
+  }
+  if (!String(title || '').trim()) return json(res, 400, { error: 'Missing or invalid interview details.' });
+
+  const owned = await ownedInterview(interviewId, identity.user.id);
+  if (owned.error === 'not_found') {
+    return json(res, 403, { error: 'Only the organizer can reschedule this interview.' });
+  }
+  if (owned.error) return json(res, 500, { error: 'The interview could not be looked up.' });
+
+  const tokenResult = await organizerGoogleAccessToken(identity.user.id);
+  if (tokenResult.error) {
+    return json(res, 401, {
+      error: 'Google Calendar access could not be refreshed. Reconnect Google and try again.',
+      needsGoogleReconnect: true
+    });
+  }
+
+  // PATCH the existing event rather than creating a new one: the attendee
+  // keeps the same Meet link and gets an update, not a second invitation to a
+  // meeting they already have.
+  const patched = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(owned.interview.google_event_id)}?sendUpdates=all`,
+    {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${tokenResult.accessToken}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        summary: String(title).trim().slice(0, 120),
+        description: String(notes).trim().slice(0, 2000) || 'Interview scheduled through connectEd',
+        start: { dateTime: start.toISOString(), timeZone: 'UTC' },
+        end: { dateTime: end.toISOString(), timeZone: 'UTC' }
+      })
+    }
+  );
+  const patchData = await patched.json();
+  if (!patched.ok) {
+    return json(res, patched.status, {
+      error: patchData.error?.message || 'Google Calendar could not update the event.'
+    });
+  }
+
+  const saved = await writeInterview(interviewId, {
+    starts_at: start.toISOString(),
+    ends_at: end.toISOString(),
+    title: String(title).trim().slice(0, 120),
+    notes: String(notes).trim().slice(0, 2000)
+  });
+  if (saved.error) {
+    return json(res, 500, { error: 'The calendar event moved, but the interview record could not be updated.' });
+  }
+
+  return json(res, 200, { rescheduled: true, htmlLink: patchData.htmlLink });
+}
+
 export default async function handler(req, res) {
   try {
+    if (req.method === 'POST') {
+      const mode = String(req.body?.mode || 'create');
+      if (mode === 'cancel' || mode === 'reschedule') {
+        const identity = await requireSupabaseUser(req);
+        if (identity.error) return json(res, identity.status, { error: identity.error });
+        return mode === 'cancel'
+          ? await cancelInterview(req, res, identity)
+          : await rescheduleInterview(req, res, identity);
+      }
+    }
     return await scheduleInterview(req, res);
   } catch (error) {
     // This handler chains four sequential external calls (candidate email

@@ -718,18 +718,35 @@ import {
       if (!activeProject || String(activeProject.id) !== requestedProjectId) return;
       reportButton.hidden = id.startsWith('preview-') || activeProject.owner_id === viewer?.id;
       const applicationState = $('#landing-application-state');
-      const canApply = activeProject.owner_id !== viewer?.id
+      // Boolean(viewer) matters: without it `activeProject.owner_id !==
+      // viewer?.id` compares a uuid against undefined and reads as true, so a
+      // signed-out visitor was shown the whole application form — questions,
+      // note field and all — and only told to sign in once they pressed
+      // submit, at which point replaceModal() threw away everything they had
+      // written. Gate at open, using the same state panel as the owner,
+      // paused and already-applied cases.
+      const canApply = Boolean(viewer)
+        && activeProject.owner_id !== viewer.id
         && isAcceptingApplications(activeProject)
         && !existingApplication;
       $$('#join-form .application-fields').forEach(section => {
         section.hidden = !canApply;
       });
       if (!canApply) {
-        applicationState.textContent = existingApplication
-          ? `You already applied to this project. Current status: ${String(existingApplication.status).replace('_', ' ')}.`
-          : activeProject.owner_id === viewer?.id
-            ? 'You own this project.'
-            : 'This project is not accepting applications right now.';
+        if (!viewer) {
+          applicationState.innerHTML = `
+            <p>Sign in to apply to this project.</p>
+            <button class="btn btn-small btn-primary" type="button" data-application-signin>Sign in to apply</button>
+          `;
+          const signIn = applicationState.querySelector('[data-application-signin]');
+          if (signIn) signIn.onclick = () => replaceModal('project', 'auth');
+        } else {
+          applicationState.textContent = existingApplication
+            ? `You already applied to this project. Current status: ${String(existingApplication.status).replace('_', ' ')}.`
+            : activeProject.owner_id === viewer.id
+              ? 'You own this project.'
+              : 'This project is not accepting applications right now.';
+        }
         applicationState.hidden = false;
       } else {
         applicationState.hidden = true;

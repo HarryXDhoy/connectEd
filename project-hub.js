@@ -415,11 +415,19 @@ import {
         .subscribe(reportChannelStatus('request updates'));
     }
 
+    // The 45s poll and the full load both replace `sentApplications` wholesale,
+    // so their selects have to match — the poll's was missing projects.tags,
+    // which is where the cover image lives, so every polled refresh silently
+    // stripped the thumbnails off the sent-requests cards until the next full
+    // reload put them back. One constant, used by both.
+    const SENT_APPLICATION_SELECT =
+      'id,project_id,applicant_id,message,status,created_at,updated_at,projects(id,title,tags,owner_id,profiles:owner_id(display_name))';
+
     async function pollRequestStatuses() {
       if (!supabase || !user || document.hidden) return;
       const result = await supabase
         .from('applications')
-        .select('id,project_id,applicant_id,message,status,created_at,updated_at,projects(id,title,owner_id,profiles:owner_id(display_name))')
+        .select(SENT_APPLICATION_SELECT)
         .eq('applicant_id', user.id)
         .order('created_at', { ascending: false });
       if (result.error) return;
@@ -973,7 +981,7 @@ import {
 
         const sentApplicationResult = await supabase
           .from('applications')
-          .select('id,project_id,applicant_id,message,status,created_at,updated_at,projects(id,title,tags,owner_id,profiles:owner_id(display_name))')
+          .select(SENT_APPLICATION_SELECT)
           .eq('applicant_id', user.id)
           .order('created_at', { ascending: false });
         sentApplicationsError = sentApplicationResult.error
@@ -1095,7 +1103,16 @@ import {
       renderNotifications();
       renderLocationNudge();
       renderConversationList();
-      if (activeConversationUserId) renderMessageThread();
+      if (activeConversationUserId) {
+        renderMessageThread();
+        // markConversationRead only ran from openConversation, so a message
+        // that arrived while the thread was already open stayed unread
+        // forever: the badge kept counting it and the sender never saw "Seen"
+        // for a message the recipient was literally looking at. It early-
+        // returns when there is nothing unread, so calling it on every render
+        // costs nothing.
+        markConversationRead(activeConversationUserId);
+      }
       // Global, not per-panel: every panel above can render a clickable
       // avatar or name, so bind them once after everything has painted
       // instead of repeating this call in each render function.
@@ -2006,7 +2023,13 @@ import {
       detailCover.src = projectImageData(activeProject) || fallbackCover;
       detailCover.alt = `${activeProject.title} project cover`;
       // Three mutually exclusive states: already applied, paused, or open.
-      const existingApplication = sentApplications.find(item => String(item.project_id) === String(activeProject.id));
+      // A withdrawn application does not count as "already applied" — the row
+      // stays in the table (unique(project_id, applicant_id) means a fresh
+      // insert would collide), but the member should be able to change their
+      // mind. reapply_application() flips that row back to pending.
+      const projectApplication = sentApplications.find(item => String(item.project_id) === String(activeProject.id));
+      const withdrawnApplication = projectApplication?.status === 'withdrawn' ? projectApplication : null;
+      const existingApplication = withdrawnApplication ? null : projectApplication;
       const pausedMessage = $('#application-paused-message');
       const canApply = activeProject.owner_id !== user?.id
         && isAcceptingApplications(activeProject)
@@ -2032,6 +2055,18 @@ import {
         };
         const cancelButton = pausedMessage.querySelector('[data-cancel-application]');
         if (cancelButton) cancelButton.onclick = () => cancelApplication(cancelButton.dataset.cancelApplication, cancelButton);
+      } else if (withdrawnApplication && canApply) {
+        pausedMessage.innerHTML = `
+          <p>You withdrew your earlier request to this project. You can send it again.</p>
+          <div class="project-detail-state-actions">
+            <button class="btn btn-small btn-primary" type="button" data-reapply-application="${escapeHtml(withdrawnApplication.id)}">Send this request again</button>
+          </div>
+        `;
+        pausedMessage.hidden = false;
+        const reapplyButton = pausedMessage.querySelector('[data-reapply-application]');
+        if (reapplyButton) {
+          reapplyButton.onclick = () => reapplyApplication(reapplyButton.dataset.reapplyApplication, reapplyButton);
+        }
       } else {
         pausedMessage.textContent = 'This project is visible, but the initiator has paused new applications.';
         pausedMessage.hidden = activeProject.owner_id === user?.id || isAcceptingApplications(activeProject);
@@ -2126,10 +2161,21 @@ import {
 
     const MAX_PROJECT_QUESTIONS = 8;
     const MAX_PROJECT_LINKS = 6;
-    function questionRowMarkup(value = '') {
+    // The row carries its own question id so saveProject can pair a value with
+    // the row it came from. Diffing by position instead meant clearing one
+    // question shifted every later answer onto the wrong prompt — applicants'
+    // stored answers are keyed by question id, so they silently re-attached to
+    // a question nobody had asked them.
+    //
+    // minlength matches project_questions' own `char_length(prompt) between 8
+    // and 500` check. Without it a three-character question sailed past the
+    // browser and came back as a raw Postgres constraint message — after the
+    // project row had already been created.
+    function questionRowMarkup(value = '', id = '') {
       return `
         <div class="question-row">
-          <input class="field" name="question" maxlength="500" placeholder="Ask applicants something, or leave this blank" value="${escapeHtml(value)}">
+          <input type="hidden" name="question_id" value="${escapeHtml(id)}">
+          <input class="field" name="question" minlength="8" maxlength="500" placeholder="Ask applicants something, or leave this blank" value="${escapeHtml(value)}">
           <button class="btn btn-small remove-question" type="button" aria-label="Remove question">×</button>
         </div>
       `;
@@ -2145,8 +2191,13 @@ import {
         };
       });
     }
-    function renderQuestionRows(prompts) {
-      $('#question-list').innerHTML = (prompts.length ? prompts : ['']).map(questionRowMarkup).join('');
+    // Takes {id, prompt} rows so each input stays tied to the question row it
+    // was loaded from.
+    function renderQuestionRows(questions) {
+      const rows = questions.length ? questions : [{ id: '', prompt: '' }];
+      $('#question-list').innerHTML = rows
+        .map(question => questionRowMarkup(question.prompt, question.id))
+        .join('');
       bindQuestionRowButtons();
     }
 
@@ -2232,7 +2283,7 @@ import {
           .select('id,prompt').eq('project_id', project.id).order('position');
         if (result.data?.length) {
           editingQuestionIds = result.data.map(row => row.id);
-          renderQuestionRows(result.data.map(row => row.prompt));
+          renderQuestionRows(result.data);
         }
       }
       openModal('project-form');
@@ -2271,42 +2322,53 @@ import {
         seats_total: Number(values.get('seats')),
         status: String(values.get('status'))
       };
+      const wasEditing = Boolean(editingProjectId);
       const result = editingProjectId
         ? await supabase.from('projects').update(payload).eq('id', editingProjectId).select('id').single()
         : await supabase.from('projects').insert({ ...payload, owner_id: user.id }).select('id').single();
       if (result.error) return toast(result.error.message);
 
       const projectId = result.data.id;
-      // Questions are optional and there can be several. Diff positionally
-      // against what was already there (editingQuestionIds, fetched in
-      // openProjectForm) rather than delete-and-recreate everything: a
-      // slot that still has text in the same position keeps its existing
-      // row's id, since applicants' saved answers are keyed by question id
-      // — recreating rows would orphan their answers from the question
-      // they were actually written for.
-      const newQuestions = values.getAll('question')
-        .map(value => String(value || '').trim())
-        .filter(Boolean)
+      // The project row exists from here on. Anything below that fails leaves
+      // the modal open for a retry — and that retry used to run this insert a
+      // second time, publishing a duplicate project. Switching to edit mode
+      // makes every retry update the row that was just created instead.
+      editingProjectId = projectId;
+
+      // Questions are optional and there can be several. Pair each submitted
+      // value with the id of the row it came from (a hidden question_id input
+      // per row) rather than diffing by position: applicants' saved answers
+      // are keyed by question id, so a positional diff over a compacted array
+      // silently moved existing answers onto whichever prompt slid into that
+      // slot. An empty row is dropped, but only after it has been matched to
+      // its own id, so the right row gets deleted.
+      const submittedIds = values.getAll('question_id').map(value => String(value || ''));
+      const submitted = values.getAll('question')
+        .map((value, index) => ({ text: String(value || '').trim(), id: submittedIds[index] || '' }))
+        .filter(item => item.text)
         .slice(0, MAX_PROJECT_QUESTIONS);
-      const questionOps = [];
-      const questionSlots = Math.max(newQuestions.length, editingQuestionIds.length);
-      for (let index = 0; index < questionSlots; index += 1) {
-        const text = newQuestions[index];
-        const existingId = editingQuestionIds[index];
-        if (text && existingId) {
-          questionOps.push(supabase.from('project_questions').update({ prompt: text, position: index }).eq('id', existingId));
-        } else if (text) {
-          questionOps.push(supabase.from('project_questions').insert({ project_id: projectId, prompt: text, position: index, required: true }));
-        } else if (existingId) {
+      const keptIds = new Set(submitted.map(item => item.id).filter(Boolean));
+      const questionOps = submitted.map((item, index) => item.id
+        ? supabase.from('project_questions').update({ prompt: item.text, position: index }).eq('id', item.id)
+        : supabase.from('project_questions').insert({ project_id: projectId, prompt: item.text, position: index, required: true }));
+      for (const existingId of editingQuestionIds) {
+        if (!keptIds.has(existingId)) {
           questionOps.push(supabase.from('project_questions').delete().eq('id', existingId));
         }
       }
       const questionResults = await Promise.all(questionOps);
       const questionError = questionResults.find(item => item.error)?.error;
-      if (questionError) return toast(questionError.message);
+      if (questionError) {
+        // The questions that did save are now the project's real state — keep
+        // editingQuestionIds in step so a retry doesn't try to re-create them.
+        editingQuestionIds = [...keptIds];
+        return toast(/question|prompt/i.test(questionError.message || '')
+          ? 'Each application question needs at least 8 characters. Shorten or clear the ones that are too short.'
+          : questionError.message);
+      }
 
       closeModal('project-form');
-      toast(editingProjectId ? 'Project updated.' : 'Project published.');
+      toast(wasEditing ? 'Project updated.' : 'Project published.');
       editingProjectId = null;
       editingQuestionIds = [];
       await loadAll();
@@ -2321,7 +2383,7 @@ import {
         return;
       }
       const projectTitle = application.projects?.title || 'this project';
-      if (!window.confirm(`Cancel your application to "${projectTitle}"? It will remain in your request history as withdrawn.`)) return;
+      if (!window.confirm(`Cancel your application to "${projectTitle}"? It stays in your request history as withdrawn, and you can send it again later while the project is still open.`)) return;
       const originalLabel = button?.textContent;
       if (button) {
         button.disabled = true;
@@ -2346,6 +2408,34 @@ import {
       toast('Application withdrawn.');
       await loadAll();
       switchPanel('requests');
+    }
+
+    // Withdrawing used to be a one-way door: the row stays (and
+    // unique(project_id, applicant_id) blocks a fresh insert with 23505), so
+    // the apply form never came back and the only message on offer was "You
+    // already applied to this project."
+    async function reapplyApplication(id, button = null) {
+      if (!(await requireUser())) return;
+      const originalLabel = button?.textContent;
+      if (button) {
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        button.textContent = 'Reopening…';
+      }
+      const result = await supabase.rpc('reapply_application', { target_application: id });
+      if (result.error) {
+        if (button) {
+          button.disabled = false;
+          button.removeAttribute('aria-busy');
+          button.textContent = originalLabel;
+        }
+        return toast(result.error.message || 'This application could not be sent again.');
+      }
+      toast('Your request has been sent again.');
+      await loadAll();
+      // Re-render the open modal so it reflects the pending state rather than
+      // still offering "Send this request again".
+      if (activeModal?.id === 'modal-project-detail') await openProjectDetail(activeProject?.id);
     }
 
     async function toggleProjectIntake(projectId) {
@@ -2507,15 +2597,22 @@ import {
       await loadAll();
     }
 
+    // Set while the interview modal is editing an existing booking rather than
+    // creating one, so submitInterview knows to PATCH the Google event instead
+    // of creating a second invitation to the same meeting.
+    let reschedulingInterviewId = null;
+
     async function openInterview(id) {
       const application = applications.find(item => String(item.id) === String(id));
       if (!application) return;
       if (!['pending', 'accepted', 'interview'].includes(application.status)) {
         return toast('Interviews cannot be scheduled for a closed application.');
       }
-      if (interviews.some(item => String(item.application_id) === String(application.id))) {
-        return toast('An interview is already scheduled for this application.');
-      }
+      // An already-scheduled interview used to be a hard stop here, with no
+      // way to move or cancel it anywhere in the app — the owner's only exit
+      // was to decline the applicant. Open it for editing instead.
+      const existingInterview = interviews.find(item => String(item.application_id) === String(application.id));
+      reschedulingInterviewId = existingInterview?.id || null;
       const form = $('#interview-form');
       form.reset();
       form.hidden = false;
@@ -2523,9 +2620,11 @@ import {
       form.application_id.value = application.id;
       form.project_id.value = application.project_id;
       form.candidate_id.value = application.applicant_id;
-      form.title.value = `${application.projects?.title || 'connectEd'} interview`;
-      const suggestedStart = new Date(Date.now() + 60 * 60 * 1000);
-      suggestedStart.setMinutes(Math.ceil(suggestedStart.getMinutes() / 30) * 30, 0, 0);
+      form.title.value = existingInterview?.title || `${application.projects?.title || 'connectEd'} interview`;
+      const suggestedStart = existingInterview
+        ? new Date(existingInterview.starts_at)
+        : new Date(Date.now() + 60 * 60 * 1000);
+      if (!existingInterview) suggestedStart.setMinutes(Math.ceil(suggestedStart.getMinutes() / 30) * 30, 0, 0);
       const localDate = date => [
         date.getFullYear(),
         String(date.getMonth() + 1).padStart(2, '0'),
@@ -2540,7 +2639,48 @@ import {
       // resolves the real address with the service-role key, so leave this
       // blank and let it stay optional as an override.
       form.email.value = '';
+      form.notes.value = existingInterview?.notes || '';
+      $('#interview-title').textContent = existingInterview ? 'Reschedule interview' : 'Schedule an interview';
+      const submitButton = form.querySelector('[type="submit"]');
+      if (submitButton) submitButton.textContent = existingInterview ? 'Update interview' : 'Create Meet link';
+      let cancelInterviewButton = $('#cancel-interview');
+      if (!cancelInterviewButton) {
+        cancelInterviewButton = document.createElement('button');
+        cancelInterviewButton.id = 'cancel-interview';
+        cancelInterviewButton.type = 'button';
+        cancelInterviewButton.className = 'btn btn-small btn-danger-subtle';
+        form.querySelector('.form-actions')?.prepend(cancelInterviewButton);
+      }
+      cancelInterviewButton.textContent = 'Cancel interview';
+      cancelInterviewButton.hidden = !existingInterview;
+      cancelInterviewButton.onclick = () => cancelScheduledInterview(reschedulingInterviewId, cancelInterviewButton);
       openModal('interview');
+    }
+
+    async function cancelScheduledInterview(interviewId, button) {
+      if (!interviewId) return;
+      if (!window.confirm('Cancel this interview? The calendar event is deleted and the candidate is notified.')) return;
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Cancelling…';
+      try {
+        const response = await fetch('/api/google-calendar', {
+          method: 'POST',
+          headers: await authHeaders(),
+          body: JSON.stringify({ mode: 'cancel', interviewId })
+        });
+        const data = await safeJson(response);
+        if (!response.ok) return toast(data.error || 'The interview could not be cancelled.');
+        closeModal('interview');
+        toast(data.calendarEventRemoved
+          ? 'Interview cancelled.'
+          : 'Interview cancelled here, but the Google event may need removing manually.');
+        reschedulingInterviewId = null;
+        await loadAll();
+      } finally {
+        button.disabled = false;
+        button.textContent = originalLabel;
+      }
     }
 
     // Keep the time picker honest: when the chosen date is today, the
@@ -2572,6 +2712,37 @@ import {
       if (startsAt.getTime() < Date.now() + 5 * 60 * 1000) {
         return toast('Pick a start time at least five minutes from now.');
       }
+      // Rescheduling PATCHes the existing Google event so the candidate keeps
+      // the same Meet link and receives an update, rather than a second
+      // invitation to a meeting they are already booked for.
+      if (reschedulingInterviewId) {
+        const patchResponse = await fetch('/api/google-calendar', {
+          method: 'POST',
+          headers: await authHeaders(),
+          body: JSON.stringify({
+            mode: 'reschedule',
+            interviewId: reschedulingInterviewId,
+            title: values.get('title'),
+            startsAt: startsAt.toISOString(),
+            endsAt: endsAt.toISOString(),
+            notes: values.get('notes')
+          })
+        });
+        const patchData = await safeJson(patchResponse);
+        if (!patchResponse.ok) {
+          if (patchData.needsGoogleReconnect) {
+            toast(patchData.error || 'Reconnect Google to grant Calendar access.');
+            return beginGoogleSignIn();
+          }
+          return toast(patchData.error || 'The interview could not be rescheduled.');
+        }
+        closeModal('interview');
+        reschedulingInterviewId = null;
+        toast('Interview rescheduled — the candidate has been notified.');
+        await loadAll();
+        return;
+      }
+
       // No Google token to attach here — the server holds a stored refresh
       // token from sign-in and mints its own access token per request.
       const response = await fetch('/api/google-calendar', {

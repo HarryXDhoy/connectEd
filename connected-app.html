@@ -301,7 +301,7 @@
           <legend>Application questions · optional</legend>
           <div class="question-list" id="question-list">
             <div class="question-row">
-              <input class="field" name="question" maxlength="500" placeholder="Ask applicants something, or leave this blank">
+              <input class="field" name="question" minlength="8" maxlength="500" placeholder="Ask applicants something, or leave this blank">
               <button class="btn btn-small remove-question" type="button" aria-label="Remove question" hidden>×</button>
             </div>
           </div>
@@ -345,7 +345,7 @@
           <div class="empty project-detail-state" id="landing-application-state" hidden></div>
           <div class="application-submit application-fields">
             <label class="application-message">Optional note for the project owner
-              <textarea class="field" name="message" maxlength="3000" placeholder="Add context or anything else you would like to share."></textarea>
+              <textarea class="field" name="message" minlength="20" maxlength="3000" placeholder="Add context or anything else you would like to share (at least 20 characters)."></textarea>
             </label>
             <div class="form-actions">
               <button class="btn" type="button" data-close="project">Cancel</button>
