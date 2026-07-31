@@ -145,6 +145,9 @@ import {
     const seatsLabel = project => {
       const total = Number(project?.seats_total) || 0;
       if (!total) return '';
+      // null means the seat-count RPC failed. "0 of 5 seats filled" would be a
+      // confident claim built on nothing, so say nothing.
+      if (!seatCounts) return '';
       const filled = seatCounts.get(String(project.id)) || 0;
       // A bare "3/5 seats" makes someone stop and work out which number is
       // which — spelling it out reads correctly on first glance whether
@@ -453,8 +456,14 @@ import {
           owner: project.profiles?.display_name || 'connectEd member'
         })));
 
-        const { data: seatData } = await supabase.rpc('project_seat_counts');
-        seatCounts = new Map((seatData || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
+        // Discarding this error made every project render "0 of N seats
+        // filled" — a specific, confident claim that the project is wide open,
+        // produced by the absence of data rather than by any data. seatCounts
+        // is left null on failure so seatsLabel() can say nothing instead.
+        const { data: seatData, error: seatError } = await supabase.rpc('project_seat_counts');
+        seatCounts = seatError
+          ? null
+          : new Map((seatData || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
         renderProjectFilters();
         renderProjects();
       } catch (error) {
@@ -2542,10 +2551,30 @@ import {
         const results = await response.json();
         const match = results[0];
         if (!match) return null;
-        return { latitude: Number(Number(match.lat).toFixed(2)), longitude: Number(Number(match.lon).toFixed(2)) };
+        return validCoordinates(match.lat, match.lon);
       } catch (_) {
         return null;
       }
+    }
+
+    // Nominatim's response was trusted as-is. A reply without usable lat/lon
+    // yields NaN, JSON.stringify turns NaN into null, and the update then
+    // wiped the member's saved location — while the UI cheerfully toasted
+    // "Pinned". Same Number.isFinite discipline profileLocation() already
+    // applies on the way in, now applied on the way out too.
+    function validCoordinates(rawLatitude, rawLongitude) {
+      const latitude = Number(rawLatitude);
+      const longitude = Number(rawLongitude);
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 || latitude > 90 ||
+        longitude < -180 || longitude > 180
+      ) return null;
+      return {
+        latitude: Number(latitude.toFixed(2)),
+        longitude: Number(longitude.toFixed(2))
+      };
     }
 
     $('#location-use-gps').onclick = event => {

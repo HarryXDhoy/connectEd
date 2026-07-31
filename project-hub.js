@@ -153,6 +153,9 @@ import {
     const seatsLabel = project => {
       const total = Number(project?.seats_total) || 0;
       if (!total) return '';
+      // null means the seat-count RPC failed. "0 of 5 seats filled" would be a
+      // confident claim built on nothing, so say nothing.
+      if (!seatCounts) return '';
       const filled = seatCounts.get(String(project.id)) || 0;
       // A bare "3/5 seats" makes someone stop and work out which number is
       // which — spelling it out reads correctly on first glance whether
@@ -283,6 +286,11 @@ import {
     // attention open automatically and fully-reviewed ones stay tucked away.
     let applicantGroupOverrides = new Map();
     let loadError = '';
+    // Per-list load failures, kept separate from loadError (which covers the
+    // board) so a failed applicants fetch can say so instead of rendering the
+    // same zero-state as "nobody has applied".
+    let applicationsError = '';
+    let sentApplicationsError = '';
     let paymentsConfigured = false;
     let messages = [];
     let messagesAvailable = false;
@@ -365,6 +373,19 @@ import {
       );
     }
 
+    // .subscribe() with no callback swallows CHANNEL_ERROR and TIMED_OUT
+    // entirely, so a realtime channel that never connects looks exactly like
+    // one where nothing has happened yet — indistinguishable from working, for
+    // as long as nobody sends you anything. The 45s poll still covers request
+    // statuses, so this is diagnosis rather than recovery: without it there is
+    // no signal anywhere that live updates are off.
+    function reportChannelStatus(name) {
+      return status => {
+        if (status === 'SUBSCRIBED' || status === 'CLOSED') return;
+        console.error(`[connectEd] realtime channel "${name}" is ${status} — falling back to polling.`);
+      };
+    }
+
     function subscribeToRequestUpdates() {
       if (!supabase || !user) {
         if (requestSubscription) supabase?.removeChannel(requestSubscription);
@@ -391,7 +412,7 @@ import {
           toast(`Your request for ${title} is now ${statusLabel(payload.new.status).toLowerCase()}.`);
           window.setTimeout(loadAll, 0);
         })
-        .subscribe();
+        .subscribe(reportChannelStatus('request updates'));
     }
 
     async function pollRequestStatuses() {
@@ -446,7 +467,7 @@ import {
           table: 'messages',
           filter: `sender_id=eq.${user.id}`
         }, () => window.setTimeout(loadAll, 0))
-        .subscribe();
+        .subscribe(reportChannelStatus('messages'));
     }
 
     function otherParticipantId(message) {
@@ -847,6 +868,8 @@ import {
       discoveryBoard.innerHTML = '<span class="sr-only">Loading projects</span><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';
       try {
       user = await currentUser();
+      applicationsError = '';
+      sentApplicationsError = '';
       await updateAccount();
       if (!isSupabaseConfigured) {
         projects = previewProjects;
@@ -889,7 +912,13 @@ import {
       })));
       ownedProjects = user ? projects.filter(project => project.owner_id === user.id) : [];
       const seatCountResult = await supabase.rpc('project_seat_counts');
-      seatCounts = new Map((seatCountResult.data || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
+      // Same as the landing page: swallowing this error made every project
+      // claim "0 of N seats filled", a confident statement produced by the
+      // absence of data rather than by any data. Leave it null so seatsLabel()
+      // renders nothing at all instead.
+      seatCounts = seatCountResult.error
+        ? null
+        : new Map((seatCountResult.data || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
 
       if (user) {
         let profileResult = await supabase
@@ -937,6 +966,9 @@ import {
           .select('id,project_id,applicant_id,message,answers,status,created_at,updated_at,projects!inner(id,title,summary,tags,owner_id),profiles:applicant_id(id,display_name,headline,bio,skills,avatar_url,priority_match_active)')
           .eq('projects.owner_id', user.id)
           .order('created_at', { ascending: false });
+        applicationsError = applicationResult.error
+          ? applicationResult.error.message || 'Applicants could not be loaded.'
+          : '';
         applications = applicationResult.error ? [] : applicationResult.data || [];
 
         const sentApplicationResult = await supabase
@@ -944,6 +976,9 @@ import {
           .select('id,project_id,applicant_id,message,status,created_at,updated_at,projects(id,title,tags,owner_id,profiles:owner_id(display_name))')
           .eq('applicant_id', user.id)
           .order('created_at', { ascending: false });
+        sentApplicationsError = sentApplicationResult.error
+          ? sentApplicationResult.error.message || 'Your applications could not be loaded.'
+          : '';
         sentApplications = sentApplicationResult.error ? [] : sentApplicationResult.data || [];
 
         let interviewResult = await supabase
@@ -1358,6 +1393,11 @@ import {
         bindSigninButtons();
         return;
       }
+      if (sentApplicationsError) {
+        $('#request-list').innerHTML = listErrorMarkup('Your applications could not be loaded.');
+        bindRetryLoadButtons();
+        return;
+      }
       $('#request-list').innerHTML = sentApplications.length
         ? sentApplications.map(application => {
             const project = application.projects || {};
@@ -1440,10 +1480,31 @@ import {
       return `<div class="auth-wall"><h2>${escapeHtml(message)}</h2><p>Your work stays tied to your account.</p><button class="btn btn-primary" data-google-signin>Continue with Google</button></div>`;
     }
 
+    // A list that failed to load and a list that is genuinely empty used to
+    // render identically, because the fetch results were folded straight into
+    // `x = result.error ? [] : result.data`. An owner whose applicants query
+    // errored was told "No applications have reached your projects yet" — a
+    // statement about their project, not about the request, and one they had
+    // no reason to doubt. Say what actually happened and offer a retry.
+    function listErrorMarkup(message) {
+      return `<div class="empty"><p>${escapeHtml(message)}</p><button class="btn btn-small" type="button" data-retry-load>Retry</button></div>`;
+    }
+
+    function bindRetryLoadButtons() {
+      $$('[data-retry-load]').forEach(button => {
+        button.onclick = () => loadAll();
+      });
+    }
+
     function renderApplicants() {
       if (!user) {
         $('#applicant-list').innerHTML = authWall('Sign in to review applicants.');
         bindSigninButtons();
+        return;
+      }
+      if (applicationsError) {
+        $('#applicant-list').innerHTML = listErrorMarkup('Your applicants could not be loaded.');
+        bindRetryLoadButtons();
         return;
       }
       const ordered = [...applications].sort((a, b) =>
@@ -1635,6 +1696,32 @@ import {
       }
     }
 
+    // renderProfile() runs from renderAll(), and renderAll() runs from any
+    // background loadAll() — a realtime message arriving, the 45s request
+    // poll, another tab signing in. Repopulating the form from there meant
+    // someone halfway through rewriting their bio would watch it revert to
+    // the saved copy with no warning and nothing to undo it. Only refill the
+    // form when the member has not started editing it.
+    let profileFormDirty = false;
+
+    function populateProfileForm() {
+      if (profileFormDirty) return;
+      for (const key of ['display_name', 'headline', 'bio']) {
+        $(`#profile-form [name=${key}]`).value = profile?.[key] || '';
+      }
+      $('#profile-form [name=skills]').value = (profile?.skills || []).join(', ');
+      $('#profile-form [name=chat_link_label]').value = profile?.chat_link_label || '';
+      $('#profile-form [name=chat_link]').value = profile?.chat_link || '';
+      const location = profileLocation(profile);
+      $('#profile-form [name=location_label]').value = location?.label || '';
+      $('#profile-form [name=location_latitude]').value = location?.latitude ?? '';
+      $('#profile-form [name=location_longitude]').value = location?.longitude ?? '';
+      $('#location-shared').checked = Boolean(location);
+      $('#location-status').textContent = location
+        ? `Approximate location shared${location.label ? ` · ${location.label}` : ''}.`
+        : 'No location collected.';
+    }
+
     function renderProfile() {
       $('#profile-wall').hidden = Boolean(user);
       $('#profile-content').hidden = !user;
@@ -1659,20 +1746,7 @@ import {
       $('#profile-identity-name').textContent = displayName;
       $('#profile-identity-email').textContent = user.email || '';
       applyBannerImage($('#profile-banner'), profile?.banner_url);
-      for (const key of ['display_name', 'headline', 'bio']) {
-        $(`#profile-form [name=${key}]`).value = profile?.[key] || '';
-      }
-      $('#profile-form [name=skills]').value = (profile?.skills || []).join(', ');
-      $('#profile-form [name=chat_link_label]').value = profile?.chat_link_label || '';
-      $('#profile-form [name=chat_link]').value = profile?.chat_link || '';
-      const location = profileLocation(profile);
-      $('#profile-form [name=location_label]').value = location?.label || '';
-      $('#profile-form [name=location_latitude]').value = location?.latitude ?? '';
-      $('#profile-form [name=location_longitude]').value = location?.longitude ?? '';
-      $('#location-shared').checked = Boolean(location);
-      $('#location-status').textContent = location
-        ? `Approximate location shared${location.label ? ` · ${location.label}` : ''}.`
-        : 'No location collected.';
+      populateProfileForm();
       // A member who has paid but whose webhook hasn't landed yet is neither
       // "Free member" nor Plus — saying either would be a lie, and the free
       // wording actively invites a second purchase.
@@ -2680,10 +2754,30 @@ import {
         const results = await response.json();
         const match = results[0];
         if (!match) return null;
-        return { latitude: Number(match.lat), longitude: Number(match.lon) };
+        return validCoordinates(match.lat, match.lon);
       } catch (_) {
         return null;
       }
+    }
+
+    // Nominatim's response was trusted as-is. A reply without usable lat/lon
+    // yields NaN, JSON.stringify turns NaN into null, and the update then
+    // wiped the member's saved location instead of leaving it alone. Same
+    // Number.isFinite discipline profileLocation() already applies on the way
+    // in, now applied on the way out too.
+    function validCoordinates(rawLatitude, rawLongitude) {
+      const latitude = Number(rawLatitude);
+      const longitude = Number(rawLongitude);
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 || latitude > 90 ||
+        longitude < -180 || longitude > 180
+      ) return null;
+      return {
+        latitude: Number(latitude.toFixed(2)),
+        longitude: Number(longitude.toFixed(2))
+      };
     }
 
     async function saveProfile(form) {
@@ -2692,7 +2786,13 @@ import {
       const labelValue = String(values.get('location_label') || '').trim().slice(0, 100);
       let latitudeValue = String(values.get('location_latitude') || '').trim();
       let longitudeValue = String(values.get('location_longitude') || '').trim();
-      if (shareLocation && (!latitudeValue || !longitudeValue) && labelValue) {
+      // Editing the city without touching the hidden coordinate fields used to
+      // save the new label against the old coordinates, leaving the profile
+      // claiming one place while the globe pinned another. Re-geocode whenever
+      // the label no longer matches what those coordinates were looked up for.
+      const savedLocationLabel = profileLocation(profile)?.label || '';
+      const labelChanged = Boolean(labelValue) && labelValue !== savedLocationLabel;
+      if (shareLocation && labelValue && (!latitudeValue || !longitudeValue || labelChanged)) {
         $('#location-status').textContent = 'Looking up that location…';
         const geocoded = await geocodeLabel(labelValue);
         if (geocoded) {
@@ -2700,22 +2800,29 @@ import {
           longitudeValue = String(geocoded.longitude);
           $('#profile-form [name=location_latitude]').value = latitudeValue;
           $('#profile-form [name=location_longitude]').value = longitudeValue;
+        } else if (labelChanged) {
+          // The old coordinates point at the place the member just replaced.
+          // Saving no location beats saving a confidently wrong one.
+          latitudeValue = '';
+          longitudeValue = '';
         }
       }
       const latitude = Number(latitudeValue);
       const longitude = Number(longitudeValue);
-      if (
+      const locationUsable = Boolean(
         shareLocation &&
-        (
-          !latitudeValue ||
-          !longitudeValue ||
-          !Number.isFinite(latitude) ||
-          !Number.isFinite(longitude)
-        )
-      ) {
-        return toast('Type a city we can find (e.g. "Seoul, South Korea"), or use "Use my current location".');
-      }
-      const location = shareLocation
+        latitudeValue &&
+        longitudeValue &&
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude)
+      );
+      // Location is optional, but it used to hold the whole form hostage:
+      // typing anything into the city field armed a hard gate, so one
+      // geocoding miss rejected the entire save — name, bio, skills and all —
+      // and left "Looking up that location…" sitting on screen. Save
+      // everything else and say what didn't stick.
+      const locationMissed = shareLocation && !locationUsable;
+      const location = locationUsable
         ? {
             shared: true,
             label: labelValue,
@@ -2763,9 +2870,20 @@ import {
         result = await supabase.from('profiles').update(withoutChatLink).eq('id', user.id);
         savedMessage = 'Profile saved, but the chat link needs a database migration first.';
       }
-      if (result.error) return toast(result.error.message);
+      if (result.error) {
+        // Leave the "Looking up that location…" line behind and the form looks
+        // like it is still working on something it gave up on long ago.
+        $('#location-status').textContent = 'Location could not be saved.';
+        return toast(result.error.message);
+      }
       pendingAvatarDataUrl = null;
       pendingBannerDataUrl = null;
+      if (locationMissed) {
+        savedMessage = 'Profile saved, but we could not find that location — try a city and country, or use "Use my current location".';
+      }
+      // The form now matches what is stored, so let background reloads
+      // repopulate it again.
+      profileFormDirty = false;
       toast(savedMessage);
       await loadAll();
     }
@@ -2782,6 +2900,10 @@ import {
         $('#profile-form [name=location_latitude]').value = latitude;
         $('#profile-form [name=location_longitude]').value = longitude;
         $('#location-shared').checked = true;
+        // Setting .value in script fires no input event, so mark the form
+        // dirty by hand or a background reload will throw these coordinates
+        // away before the member gets to save them.
+        profileFormDirty = true;
         $('#location-status').textContent = 'Approximate location ready. Save your profile to share it.';
         button.disabled = false;
         button.textContent = 'Update current location';
@@ -2804,6 +2926,12 @@ import {
     $('#profile-form [name=location_label]').addEventListener('input', event => {
       if (event.target.value.trim()) $('#location-shared').checked = true;
     });
+
+    // Any edit marks the form dirty so a background loadAll() stops
+    // repopulating it underneath the person typing. Cleared after a
+    // successful save (see saveProfile) and when the panel is left.
+    $('#profile-form').addEventListener('input', () => { profileFormDirty = true; });
+    $('#profile-form').addEventListener('change', () => { profileFormDirty = true; });
 
     $('#location-shared').onchange = event => {
       if (event.currentTarget.checked) return;
