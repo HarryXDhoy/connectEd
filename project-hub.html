@@ -28,7 +28,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="connectEd">
   <title>connectEd — Project board</title>
-  <link rel="stylesheet" href="project-hub.css?v=20260730-mobile">
+  <link rel="stylesheet" href="project-hub.css?v=20260731-audit">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -172,7 +172,7 @@
             <div class="profile-banner" id="profile-banner" hidden></div>
             <label class="profile-banner-upload" for="profile-banner-input">
               Change cover image
-              <input id="profile-banner-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+              <input id="profile-banner-input" class="file-input-visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Change cover image">
             </label>
             <p class="eyebrow">Public profile</p>
             <h2>Show the work you can do.</h2>
@@ -180,9 +180,9 @@
               <div class="profile-photo-wrap">
                 <img class="profile-photo" id="profile-photo" alt="Profile photo" hidden>
                 <span class="profile-photo-fallback" id="profile-photo-fallback" aria-hidden="true">cE</span>
-                <label class="profile-photo-edit" for="profile-photo-input" title="Change photo" aria-label="Change profile photo">
+                <label class="profile-photo-edit" for="profile-photo-input" title="Change photo">
                   ✎
-                  <input id="profile-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+                  <input id="profile-photo-input" class="file-input-visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Change profile photo">
                 </label>
               </div>
               <div>
@@ -532,6 +532,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="app-config.js?v=20260727"></script>
-  <script type="module" src="project-hub.js?v=20260730-clickable-profiles"></script>
+  <script type="module" src="project-hub.js?v=20260731-audit"></script>
 </body>
 </html>

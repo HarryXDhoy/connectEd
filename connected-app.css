@@ -87,6 +87,57 @@
       white-space: nowrap;
       border: 0;
     }
+    /* Keyboard/screen-reader route to the globe's member nodes. Hidden the
+       same way .sr-only hides things, but it unfolds into a real panel as soon
+       as one of its buttons takes focus — an invisible control that steals
+       focus is worse than no control at all for a sighted keyboard user. */
+    .globe-member-list {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      list-style: none;
+    }
+    /* position: fixed rather than absolute — the hero is a grid of stacked,
+       z-indexed layers, and anchoring to the viewport keeps the panel above
+       all of them without having to win a specificity race against each. */
+    .globe-member-list:focus-within {
+      position: fixed;
+      top: 88px;
+      left: 24px;
+      z-index: 60;
+      display: grid;
+      gap: 4px;
+      width: min(320px, calc(100vw - 48px));
+      height: auto;
+      max-height: min(60vh, 420px);
+      padding: 8px;
+      overflow-y: auto;
+      clip: auto;
+      white-space: normal;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      box-shadow: 0 18px 48px color-mix(in oklab, #000, transparent 40%);
+    }
+    .globe-member-list button {
+      width: 100%;
+      min-height: 44px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--fg);
+      font: inherit;
+      font-size: var(--text-sm);
+      text-align: left;
+      cursor: pointer;
+    }
+    .globe-member-list button:hover { border-color: var(--accent); }
     .skip-link {
       position: fixed;
       top: var(--space-3);
@@ -406,7 +457,7 @@
       object-fit: cover;
     }
     .member-project-info { flex: 1; min-width: 0; }
-    .member-project-item h3 {
+    .member-project-item h4 {
       margin: 0 0 2px;
       font-size: var(--text-base);
       overflow: hidden;

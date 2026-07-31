@@ -809,6 +809,25 @@
       overflow: hidden;
       opacity: 0;
     }
+    /* The profile photo and cover-image file inputs used to carry the `hidden`
+       attribute, which [hidden] above turns into display:none !important —
+       removing them from the tab order entirely. Their <label> wrappers are
+       not focusable either, so both uploads were reachable by mouse only. Same
+       technique as .star-rating input: invisible, but still a real focusable
+       control the label points at. The :focus-within rules put the ring on the
+       label chrome, since the input itself has nothing to draw. */
+    .file-input-visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+    }
+    .profile-banner-upload:focus-within,
+    .profile-photo-edit:focus-within {
+      outline: 0;
+      box-shadow: var(--focus-ring);
+    }
     .star-rating label {
       display: grid;
       width: 44px;

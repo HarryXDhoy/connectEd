@@ -28,7 +28,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="connectEd">
   <title>connectEd - Find your next project</title>
-  <link rel="stylesheet" href="connected-app.css?v=20260730-mobile">
+  <link rel="stylesheet" href="connected-app.css?v=20260731-audit">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -138,6 +138,17 @@
             </div>
           </div>
         </div>
+        <!-- The canvas is the only route to a member node and it answers only
+             to a raycast click, so members with no published project (who
+             appear nowhere else on the site) could not be reached without a
+             mouse. This list mirrors the nodes as real buttons. It sits
+             outside .stage deliberately: that element has z-index 1 and
+             overflow:hidden, so anything inside it is trapped underneath the
+             hero copy and clipped at its edges. Visually hidden until
+             something inside takes focus, so screen readers get the roster
+             without sighted keyboard users tabbing through invisible
+             controls. -->
+        <ul class="globe-member-list" id="globe-member-list" aria-label="Members shown on the globe"></ul>
       </div>
     </section>
 
@@ -448,6 +459,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="app-config.js?v=20260727"></script>
-  <script type="module" src="connected-app.js?v=20260730-clickable-profiles"></script>
+  <script type="module" src="connected-app.js?v=20260731-audit"></script>
 </body>
 </html>

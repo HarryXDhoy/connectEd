@@ -917,7 +917,7 @@ import {
           <article class="member-project-item">
             <img class="member-project-cover" src="${cover}" alt="" loading="lazy" decoding="async">
             <div class="member-project-info">
-              <h3>${escapeHtml(project.title)}</h3>
+              <h4>${escapeHtml(project.title)}</h4>
               <p>${escapeHtml(project.summary)}</p>
               <div class="tags">${projectTags(project).slice(0, 3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
             </div>
@@ -938,7 +938,11 @@ import {
       }));
       $('#member-projects-name').textContent = node.cluster ? node.meta.split(' · ')[0] : node.name;
       $('#member-projects-list').innerHTML = members.map(({ member, projects: memberProjects }) => {
-        const heading = node.cluster ? `<h4 class="member-project-group">${escapeHtml(member.name)}</h4>` : '';
+        // The modal's own title is an h2, so a member group is an h3 and the
+        // project titles under it h4. It used to run h2 -> h4 -> h3, which
+        // reads to a screen reader as the projects being parents of the member
+        // they belong to.
+        const heading = node.cluster ? `<h3 class="member-project-group">${escapeHtml(member.name)}</h3>` : '';
         if (!memberProjects.length) {
           return `${heading}<p class="member-no-projects">${member.headline ? `${escapeHtml(member.headline)} · ` : ''}Hasn't published a project yet.</p>`;
         }
@@ -1701,6 +1705,19 @@ import {
             cluster: count > 1
           };
         });
+
+        // Mirror every node as a real button. showMemberProjects() is the same
+        // handler the raycast click uses, so this is an alternative route to
+        // the existing modal rather than a parallel implementation.
+        const memberList = $('#globe-member-list');
+        if (memberList) {
+          memberList.innerHTML = locations.map((location, index) => `
+            <li><button type="button" data-globe-member="${index}">${escapeHtml(location.name)}<span class="sr-only"> — ${escapeHtml(location.meta)}</span></button></li>
+          `).join('');
+          $$('#globe-member-list [data-globe-member]').forEach(button => {
+            button.onclick = () => showMemberProjects(locations[Number(button.dataset.globeMember)]);
+          });
+        }
 
         const viewerLocation = locations.find(location => location.viewer);
         const findMeButton = $('#network-step-find-me');

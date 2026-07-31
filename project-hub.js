@@ -746,6 +746,15 @@ import {
       }
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
+      // The trap only recognises "at the first element" and "at the last one",
+      // so focus stranded anywhere else — on an element the modal has since
+      // hidden, or on <body> after a re-render — matched neither branch and
+      // Tab escaped into the page behind the dialog. Pull it back in.
+      if (!activeModal.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+        return;
+      }
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
@@ -1639,6 +1648,11 @@ import {
           const currentlyExpanded = button.getAttribute('aria-expanded') === 'true';
           applicantGroupOverrides.set(id, !currentlyExpanded);
           renderApplicants();
+          // renderApplicants() rewrites the whole list, destroying the button
+          // that was just activated — focus fell back to <body>, so the next
+          // Tab restarted from the top of the document instead of continuing
+          // from the group that was just opened. Put focus on the replacement.
+          $(`[data-toggle-group="${CSS.escape(id)}"]`)?.focus();
         };
       });
       $$('[data-review]').forEach(button => {
@@ -1975,6 +1989,12 @@ import {
       $('#review-context').textContent = `Your verified review of ${revieweeName} will appear on their connectEd profile.`;
       $('#review-person-picker').hidden = true;
       form.hidden = false;
+      // The button that was just clicked lives in the picker this hides, so
+      // focus was left on a display:none element — inside an aria-modal
+      // dialog, which leaves the focus trap with nothing to hold and drops the
+      // next Tab outside the modal entirely. Move into the form that replaced
+      // it.
+      (form.querySelector('#rating-5') || form.querySelector('[name="rating"]') || form).focus();
     }
 
     async function submitParticipantReview(form) {
