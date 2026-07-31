@@ -36,6 +36,50 @@ async function candidateEmail(userId) {
   return { email: String(candidate.email || '').trim(), reason: '' };
 }
 
+// google_event_id, meet_url and calendar_html_link are no longer writable by
+// the client (see the 20260731090000 migration): they are Google's values, and
+// letting an organizer choose them meant they could point the candidate's
+// "Open Meet" button anywhere they liked. The row is written here instead,
+// with the service role, after this handler has already verified that the
+// caller owns the project and that the application belongs to it.
+async function saveInterview(row) {
+  const url = process.env.SUPABASE_URL || 'https://josrjdvcdkqkwfzomxxh.supabase.co';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) return { error: 'unconfigured' };
+  const response = await fetch(`${url}/rest/v1/interviews`, {
+    method: 'POST',
+    headers: {
+      apikey: serviceRoleKey,
+      authorization: `Bearer ${serviceRoleKey}`,
+      'content-type': 'application/json',
+      prefer: 'return=representation'
+    },
+    body: JSON.stringify(row)
+  });
+  if (!response.ok) return { error: `write_failed_${response.status}` };
+  const rows = await response.json();
+  return { interview: rows[0] || null };
+}
+
+// The calendar event is created before the row exists, so a failed write used
+// to leave a real event on the organizer's calendar and a real invite in the
+// candidate's inbox that the app had no record of — invisible to both the
+// applicant list and the agenda, and impossible to cancel from the UI. Undo
+// the half that did land instead of leaving the two out of step.
+async function deleteCalendarEvent(accessToken, eventId) {
+  if (!eventId) return;
+  try {
+    await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}?sendUpdates=all`,
+      { method: 'DELETE', headers: { authorization: `Bearer ${accessToken}` } }
+    );
+  } catch (error) {
+    // Best effort: the caller is already on an error path and the useful
+    // thing to report is the original failure, not this one.
+    console.error('failed to roll back calendar event:', error);
+  }
+}
+
 // Google access tokens expire in about an hour and Supabase never hands us
 // a fresh one after the initial sign-in redirect, so the organizer's stored
 // refresh token (captured once, at sign-in — see api/store-google-token.js)
@@ -223,11 +267,35 @@ async function scheduleInterview(req, res) {
   const conferenceStatus = data.conferenceData?.createRequest?.status?.statusCode;
   const meetLinkFailed = !meetUrl && conferenceStatus && conferenceStatus !== 'success';
 
+  const saved = await saveInterview({
+    project_id: projectId,
+    application_id: applicationId,
+    organizer_id: identity.user.id,
+    // Server-verified, not whatever the client claimed the candidate was.
+    candidate_id: applications[0].applicant_id,
+    starts_at: start.toISOString(),
+    ends_at: end.toISOString(),
+    title: String(title).trim().slice(0, 120),
+    notes: String(notes).trim().slice(0, 2000),
+    google_event_id: data.id,
+    meet_url: meetUrl,
+    calendar_html_link: data.htmlLink || null
+  });
+
+  if (saved.error) {
+    await deleteCalendarEvent(tokenResult.accessToken, data.id);
+    const message = saved.error === 'unconfigured'
+      ? 'The server is missing SUPABASE_SERVICE_ROLE_KEY, so the interview could not be recorded.'
+      : 'The interview could not be saved, so the calendar invite was cancelled. Please try again.';
+    return json(res, 500, { error: message });
+  }
+
   return json(res, 200, {
     eventId: data.id,
     htmlLink: data.htmlLink,
     meetUrl,
     meetLinkFailed,
-    candidateId: applications[0].applicant_id
+    candidateId: applications[0].applicant_id,
+    interview: saved.interview
   });
 }

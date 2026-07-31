@@ -517,25 +517,41 @@ import {
       $('#conversation-list').hidden = true;
       $('#message-thread').hidden = false;
       renderMessageThread();
+      loadChatLink(partnerId);
       markConversationRead(partnerId);
       window.setTimeout(() => $('#message-form [name=body]').focus(), 0);
     }
 
-    // The hand-off link is only ever read from an embedded message row
-    // (sender/recipient profile), never from a public profile fetch — that's
-    // what keeps it scoped to "people you're already talking to in-app"
-    // instead of exposing it to anyone who views the profile.
     function partnerProfileFromMessages(partnerId) {
       const withPartner = messages.find(message => otherParticipantId(message) === partnerId);
       if (!withPartner) return null;
       return withPartner.sender_id === partnerId ? withPartner.sender : withPartner.recipient;
     }
 
+    // The hand-off link used to ride along on the embedded sender/recipient
+    // profile of a message row, which kept it scoped to "people you're already
+    // talking to" in the UI only — the column was still in the blanket SELECT
+    // grant on a table whose RLS is `using (true)`, so anyone could read every
+    // member's personal contact link straight from the REST API without even
+    // signing in. It now comes from the chat_link_for() RPC, which enforces the
+    // same rule in Postgres. Cached per partner because renderMessageThread is
+    // synchronous and re-runs on every render.
+    const chatLinks = new Map();
+
+    async function loadChatLink(partnerId) {
+      if (!supabase || !partnerId || chatLinks.has(partnerId)) return;
+      // Claim the slot before awaiting so a second render can't fire a
+      // duplicate request for the same partner while this one is in flight.
+      chatLinks.set(partnerId, null);
+      const result = await supabase.rpc('chat_link_for', { target_user: partnerId });
+      const row = result.error ? null : (result.data || [])[0];
+      const safeUrl = safeExternalUrl(row?.link);
+      chatLinks.set(partnerId, safeUrl ? { url: safeUrl, label: row.label || 'chat' } : null);
+      if (activeConversationUserId === partnerId) renderMessageThread();
+    }
+
     function partnerChatLink(partnerId) {
-      const partnerProfile = partnerProfileFromMessages(partnerId);
-      const safeUrl = safeExternalUrl(partnerProfile?.chat_link);
-      if (!safeUrl) return null;
-      return { url: safeUrl, label: partnerProfile?.chat_link_label || 'chat' };
+      return chatLinks.get(partnerId) || null;
     }
 
     function closeConversation() {
@@ -820,7 +836,7 @@ import {
       if (user) {
         let profileResult = await supabase
           .from('profiles')
-          .select('id,display_name,headline,bio,skills,avatar_url,banner_url,custom_avatar,priority_match_active,chat_link,chat_link_label')
+          .select('id,display_name,headline,bio,skills,avatar_url,banner_url,custom_avatar,priority_match_active')
           .eq('id', user.id)
           .maybeSingle();
         if (profileResult.error && /permission denied/i.test(profileResult.error.message)) {
@@ -831,6 +847,17 @@ import {
             .maybeSingle();
         }
         profile = profileResult.data || null;
+
+        // chat_link/chat_link_label are no longer in the profiles SELECT grant
+        // (they were world-readable there, which the harassment-vector comment
+        // on their own migration explicitly rules out). Your own values come
+        // back through the same RPC that serves a conversation partner's.
+        if (profile) {
+          const ownChatLink = await supabase.rpc('chat_link_for', { target_user: user.id });
+          const ownRow = ownChatLink.error ? null : (ownChatLink.data || [])[0];
+          profile.chat_link = ownRow?.link || '';
+          profile.chat_link_label = ownRow?.label || '';
+        }
 
         // Only sync the provider's photo in when the member hasn't chosen
         // their own — otherwise every reload would clobber a custom upload.
@@ -878,20 +905,15 @@ import {
         // The messages table may not exist yet if this migration hasn't
         // rolled out to every environment — fail soft (empty inbox) rather
         // than breaking the whole board.
-        let messageResult = await supabase
+        // No chat_link on the embedded profiles here any more — it is fetched
+        // per conversation through chat_link_for(), which enforces the
+        // "already talking in-app" rule at the database instead of trusting
+        // this select to only ever be read by the right person.
+        const messageResult = await supabase
           .from('messages')
-          .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url,chat_link,chat_link_label),recipient:recipient_id(display_name,avatar_url,chat_link,chat_link_label)')
+          .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url),recipient:recipient_id(display_name,avatar_url)')
           .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
           .order('created_at', { ascending: true });
-        if (messageResult.error && /permission denied/i.test(messageResult.error.message)) {
-          // chat_link/chat_link_label migration not applied yet — messages
-          // themselves still work, just without the hand-off link.
-          messageResult = await supabase
-            .from('messages')
-            .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url),recipient:recipient_id(display_name,avatar_url)')
-            .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-            .order('created_at', { ascending: true });
-        }
         messagesAvailable = !messageResult.error;
         messages = messageResult.error ? [] : messageResult.data || [];
 
@@ -2459,25 +2481,12 @@ import {
         return toast(data.error || 'Calendar event could not be created.');
       }
 
-      const interviewRow = {
-        project_id: values.get('project_id'),
-        application_id: values.get('application_id'),
-        organizer_id: user.id,
-        candidate_id: values.get('candidate_id'),
-        starts_at: startsAt.toISOString(),
-        ends_at: endsAt.toISOString(),
-        title: String(values.get('title')).trim(),
-        notes: String(values.get('notes')).trim(),
-        google_event_id: data.eventId,
-        meet_url: data.meetUrl,
-        calendar_html_link: data.htmlLink
-      };
-      let saved = await supabase.from('interviews').insert(interviewRow);
-      if (saved.error && /permission denied/i.test(saved.error.message)) {
-        delete interviewRow.calendar_html_link;
-        saved = await supabase.from('interviews').insert(interviewRow);
-      }
-      if (saved.error) return toast(saved.error.message);
+      // The interviews row is written by /api/google-calendar with the service
+      // role, in the same request that creates the event. Doing it here meant
+      // google_event_id/meet_url/calendar_html_link had to be client-writable
+      // — which let an organizer point the candidate's "Open Meet" button at
+      // any URL — and meant a failed insert left a real calendar invite the
+      // app had no record of. The server now rolls the event back instead.
       const statusUpdate = await supabase.from('applications').update({ status: 'interview' }).eq('id', values.get('application_id'));
       if (statusUpdate.error) toast('The Meet was created, but the application status could not be updated.');
       form.hidden = true;
