@@ -76,6 +76,16 @@
       box-shadow: var(--focus-ring);
     }
     [hidden] { display: none !important; }
+    /* connected-app.js renders <p class="muted"> in three places, but this
+       file only ever defined the --muted custom property, never the class —
+       project-hub.css defines it six times. That text was rendering at full
+       body brightness on the landing page only. */
+    .muted { color: var(--muted); }
+    .load-more-row {
+      display: flex;
+      justify-content: center;
+      margin-top: var(--space-5);
+    }
     .sr-only {
       position: absolute;
       width: 1px;

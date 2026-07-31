@@ -269,6 +269,11 @@ import {
     let profile = null;
     let projects = [];
     let seatCounts = new Map();
+    // Discovery is paginated because projects.tags carries each project's
+    // cover image inline as a base64 data URL — an unbounded select grows
+    // without limit. Raised by the "Load more projects" button.
+    const PROJECT_PAGE_SIZE = 48;
+    let projectLimit = PROJECT_PAGE_SIZE;
     let ownedProjects = [];
     let applications = [];
     let sentApplications = [];
@@ -764,11 +769,19 @@ import {
       }
     });
 
+    // The Google logo is an inline <svg> sibling of the button's text, so
+    // setting button.textContent for the busy state deleted it — permanently,
+    // since restoring the label puts back only a text node. Swap the label
+    // span instead, and fall back to the button itself if the markup ever
+    // loses the span (authWall() builds one without it).
+    const buttonLabel = button => button.querySelector('.google-auth-label') || button;
+
     async function beginGoogleSignIn(button = null) {
-      const originalLabel = button?.textContent;
+      const label = button ? buttonLabel(button) : null;
+      const originalLabel = label?.textContent;
       if (button) {
         button.disabled = true;
-        button.textContent = 'Connecting…';
+        label.textContent = 'Connecting…';
       }
       try {
         const result = await signInWithGoogle('/project-hub.html');
@@ -780,7 +793,7 @@ import {
       } finally {
         if (button) {
           button.disabled = false;
-          button.textContent = originalLabel;
+          label.textContent = originalLabel;
         }
       }
     }
@@ -902,11 +915,24 @@ import {
         return;
       }
 
-      const projectResult = await supabase
-        .from('projects')
-        .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,created_at,profiles:owner_id(display_name)')
-        .order('boost_until', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false });
+      // Bounded on purpose — see PROJECT_PAGE_SIZE. projects.tags carries each
+      // cover image as an inline base64 data URL, and loadAll() re-runs after
+      // every mutation (including sending a single message), so an unbounded
+      // select here is re-downloaded constantly.
+      //
+      // The seat counts do not depend on the project rows, so the two run
+      // together. loadAllInternal used to await seven independent queries one
+      // after another, paying a full round trip for each — and it re-runs
+      // after every mutation, including sending a single message.
+      const [projectResult, seatCountResult] = await Promise.all([
+        supabase
+          .from('projects')
+          .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,created_at,profiles:owner_id(display_name)')
+          .order('boost_until', { ascending: false, nullsFirst: false })
+          .order('created_at', { ascending: false })
+          .limit(projectLimit),
+        supabase.rpc('project_seat_counts')
+      ]);
 
       if (projectResult.error) {
         projects = [];
@@ -927,8 +953,11 @@ import {
         ...project,
         owner: project.profiles?.display_name || 'connectEd member'
       })));
+      // A full page back means there is probably more behind it. Say so rather
+      // than quietly presenting a truncated board as the whole thing.
+      const boardLoadMoreRow = $('#board-load-more-row');
+      if (boardLoadMoreRow) boardLoadMoreRow.hidden = projects.length < projectLimit;
       ownedProjects = user ? projects.filter(project => project.owner_id === user.id) : [];
-      const seatCountResult = await supabase.rpc('project_seat_counts');
       // Same as the landing page: swallowing this error made every project
       // claim "0 of N seats filled", a confident statement produced by the
       // absence of data rather than by any data. Leave it null so seatsLabel()
@@ -938,11 +967,31 @@ import {
         : new Map((seatCountResult.data || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
 
       if (user) {
-        let profileResult = await supabase
-          .from('profiles')
-          .select('id,display_name,headline,bio,skills,avatar_url,banner_url,custom_avatar,priority_match_active')
-          .eq('id', user.id)
-          .maybeSingle();
+        // None of these five depend on each other, so they go out together
+        // rather than as five sequential round trips.
+        let [
+          profileResult,
+          ownChatLink,
+          applicationResult,
+          sentApplicationResult
+        ] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id,display_name,headline,bio,skills,avatar_url,banner_url,custom_avatar,priority_match_active')
+            .eq('id', user.id)
+            .maybeSingle(),
+          supabase.rpc('chat_link_for', { target_user: user.id }),
+          supabase
+            .from('applications')
+            .select('id,project_id,applicant_id,message,answers,status,created_at,updated_at,projects!inner(id,title,summary,tags,owner_id),profiles:applicant_id(id,display_name,headline,bio,skills,avatar_url,priority_match_active)')
+            .eq('projects.owner_id', user.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('applications')
+            .select(SENT_APPLICATION_SELECT)
+            .eq('applicant_id', user.id)
+            .order('created_at', { ascending: false })
+        ]);
         if (profileResult.error && /permission denied/i.test(profileResult.error.message)) {
           profileResult = await supabase
             .from('profiles')
@@ -957,7 +1006,6 @@ import {
         // on their own migration explicitly rules out). Your own values come
         // back through the same RPC that serves a conversation partner's.
         if (profile) {
-          const ownChatLink = await supabase.rpc('chat_link_for', { target_user: user.id });
           const ownRow = ownChatLink.error ? null : (ownChatLink.data || [])[0];
           profile.chat_link = ownRow?.link || '';
           profile.chat_link_label = ownRow?.label || '';
@@ -978,30 +1026,35 @@ import {
           }
         }
 
-        const applicationResult = await supabase
-          .from('applications')
-          .select('id,project_id,applicant_id,message,answers,status,created_at,updated_at,projects!inner(id,title,summary,tags,owner_id),profiles:applicant_id(id,display_name,headline,bio,skills,avatar_url,priority_match_active)')
-          .eq('projects.owner_id', user.id)
-          .order('created_at', { ascending: false });
         applicationsError = applicationResult.error
           ? applicationResult.error.message || 'Applicants could not be loaded.'
           : '';
         applications = applicationResult.error ? [] : applicationResult.data || [];
 
-        const sentApplicationResult = await supabase
-          .from('applications')
-          .select(SENT_APPLICATION_SELECT)
-          .eq('applicant_id', user.id)
-          .order('created_at', { ascending: false });
         sentApplicationsError = sentApplicationResult.error
           ? sentApplicationResult.error.message || 'Your applications could not be loaded.'
           : '';
         sentApplications = sentApplicationResult.error ? [] : sentApplicationResult.data || [];
 
-        let interviewResult = await supabase
-          .from('interviews')
-          .select('id,application_id,project_id,organizer_id,candidate_id,starts_at,ends_at,title,notes,google_event_id,meet_url,calendar_html_link,created_at')
-          .order('starts_at', { ascending: true });
+        // Independent of each other too.
+        // The messages table may not exist yet if that migration hasn't
+        // rolled out to every environment — fail soft (empty inbox) rather
+        // than breaking the whole board.
+        // No chat_link on the embedded profiles here any more: it is fetched
+        // per conversation through chat_link_for(), which enforces the
+        // "already talking in-app" rule at the database instead of trusting
+        // this select to only ever be read by the right person.
+        let [interviewResult, messageResult] = await Promise.all([
+          supabase
+            .from('interviews')
+            .select('id,application_id,project_id,organizer_id,candidate_id,starts_at,ends_at,title,notes,google_event_id,meet_url,calendar_html_link,created_at')
+            .order('starts_at', { ascending: true }),
+          supabase
+            .from('messages')
+            .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url),recipient:recipient_id(display_name,avatar_url)')
+            .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+            .order('created_at', { ascending: true })
+        ]);
         if (interviewResult.error && /permission denied/i.test(interviewResult.error.message)) {
           // calendar_html_link migration not applied yet — fall back so the
           // rest of the interview data (Meet links, schedule) still loads.
@@ -1011,19 +1064,6 @@ import {
             .order('starts_at', { ascending: true });
         }
         interviews = interviewResult.error ? [] : interviewResult.data || [];
-
-        // The messages table may not exist yet if this migration hasn't
-        // rolled out to every environment — fail soft (empty inbox) rather
-        // than breaking the whole board.
-        // No chat_link on the embedded profiles here any more — it is fetched
-        // per conversation through chat_link_for(), which enforces the
-        // "already talking in-app" rule at the database instead of trusting
-        // this select to only ever be read by the right person.
-        const messageResult = await supabase
-          .from('messages')
-          .select('id,sender_id,recipient_id,body,created_at,read_at,sender:sender_id(display_name,avatar_url),recipient:recipient_id(display_name,avatar_url)')
-          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-          .order('created_at', { ascending: true });
         messagesAvailable = !messageResult.error;
         messages = messageResult.error ? [] : messageResult.data || [];
 
@@ -2935,6 +2975,19 @@ import {
 
       // Typing a city needs no GPS permission — geocode it through a free,
       // keyless lookup so "share location" works either way.
+    // Raises the page size and refetches, rather than appending — the board
+    // is re-sorted by live boost on every load, so a second page merged into
+    // the first would sit in the wrong order.
+    $('#board-load-more')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      button.textContent = 'Loading…';
+      projectLimit += PROJECT_PAGE_SIZE;
+      await loadAll();
+      button.disabled = false;
+      button.textContent = 'Load more projects';
+    });
+
     async function geocodeLabel(label) {
       try {
         const response = await fetch(

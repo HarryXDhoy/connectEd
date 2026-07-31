@@ -261,6 +261,11 @@ import {
 
     let projects = [];
     let seatCounts = new Map();
+    // Discovery is paginated because projects.tags carries each project's
+    // cover image inline as a base64 data URL — an unbounded select grows
+    // without limit. Raised by the "Load more projects" button.
+    const PROJECT_PAGE_SIZE = 48;
+    let projectLimit = PROJECT_PAGE_SIZE;
     let activeFilter = 'all';
     let activeProject = null;
     let authMode = 'signin';
@@ -443,18 +448,30 @@ import {
       }
 
       try {
+        // Bounded on purpose. projects.tags doubles as a metadata channel and
+        // carries each project's cover image as an inline base64 data URL
+        // (~180 KB target, often more), so an unbounded select grows without
+        // limit — a few hundred projects is tens of megabytes, re-fetched on
+        // every load. `tags` and `description` both have to stay in the select
+        // (tag filters, pause state, and the search index all read them), so
+        // the row count is the only lever available without a schema change.
         const { data, error } = await supabase
           .from('projects')
-          .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,profiles:owner_id(display_name)')
+          .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,created_at,profiles:owner_id(display_name)')
           .neq('status', 'closed')
           .order('boost_until', { ascending: false, nullsFirst: false })
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(projectLimit);
 
         if (error) throw error;
         projects = boostedFirst((data || []).map(project => ({
           ...project,
           owner: project.profiles?.display_name || 'connectEd member'
         })));
+        // A full page back means there is probably more behind it. Say so
+        // rather than quietly presenting a truncated board as the whole thing.
+        const loadMoreRow = $('#landing-load-more-row');
+        if (loadMoreRow) loadMoreRow.hidden = projects.length < projectLimit;
 
         // Discarding this error made every project render "0 of N seats
         // filled" — a specific, confident claim that the project is wide open,
@@ -689,7 +706,15 @@ import {
       questionContainer.setAttribute('aria-busy', 'true');
       questionContainer.innerHTML = '<p class="muted">Loading application questions…</p>';
       if (submitButton) submitButton.disabled = true;
-      openModal('project');
+      // Hand off from whatever is already open rather than stacking a second
+      // dialog on top of it — replaceModal keeps the original opener as the
+      // focus-return target, which a plain openModal() would overwrite with an
+      // element inside the modal being opened.
+      if (activeModal && activeModal.id !== 'modal-project') {
+        replaceModal(activeModal.id.replace('modal-', ''), 'project');
+      } else if (!activeModal) {
+        openModal('project');
+      }
       let questions = [];
       let questionError = null;
       let viewer = null;
@@ -949,10 +974,14 @@ import {
         return `${heading}${memberProjects.map(projectCard).join('')}`;
       }).join('');
       $$('[data-apply-project]').forEach(button => {
-        button.onclick = () => {
-          closeModal('member-projects');
-          showProject(button.dataset.applyProject);
-        };
+        // No closeModal() here any more: it defers its teardown behind a 170ms
+        // transition timer, so closing and immediately opening let that timer
+        // fire *after* the project modal was up and run the member modal's
+        // cleanup on a live dialog — un-inerting the background, unlocking
+        // body scroll, and yanking focus back out. showProject() now performs
+        // the hand-off with replaceModal(), which cancels the timer and skips
+        // the teardown.
+        button.onclick = () => showProject(button.dataset.applyProject);
       });
       openModal('member-projects');
     }
@@ -1168,11 +1197,19 @@ import {
       }
     };
 
+    // The Google logo is an inline <svg> sibling of the button's text, so
+    // setting button.textContent for the busy state deleted it — permanently,
+    // since restoring the label puts back only a text node. Swap the label
+    // span instead, and fall back to the button itself if the markup ever
+    // loses the span.
+    const buttonLabel = button => button.querySelector('.google-auth-label') || button;
+
     $('#google-auth').onclick = async event => {
       const button = event.currentTarget;
-      const originalLabel = button.textContent;
+      const label = buttonLabel(button);
+      const originalLabel = label.textContent;
       button.disabled = true;
-      button.textContent = 'Connecting…';
+      label.textContent = 'Connecting…';
       try {
         const result = await signInWithGoogle('/project-hub.html');
         if (result.previewHandoff) {
@@ -1182,7 +1219,7 @@ import {
         toast(error.message || 'Google sign-in is unavailable.');
       } finally {
         button.disabled = false;
-        button.textContent = originalLabel;
+        label.textContent = originalLabel;
       }
     };
     $('#auth-mode').onclick = () => setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
@@ -2423,6 +2460,11 @@ import {
           event.preventDefault();
         }, { passive: false });
 
+        const zoomControls = $('#network-zoom-controls');
+        // Only now, with the handlers about to be attached, are these real
+        // controls. Revealing them in the markup instead meant a failed CDN
+        // import left three buttons that looked live and did nothing.
+        if (zoomControls) zoomControls.hidden = false;
         const zoomInButton = $('#network-zoom-in');
         const zoomOutButton = $('#network-zoom-out');
         const zoomResetButton = $('#network-zoom-reset');
@@ -2575,6 +2617,19 @@ import {
     // Typing a city needs no GPS permission — geocode it through a free,
     // keyless lookup so pinning yourself works either way, matching the
     // same option already offered in the profile tab.
+    // Raises the page size and refetches, rather than appending — the board
+    // is re-sorted by live boost on every load, so a second page merged into
+    // the first would sit in the wrong order.
+    $('#landing-load-more')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      button.textContent = 'Loading…';
+      projectLimit += PROJECT_PAGE_SIZE;
+      await loadProjects();
+      button.disabled = false;
+      button.textContent = 'Load more projects';
+    });
+
     async function geocodeLabel(label) {
       try {
         const response = await fetch(

@@ -61,7 +61,7 @@
     html { background: var(--bg); }
     body {
       margin: 0;
-      min-height: 100vh;
+      min-height: 100dvh;
       overflow-x: hidden;
       background:
         radial-gradient(circle at 10% 4%, color-mix(in oklab, var(--surface-warm), transparent 28%), transparent 24%),
@@ -79,6 +79,11 @@
       box-shadow: var(--focus-ring);
     }
     [hidden] { display: none !important; }
+    .load-more-row {
+      display: flex;
+      justify-content: center;
+      margin-top: var(--space-5);
+    }
     .sr-only {
       position: absolute;
       width: 1px;
@@ -1207,7 +1212,7 @@
     }
     .board-shell {
       width: min(100%, 1480px);
-      min-height: calc(100vh - 136px);
+      min-height: calc(100dvh - 136px);
       margin: 16px auto 0;
       overflow: hidden;
       padding: 0;
@@ -1221,7 +1226,7 @@
     }
     .board-shell > .container {
       width: 100%;
-      min-height: calc(100vh - 136px);
+      min-height: calc(100dvh - 136px);
       display: grid;
       grid-template-columns: 224px minmax(0, 1fr);
       grid-template-rows: auto 1fr;
@@ -1368,7 +1373,7 @@
     /* Supabase ship override */
     html { background: var(--bg); }
     body {
-      min-height: 100vh;
+      min-height: 100dvh;
       padding: 0;
       background: var(--bg);
       color: var(--fg);
@@ -1615,7 +1620,12 @@
     .question-list { display: grid; gap: var(--space-2); }
     .question-row { display: flex; gap: var(--space-2); align-items: center; }
     .question-row .field { flex: 1; }
-    .remove-question {
+    /* .remove-project-link is the same × control on the project-links rows but
+       had no rule of its own, so it kept .btn's default horizontal padding and
+       came out noticeably wider than its twin. (Tap target was already fine —
+       .btn carries min-height: 44px.) */
+    .remove-question,
+    .remove-project-link {
       flex: 0 0 auto;
       min-height: 44px;
       width: 44px;
