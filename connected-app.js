@@ -24,6 +24,23 @@ import {
         return '';
       }
     };
+    // banner_url is free text stored on a profile row, and it was the one
+    // user-supplied value in either page interpolated into markup without
+    // escaping — straight into a CSS url(), where a stray double quote closes
+    // the function early and everything after it is parsed as further
+    // declarations. JSON.stringify quotes and escapes the value; the scheme
+    // check keeps it to an inline image or a real http(s) URL, since
+    // escapeHtml-style escaping would not stop a javascript: or data:text/html
+    // one on its own.
+    const bannerImageUrl = value => {
+      const raw = String(value || '');
+      return /^data:image\//i.test(raw) ? raw : safeExternalUrl(raw);
+    };
+    const applyBannerImage = (element, value) => {
+      const url = bannerImageUrl(value);
+      element.style.backgroundImage = url ? `url(${JSON.stringify(url)})` : '';
+      element.hidden = !url;
+    };
     // Every /api/* endpoint always responds with JSON on every path — but
     // an unhandled crash in one (timeout, network blip reaching a
     // third-party API) can still make the platform return an empty or
@@ -108,6 +125,18 @@ import {
         ...(tags.length > 2 ? [`<span class="tag tag-more">+${tags.length - 2}</span>`] : [])
       ].join('');
     };
+    const isBoostLive = project => {
+      const until = Date.parse(project?.boost_until || '');
+      return Number.isFinite(until) && until > Date.now();
+    };
+    // PostgREST orders on the raw boost_until column, so a boost whose date
+    // has already passed still sorts above every project whose boost_until is
+    // null — and nothing ever rewrites the column once it expires, so that
+    // top placement is permanent. Re-sort here so only a live boost earns it.
+    // Stable sort: everything that isn't actively boosted keeps the order the
+    // database already applied (created_at desc).
+    const boostedFirst = rows =>
+      [...rows].sort((a, b) => Number(isBoostLive(b)) - Number(isBoostLive(a)));
     // seats_total is the static capacity set at creation — it never moved
     // as people were actually accepted, so a project with every seat
     // filled looked identical to one with none. seatCounts (populated from
@@ -116,6 +145,9 @@ import {
     const seatsLabel = project => {
       const total = Number(project?.seats_total) || 0;
       if (!total) return '';
+      // null means the seat-count RPC failed. "0 of 5 seats filled" would be a
+      // confident claim built on nothing, so say nothing.
+      if (!seatCounts) return '';
       const filled = seatCounts.get(String(project.id)) || 0;
       // A bare "3/5 seats" makes someone stop and work out which number is
       // which — spelling it out reads correctly on first glance whether
@@ -229,6 +261,11 @@ import {
 
     let projects = [];
     let seatCounts = new Map();
+    // Discovery is paginated because projects.tags carries each project's
+    // cover image inline as a base64 data URL — an unbounded select grows
+    // without limit. Raised by the "Load more projects" button.
+    const PROJECT_PAGE_SIZE = 48;
+    let projectLimit = PROJECT_PAGE_SIZE;
     let activeFilter = 'all';
     let activeProject = null;
     let authMode = 'signin';
@@ -411,21 +448,39 @@ import {
       }
 
       try {
+        // Bounded on purpose. projects.tags doubles as a metadata channel and
+        // carries each project's cover image as an inline base64 data URL
+        // (~180 KB target, often more), so an unbounded select grows without
+        // limit — a few hundred projects is tens of megabytes, re-fetched on
+        // every load. `tags` and `description` both have to stay in the select
+        // (tag filters, pause state, and the search index all read them), so
+        // the row count is the only lever available without a schema change.
         const { data, error } = await supabase
           .from('projects')
-          .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,profiles:owner_id(display_name)')
+          .select('id,title,summary,description,tags,status,seats_total,boost_until,owner_id,created_at,profiles:owner_id(display_name)')
           .neq('status', 'closed')
           .order('boost_until', { ascending: false, nullsFirst: false })
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(projectLimit);
 
         if (error) throw error;
-        projects = (data || []).map(project => ({
+        projects = boostedFirst((data || []).map(project => ({
           ...project,
           owner: project.profiles?.display_name || 'connectEd member'
-        }));
+        })));
+        // A full page back means there is probably more behind it. Say so
+        // rather than quietly presenting a truncated board as the whole thing.
+        const loadMoreRow = $('#landing-load-more-row');
+        if (loadMoreRow) loadMoreRow.hidden = projects.length < projectLimit;
 
-        const { data: seatData } = await supabase.rpc('project_seat_counts');
-        seatCounts = new Map((seatData || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
+        // Discarding this error made every project render "0 of N seats
+        // filled" — a specific, confident claim that the project is wide open,
+        // produced by the absence of data rather than by any data. seatCounts
+        // is left null on failure so seatsLabel() can say nothing instead.
+        const { data: seatData, error: seatError } = await supabase.rpc('project_seat_counts');
+        seatCounts = seatError
+          ? null
+          : new Map((seatData || []).map(row => [String(row.project_id), Number(row.accepted_count) || 0]));
         renderProjectFilters();
         renderProjects();
       } catch (error) {
@@ -461,7 +516,7 @@ import {
 
       $('#project-pins').innerHTML = filtered.length
         ? filtered.map((project, index) => {
-            const boosted = project.boost_until && new Date(project.boost_until) > new Date();
+            const boosted = isBoostLive(project);
             // Was missing the paused-applications check entirely (unlike
             // project-hub.js's equivalent pinMarkup()) — a project with
             // applications explicitly paused by its owner still showed
@@ -651,7 +706,15 @@ import {
       questionContainer.setAttribute('aria-busy', 'true');
       questionContainer.innerHTML = '<p class="muted">Loading application questions…</p>';
       if (submitButton) submitButton.disabled = true;
-      openModal('project');
+      // Hand off from whatever is already open rather than stacking a second
+      // dialog on top of it — replaceModal keeps the original opener as the
+      // focus-return target, which a plain openModal() would overwrite with an
+      // element inside the modal being opened.
+      if (activeModal && activeModal.id !== 'modal-project') {
+        replaceModal(activeModal.id.replace('modal-', ''), 'project');
+      } else if (!activeModal) {
+        openModal('project');
+      }
       let questions = [];
       let questionError = null;
       let viewer = null;
@@ -680,18 +743,35 @@ import {
       if (!activeProject || String(activeProject.id) !== requestedProjectId) return;
       reportButton.hidden = id.startsWith('preview-') || activeProject.owner_id === viewer?.id;
       const applicationState = $('#landing-application-state');
-      const canApply = activeProject.owner_id !== viewer?.id
+      // Boolean(viewer) matters: without it `activeProject.owner_id !==
+      // viewer?.id` compares a uuid against undefined and reads as true, so a
+      // signed-out visitor was shown the whole application form — questions,
+      // note field and all — and only told to sign in once they pressed
+      // submit, at which point replaceModal() threw away everything they had
+      // written. Gate at open, using the same state panel as the owner,
+      // paused and already-applied cases.
+      const canApply = Boolean(viewer)
+        && activeProject.owner_id !== viewer.id
         && isAcceptingApplications(activeProject)
         && !existingApplication;
       $$('#join-form .application-fields').forEach(section => {
         section.hidden = !canApply;
       });
       if (!canApply) {
-        applicationState.textContent = existingApplication
-          ? `You already applied to this project. Current status: ${String(existingApplication.status).replace('_', ' ')}.`
-          : activeProject.owner_id === viewer?.id
-            ? 'You own this project.'
-            : 'This project is not accepting applications right now.';
+        if (!viewer) {
+          applicationState.innerHTML = `
+            <p>Sign in to apply to this project.</p>
+            <button class="btn btn-small btn-primary" type="button" data-application-signin>Sign in to apply</button>
+          `;
+          const signIn = applicationState.querySelector('[data-application-signin]');
+          if (signIn) signIn.onclick = () => replaceModal('project', 'auth');
+        } else {
+          applicationState.textContent = existingApplication
+            ? `You already applied to this project. Current status: ${String(existingApplication.status).replace('_', ' ')}.`
+            : activeProject.owner_id === viewer.id
+              ? 'You own this project.'
+              : 'This project is not accepting applications right now.';
+        }
         applicationState.hidden = false;
       } else {
         applicationState.hidden = true;
@@ -759,14 +839,7 @@ import {
         .map(skill => `<span class="tag">${escapeHtml(skill)}</span>`)
         .join('');
 
-      const banner = $('#view-profile-banner');
-      if (person.banner_url) {
-        banner.style.backgroundImage = `url("${person.banner_url}")`;
-        banner.hidden = false;
-      } else {
-        banner.style.backgroundImage = '';
-        banner.hidden = true;
-      }
+      applyBannerImage($('#view-profile-banner'), person.banner_url);
 
       const photo = $('#view-profile-photo');
       const fallback = $('#view-profile-photo-fallback');
@@ -869,7 +942,7 @@ import {
           <article class="member-project-item">
             <img class="member-project-cover" src="${cover}" alt="" loading="lazy" decoding="async">
             <div class="member-project-info">
-              <h3>${escapeHtml(project.title)}</h3>
+              <h4>${escapeHtml(project.title)}</h4>
               <p>${escapeHtml(project.summary)}</p>
               <div class="tags">${projectTags(project).slice(0, 3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
             </div>
@@ -890,17 +963,25 @@ import {
       }));
       $('#member-projects-name').textContent = node.cluster ? node.meta.split(' · ')[0] : node.name;
       $('#member-projects-list').innerHTML = members.map(({ member, projects: memberProjects }) => {
-        const heading = node.cluster ? `<h4 class="member-project-group">${escapeHtml(member.name)}</h4>` : '';
+        // The modal's own title is an h2, so a member group is an h3 and the
+        // project titles under it h4. It used to run h2 -> h4 -> h3, which
+        // reads to a screen reader as the projects being parents of the member
+        // they belong to.
+        const heading = node.cluster ? `<h3 class="member-project-group">${escapeHtml(member.name)}</h3>` : '';
         if (!memberProjects.length) {
           return `${heading}<p class="member-no-projects">${member.headline ? `${escapeHtml(member.headline)} · ` : ''}Hasn't published a project yet.</p>`;
         }
         return `${heading}${memberProjects.map(projectCard).join('')}`;
       }).join('');
       $$('[data-apply-project]').forEach(button => {
-        button.onclick = () => {
-          closeModal('member-projects');
-          showProject(button.dataset.applyProject);
-        };
+        // No closeModal() here any more: it defers its teardown behind a 170ms
+        // transition timer, so closing and immediately opening let that timer
+        // fire *after* the project modal was up and run the member modal's
+        // cleanup on a live dialog — un-inerting the background, unlocking
+        // body scroll, and yanking focus back out. showProject() now performs
+        // the hand-off with replaceModal(), which cancels the timer and skips
+        // the teardown.
+        button.onclick = () => showProject(button.dataset.applyProject);
       });
       openModal('member-projects');
     }
@@ -1116,11 +1197,19 @@ import {
       }
     };
 
+    // The Google logo is an inline <svg> sibling of the button's text, so
+    // setting button.textContent for the busy state deleted it — permanently,
+    // since restoring the label puts back only a text node. Swap the label
+    // span instead, and fall back to the button itself if the markup ever
+    // loses the span.
+    const buttonLabel = button => button.querySelector('.google-auth-label') || button;
+
     $('#google-auth').onclick = async event => {
       const button = event.currentTarget;
-      const originalLabel = button.textContent;
+      const label = buttonLabel(button);
+      const originalLabel = label.textContent;
       button.disabled = true;
-      button.textContent = 'Connecting…';
+      label.textContent = 'Connecting…';
       try {
         const result = await signInWithGoogle('/project-hub.html');
         if (result.previewHandoff) {
@@ -1130,7 +1219,7 @@ import {
         toast(error.message || 'Google sign-in is unavailable.');
       } finally {
         button.disabled = false;
-        button.textContent = originalLabel;
+        label.textContent = originalLabel;
       }
     };
     $('#auth-mode').onclick = () => setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
@@ -1653,6 +1742,19 @@ import {
             cluster: count > 1
           };
         });
+
+        // Mirror every node as a real button. showMemberProjects() is the same
+        // handler the raycast click uses, so this is an alternative route to
+        // the existing modal rather than a parallel implementation.
+        const memberList = $('#globe-member-list');
+        if (memberList) {
+          memberList.innerHTML = locations.map((location, index) => `
+            <li><button type="button" data-globe-member="${index}">${escapeHtml(location.name)}<span class="sr-only"> — ${escapeHtml(location.meta)}</span></button></li>
+          `).join('');
+          $$('#globe-member-list [data-globe-member]').forEach(button => {
+            button.onclick = () => showMemberProjects(locations[Number(button.dataset.globeMember)]);
+          });
+        }
 
         const viewerLocation = locations.find(location => location.viewer);
         const findMeButton = $('#network-step-find-me');
@@ -2358,6 +2460,11 @@ import {
           event.preventDefault();
         }, { passive: false });
 
+        const zoomControls = $('#network-zoom-controls');
+        // Only now, with the handlers about to be attached, are these real
+        // controls. Revealing them in the markup instead meant a failed CDN
+        // import left three buttons that looked live and did nothing.
+        if (zoomControls) zoomControls.hidden = false;
         const zoomInButton = $('#network-zoom-in');
         const zoomOutButton = $('#network-zoom-out');
         const zoomResetButton = $('#network-zoom-reset');
@@ -2510,6 +2617,19 @@ import {
     // Typing a city needs no GPS permission — geocode it through a free,
     // keyless lookup so pinning yourself works either way, matching the
     // same option already offered in the profile tab.
+    // Raises the page size and refetches, rather than appending — the board
+    // is re-sorted by live boost on every load, so a second page merged into
+    // the first would sit in the wrong order.
+    $('#landing-load-more')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      button.textContent = 'Loading…';
+      projectLimit += PROJECT_PAGE_SIZE;
+      await loadProjects();
+      button.disabled = false;
+      button.textContent = 'Load more projects';
+    });
+
     async function geocodeLabel(label) {
       try {
         const response = await fetch(
@@ -2520,10 +2640,30 @@ import {
         const results = await response.json();
         const match = results[0];
         if (!match) return null;
-        return { latitude: Number(Number(match.lat).toFixed(2)), longitude: Number(Number(match.lon).toFixed(2)) };
+        return validCoordinates(match.lat, match.lon);
       } catch (_) {
         return null;
       }
+    }
+
+    // Nominatim's response was trusted as-is. A reply without usable lat/lon
+    // yields NaN, JSON.stringify turns NaN into null, and the update then
+    // wiped the member's saved location — while the UI cheerfully toasted
+    // "Pinned". Same Number.isFinite discipline profileLocation() already
+    // applies on the way in, now applied on the way out too.
+    function validCoordinates(rawLatitude, rawLongitude) {
+      const latitude = Number(rawLatitude);
+      const longitude = Number(rawLongitude);
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 || latitude > 90 ||
+        longitude < -180 || longitude > 180
+      ) return null;
+      return {
+        latitude: Number(latitude.toFixed(2)),
+        longitude: Number(longitude.toFixed(2))
+      };
     }
 
     $('#location-use-gps').onclick = event => {
